@@ -9,7 +9,7 @@
 <link rel="manifest" href="manifest.json">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta name="apple-mobile-web-app-title" content="Visitas">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="icon" type="image/png" href="icons/icon-192.png">
@@ -19,8 +19,6 @@
 <style>
   html, body { height: 100%; margin: 0; overscroll-behavior: none; }
   body { background: #f1f5f9; -webkit-tap-highlight-color: transparent; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: #1e293b; }
-  /* Alto real de la pantalla (corrige PWA instalada en iPhone, donde 100%/inset-0 puede quedar corto) */
-  #shell, #login, #modal { top: 0; left: 0; right: 0; bottom: auto; height: 100vh; height: 100dvh; height: var(--app-h, 100dvh); }
   .pt-safe { padding-top: env(safe-area-inset-top); }
   .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
   #map { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; }
@@ -162,7 +160,7 @@ const CONFIG = {
   GEOCERCA_METROS: 100,
   FOTO_MAX_ANCHO: 1200,
   FOTO_CALIDAD: 0.7,
-  FOTOS_OBLIGATORIAS_FISICA: true,           // debe coincidir con Code.gs
+  MONITOR_OBLIGATORIO_FISICA: true,          // foto del monitor obligatoria en Visita Física (fachada es opcional); debe coincidir con Code.gs
   SESION_KEY: 'vt_sesion',
   CACHE_KEY: 'vt_cache'
 };
@@ -343,6 +341,7 @@ async function doLogin(e) {
     $('#lgPass').value = '';
     S.view = 'inicio';
     showApp();
+    primeGps(true);
     await refreshData(false);
   } catch (err) {
     er.textContent = err.message; er.classList.remove('hidden');
@@ -731,13 +730,13 @@ function openVisita(arg) {
 
     <div class="grid grid-cols-2 gap-3">
       <div>
-        <label class="lbl">Foto de fachada</label>
+        <label class="lbl">Foto de fachada <span class="font-normal text-slate-400">(opcional)</span></label>
         <label for="fFachada" class="btn btn-outline w-full block text-sm">📷 Tomar foto</label>
         <input id="fFachada" type="file" accept="image/*" capture="environment" class="hidden">
         <img id="prevFachada" alt="" class="hidden mt-2 w-full h-28 object-cover rounded-xl border">
       </div>
       <div>
-        <label class="lbl">Foto del monitor</label>
+        <label class="lbl">Foto del monitor <span class="font-normal text-slate-400">(obligatoria en visita física)</span></label>
         <label for="fMonitor" class="btn btn-outline w-full block text-sm">📷 Tomar foto</label>
         <input id="fMonitor" type="file" accept="image/*" capture="environment" class="hidden">
         <img id="prevMonitor" alt="" class="hidden mt-2 w-full h-28 object-cover rounded-xl border">
@@ -878,7 +877,7 @@ async function guardarVisita() {
   if (tipo === 'Visita Física') {
     const g = geofenceError();
     if (g) { alert('⚠️ ' + g); return; }
-    if (CONFIG.FOTOS_OBLIGATORIAS_FISICA && (!F.fachada || !F.monitor)) return fErr('Para una Visita Física adjunta la foto de fachada y la foto del monitor.');
+    if (CONFIG.MONITOR_OBLIGATORIO_FISICA && !F.monitor) return fErr('Para una Visita Física debes adjuntar la foto del monitor.');
   }
   const v = F.v;
   const btn = $('#btnGuardar'); btn.disabled = true; btn.textContent = 'Guardando…';
@@ -1049,20 +1048,18 @@ function bindEvents() {
 /* =====================================================================
  *  INICIO DE LA APP
  * ===================================================================== */
-function setAppHeight() {
-  let h = window.innerHeight;
-  if (isStandalone() && isIOS()) {
-    const long = Math.max(screen.width, screen.height), short = Math.min(screen.width, screen.height);
-    const portrait = window.matchMedia('(orientation: portrait)').matches;
-    h = Math.max(h, portrait ? long : short);
-  }
-  document.documentElement.style.setProperty('--app-h', h + 'px');
+/* Pide el permiso de GPS una sola vez, al iniciar sesión (gesto del usuario), para que no
+   aparezca en medio del formulario. Si el permiso ya está concedido, solo "calienta" el GPS. */
+async function primeGps(force) {
+  if (!navigator.geolocation) return;
+  let state = 'prompt';
+  try { if (navigator.permissions && navigator.permissions.query) state = (await navigator.permissions.query({ name: 'geolocation' })).state; } catch (_) {}
+  if (state === 'denied') return;
+  if (state === 'prompt' && !force) return;
+  navigator.geolocation.getCurrentPosition(() => {}, () => {}, { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 });
 }
 
 function init() {
-  setAppHeight();
-  window.addEventListener('resize', setAppHeight);
-  window.addEventListener('orientationchange', () => setTimeout(setAppHeight, 200));
   bindEvents();
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
   const ses = loadSession();
@@ -1072,6 +1069,7 @@ function init() {
     if (c) Object.assign(S, { clientes: c.clientes || [], visitas: c.visitas || [], usuarios: c.usuarios || [] });
     showApp();
     refreshData(true);
+    primeGps(false);
     if (!S.device) getDevice().then(d => { S.device = d; saveSession(); renderInicio(); });
   } else {
     showLogin();
