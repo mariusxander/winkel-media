@@ -1,5 +1,5 @@
 /* Service Worker — Visitas Técnicas PWA */
-const VERSION = 'vt-v2';
+const VERSION = 'vt-v3';
 const SHELL_CACHE = 'vt-shell-' + VERSION;
 const TILE_CACHE = 'vt-tiles-v1';
 const MAX_TILES = 400;
@@ -55,8 +55,11 @@ self.addEventListener('fetch', event => {
   // La API (Apps Script) y las imágenes de Drive nunca se interceptan
   if (/(^|\.)script\.google\.com$|(^|\.)googleusercontent\.com$|(^|\.)drive\.google\.com$/.test(url.hostname)) return;
 
-  // Navegación: red primero, con respaldo offline
+  // Navegación: red primero, con respaldo offline.
+  // Solo para la app de campo (raíz o index.html); otras páginas (p. ej. admin.html) van directo a la red.
   if (req.mode === 'navigate') {
+    const p = url.pathname;
+    if (!(p.endsWith('/') || p.endsWith('/index.html'))) return;
     event.respondWith((async () => {
       try {
         const res = await fetch(req);
