@@ -1,5 +1,5 @@
 /* Service Worker — Visitas Técnicas PWA */
-const VERSION = 'vt-v3';
+const VERSION = 'vt-v4';
 const SHELL_CACHE = 'vt-shell-' + VERSION;
 const TILE_CACHE = 'vt-tiles-v1';
 const MAX_TILES = 400;
@@ -58,8 +58,9 @@ self.addEventListener('fetch', event => {
   // Navegación: red primero, con respaldo offline.
   // Solo para la app de campo (raíz o index.html); otras páginas (p. ej. admin.html) van directo a la red.
   if (req.mode === 'navigate') {
-    const p = url.pathname;
-    if (!(p.endsWith('/') || p.endsWith('/index.html'))) return;
+    // Solo la página de ESTA app (raíz del alcance o su index.html). El panel /admin/ tiene su propio Service Worker.
+    const scopePath = new URL(self.registration.scope).pathname;
+    if (url.pathname !== scopePath && url.pathname !== scopePath + 'index.html') return;
     event.respondWith((async () => {
       try {
         const res = await fetch(req);
