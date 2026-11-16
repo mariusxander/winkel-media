@@ -163,7 +163,7 @@
  *  CONFIGURACIÓN — edita solo esta sección
  * ===================================================================== */
 const CONFIG = {
-  API_URL: 'https://script.google.com/macros/s/AKfycbyPzXczExzqxKJ31Of5LsyqTEz2JI1zUG39YokcpDCDbCJnUBLDSyDCS8bHR1GfgqTSpA/exec',   // URL terminada en /exec
+  API_URL: 'https://script.google.com/macros/s/AKfycbwsjAMk4TAeR7onPRRZlR_zbdf95cfY4ek0BIlZ8iDkWCxGqGwcWx4OJyszXPsPz9tCWQ/exec',   // URL terminada en /exec
   GEOCERCA_METROS: 100,
   FOTO_MAX_ANCHO: 1200,
   FOTO_CALIDAD: 0.7,
@@ -518,7 +518,7 @@ function renderResueltas() {
           <div class="font-semibold truncate">${esc(v.Nombre_Cliente)}</div>
           <div class="text-xs text-slate-500">${esc(v.ID_Cliente)} · ${fmt(v.Fecha_Resolucion)}</div>
         </div>
-        <span class="badge ${STATUS_COLOR[v.Status_Tienda] || 'bg-slate-100 text-slate-700'} self-start text-right">${esc(v.Status_Tienda)}</span>
+        ${v.Status_Tienda ? `<span class="badge ${STATUS_COLOR[v.Status_Tienda] || 'bg-slate-100 text-slate-700'} self-start text-right">${esc(v.Status_Tienda)}</span>` : ''}
       </div>
       <div class="mt-2 flex flex-wrap gap-1.5 text-xs">
         <span class="badge bg-slate-100 text-slate-700">${esc(v.Tipo_Visita)}</span>
@@ -718,7 +718,7 @@ function openVisita(arg) {
     const c = arg.cliente;
     v = { ID_Visita: '', Usuario_Asignado: S.user.Usuario, ID_Cliente: c.ID_Cliente, Nombre_Cliente: c.Nombre_Cliente, Latitud_Tienda: c.Latitud, Longitud_Tienda: c.Longitud, _fuera: true };
   }
-  F = { v, fachada: null, monitor: null, pos: null, dist: null, watchId: null, mini: null, storeMarker: null, meMarker: null, fitted: false };
+  F = { v, fachada: null, monitor: null, galF: false, galM: false, pos: null, dist: null, watchId: null, mini: null, storeMarker: null, meMarker: null, fitted: false };
 
   openModal(`${modalHeader('Resolver visita', v._fuera ? '<span class="badge bg-amber-100 text-amber-700 align-middle">Fuera de ruta</span>' : '')}
   <div class="p-4 space-y-4">
@@ -751,21 +751,25 @@ function openVisita(arg) {
         <label class="lbl">Foto de fachada <span class="font-normal text-slate-400">(opcional)</span></label>
         <label for="fFachada" class="btn btn-outline w-full block text-sm">📷 Tomar foto</label>
         <input id="fFachada" type="file" accept="image/*" capture="environment" class="hidden">
+        <label for="fFachadaG" class="gal-btn btn btn-ghost w-full text-sm mt-1.5 hidden">🖼️ Elegir de galería</label>
+        <input id="fFachadaG" type="file" accept="image/*" class="hidden">
         <img id="prevFachada" alt="" class="hidden mt-2 w-full h-28 object-cover rounded-xl border">
       </div>
       <div>
         <label class="lbl">Foto del monitor <span class="font-normal text-slate-400">(obligatoria en visita física)</span></label>
         <label for="fMonitor" class="btn btn-outline w-full block text-sm">📷 Tomar foto</label>
         <input id="fMonitor" type="file" accept="image/*" capture="environment" class="hidden">
+        <label for="fMonitorG" class="gal-btn btn btn-ghost w-full text-sm mt-1.5 hidden">🖼️ Elegir de galería</label>
+        <input id="fMonitorG" type="file" accept="image/*" class="hidden">
         <img id="prevMonitor" alt="" class="hidden mt-2 w-full h-28 object-cover rounded-xl border">
       </div>
     </div>
 
-    <div>
+    <div id="fStatusBox">
       <label class="lbl">Status *</label>
       <select id="fStatus" class="inp"><option value="">Selecciona…</option>${STATUS.map(t => `<option>${t}</option>`).join('')}</select>
     </div>
-    <div><label class="lbl">Observación</label><textarea id="fObs" rows="3" class="inp" placeholder="Comentarios adicionales…"></textarea></div>
+    <div><label class="lbl">Observación <span id="obsReq" class="font-normal text-red-600 hidden">(obligatoria en “No Visitado”)</span></label><textarea id="fObs" rows="3" class="inp" placeholder="Comentarios adicionales…"></textarea></div>
 
     <div id="fErr" class="hidden text-sm text-red-700 bg-red-50 border border-red-200 rounded-xl p-2"></div>
     <div class="grid grid-cols-2 gap-3">
@@ -779,7 +783,7 @@ function openVisita(arg) {
   F.mini = L.map('miniMap', { zoomControl: true }).setView(hasStore ? [v.Latitud_Tienda, v.Longitud_Tienda] : [-12.0464, -77.0428], 17);
   L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap' }).addTo(F.mini);
   if (hasStore) F.storeMarker = L.marker([v.Latitud_Tienda, v.Longitud_Tienda], { icon: pinIcon('#2563eb') }).addTo(F.mini);
-  setTimeout(() => F.mini && F.mini.invalidateSize(), 250);
+  setTimeout(() => F && F.mini && F.mini.invalidateSize(), 250);
 
   $('#btnRecal').addEventListener('click', recalibrarGps);
   $('#fTipo').addEventListener('change', e => {
@@ -787,9 +791,25 @@ function openVisita(arg) {
       const g = geofenceError();
       if (g) { alert('⚠️ ' + g); e.target.value = ''; }
     }
+    // "No Visitado" no lleva Status: se oculta el campo y la observación basta
+    const nv = e.target.value === 'No Visitado';
+    $('#fStatusBox').classList.toggle('hidden', nv);
+    if (nv) $('#fStatus').value = '';
+    $('#obsReq').classList.toggle('hidden', !nv);
+    // La galería solo se habilita en Visita Remota; al cambiar de tipo se descartan las fotos elegidas de galería
+    const rem = e.target.value === 'Visita Remota';
+    document.querySelectorAll('.gal-btn').forEach(b => b.classList.toggle('hidden', !rem));
+    if (!rem) {
+      let quitadas = false;
+      if (F.galF) { quitarFoto('fachada', 'prevFachada'); quitadas = true; }
+      if (F.galM) { quitarFoto('monitor', 'prevMonitor'); quitadas = true; }
+      if (quitadas) toast('Se quitaron las fotos de galería: solo se permiten en Visita Remota.', 'error');
+    }
   });
-  $('#fFachada').addEventListener('change', e => onFoto('fachada', e.target, 'prevFachada'));
-  $('#fMonitor').addEventListener('change', e => onFoto('monitor', e.target, 'prevMonitor'));
+  $('#fFachada').addEventListener('change', e => onFoto('fachada', e.target, 'prevFachada', false));
+  $('#fMonitor').addEventListener('change', e => onFoto('monitor', e.target, 'prevMonitor', false));
+  $('#fFachadaG').addEventListener('change', e => onFoto('fachada', e.target, 'prevFachada', true));
+  $('#fMonitorG').addEventListener('change', e => onFoto('monitor', e.target, 'prevMonitor', true));
   $('#btnGuardar').addEventListener('click', guardarVisita);
   startGps();
 }
@@ -874,13 +894,21 @@ function compressImage(file) {
     img.src = url;
   });
 }
-async function onFoto(kind, input, prevId) {
+function quitarFoto(kind, prevId) {
+  F[kind] = null;
+  if (kind === 'fachada') F.galF = false; else F.galM = false;
+  const pv = $('#' + prevId); pv.removeAttribute('src'); pv.classList.add('hidden');
+}
+async function onFoto(kind, input, prevId, gal) {
   const f = input.files && input.files[0]; if (!f || !F) return;
+  if (gal && $('#fTipo').value !== 'Visita Remota') { input.value = ''; return toast('La galería solo se permite en Visita Remota.', 'error'); }
   try {
     const data = await compressImage(f);
     F[kind] = data;
+    if (kind === 'fachada') F.galF = !!gal; else F.galM = !!gal;
     const pv = $('#' + prevId); pv.src = data; pv.classList.remove('hidden');
   } catch (e) { toast(e.message, 'error'); }
+  input.value = '';
 }
 
 /* ---------- Guardar ---------- */
@@ -891,7 +919,9 @@ async function guardarVisita() {
   $('#fErr').classList.add('hidden');
   const tipo = $('#fTipo').value, status = $('#fStatus').value, obs = $('#fObs').value.trim();
   if (!tipo) return fErr('Selecciona el tipo de visita.');
-  if (!status) return fErr('Selecciona el Status de la tienda.');
+  if (tipo !== 'No Visitado' && !status) return fErr('Selecciona el Status de la tienda.');
+  if (tipo === 'No Visitado' && !obs) return fErr('Para “No Visitado” escribe en Observación el motivo.');
+  if (tipo !== 'Visita Remota' && (F.galF || F.galM)) return fErr('Las fotos de galería solo se permiten en Visita Remota.');
   if (tipo === 'Visita Física') {
     const g = geofenceError();
     if (g) { alert('⚠️ ' + g); return; }
@@ -906,12 +936,13 @@ async function guardarVisita() {
       fueraDeRuta: !!v._fuera,
       idCliente: v.ID_Cliente,
       tipoVisita: tipo,
-      status,
+      status: tipo === 'No Visitado' ? '' : status,
       observacion: obs,
       latReal: F.pos ? F.pos.lat : null,
       lngReal: F.pos ? F.pos.lng : null,
       fotoFachada: F.fachada,
-      fotoMonitor: F.monitor
+      fotoMonitor: F.monitor,
+      fotoGaleria: !!(F.galF || F.galM)
     });
     toast('Visita guardada correctamente', 'ok');
     closeModal();
