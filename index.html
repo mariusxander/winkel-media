@@ -3,156 +3,127 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Visitas Técnicas</title>
-<meta name="theme-color" content="#1d4ed8">
-<meta name="description" content="Gestión y auditoría de visitas técnicas a tiendas">
+<title>Panel de Supervisión · Visitas Técnicas</title>
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#0f172a">
 <link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" href="../icons/admin-192.png">
+<link rel="apple-touch-icon" href="../icons/admin-apple-touch.png">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
-<meta name="apple-mobile-web-app-title" content="Visitas">
-<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-<link rel="icon" type="image/png" href="icons/icon-192.png">
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<meta name="apple-mobile-web-app-title" content="Supervisión">
 <script src="https://cdn.tailwindcss.com"></script>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"></script>
 <style>
-  html, body { height: 100%; margin: 0; overscroll-behavior: none; }
-  body { background: #f1f5f9; -webkit-tap-highlight-color: transparent; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: #1e293b; }
-  .pt-safe { padding-top: env(safe-area-inset-top); }
-  .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
-  #map { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; }
-  #miniMap { position: relative; z-index: 0; }
-  .nav-btn { position: relative; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 0; font-size: 11px; color: #64748b; }
-  .nav-btn.active { color: #2563eb; font-weight: 600; }
-  .spinner { width: 42px; height: 42px; border: 4px solid #bfdbfe; border-top-color: #2563eb; border-radius: 50%; animation: spin .8s linear infinite; }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  .me-dot { width: 18px; height: 18px; background: #f97316; border: 3px solid #fff; border-radius: 50%; box-shadow: 0 0 0 4px rgba(249,115,22,.3); }
-  .leaflet-popup-content { margin: 10px 12px; }
-  .inp { width: 100%; border: 1px solid #cbd5e1; background: #fff; border-radius: 12px; padding: 10px 12px; font-size: 16px; outline: none; }
-  .inp:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,.2); }
-  .inp[readonly] { background: #f1f5f9; color: #475569; }
-  .btn { display: inline-block; text-align: center; border-radius: 12px; padding: 10px 16px; font-weight: 600; font-size: 15px; transition: transform .1s; }
-  .btn:active { transform: scale(.96); }
-  .btn:disabled { opacity: .5; }
-  .btn-primary { background: #2563eb; color: #fff; }
-  .btn-outline { background: #fff; color: #1d4ed8; border: 1px solid #2563eb; }
-  .btn-danger { background: #dc2626; color: #fff; }
-  .btn-ghost { background: #e2e8f0; color: #334155; }
-  .card { background: #fff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 12px; box-shadow: 0 1px 2px rgba(0,0,0,.04); }
+  html, body { margin: 0; }
+  #sidebar { padding-bottom: env(safe-area-inset-bottom); }
+  #content { padding-bottom: calc(1.25rem + env(safe-area-inset-bottom)); }
+  body { background: #f1f5f9; color: #1e293b; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; -webkit-tap-highlight-color: transparent; }
+  input[type=checkbox], input[type=radio] { width: 18px; height: 18px; accent-color: #2563eb; flex-shrink: 0; }
+  .card { background: #fff; border: 1px solid #e2e8f0; border-radius: 14px; box-shadow: 0 1px 2px rgba(15,23,42,.04); }
+  .inp { width: 100%; border: 1px solid #cbd5e1; background: #fff; border-radius: 10px; padding: 8px 10px; font-size: 14px; outline: none; }
+  .inp:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,.18); }
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; border-radius: 10px; padding: 8px 14px; font-weight: 600; font-size: 14px; transition: .1s; white-space: nowrap; }
+  .btn:active { transform: scale(.97); }
+  .btn:disabled { opacity: .45; pointer-events: none; }
+  .btn-primary { background: #2563eb; color: #fff; } .btn-primary:hover { background: #1d4ed8; }
+  .btn-ghost { background: #e2e8f0; color: #334155; } .btn-ghost:hover { background: #cbd5e1; }
+  .btn-outline { background: #fff; border: 1px solid #cbd5e1; color: #334155; } .btn-outline:hover { background: #f8fafc; }
+  .btn-danger { background: #dc2626; color: #fff; } .btn-danger:hover { background: #b91c1c; }
+  .chip { border: 1px solid #cbd5e1; background: #fff; border-radius: 999px; padding: 5px 12px; font-size: 13px; font-weight: 500; color: #475569; }
+  .chip:hover { background: #f1f5f9; }
+  .chip-on { background: #1d4ed8 !important; border-color: #1d4ed8; color: #fff; }
   .badge { display: inline-block; border-radius: 999px; padding: 2px 8px; font-size: 11px; font-weight: 600; white-space: nowrap; }
-  .lbl { display: block; font-size: 13px; font-weight: 600; color: #475569; margin-bottom: 4px; }
+  .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .kpi { padding: 14px; transition: box-shadow .15s, transform .1s; cursor: pointer; display: flex; flex-direction: column; align-items: flex-start; justify-content: flex-start; text-align: left; width: 100%; }
+  .kpi > * { width: 100%; }
+  .kpi:hover { box-shadow: 0 4px 14px rgba(15,23,42,.1); }
+  .kpi:active { transform: scale(.99); }
+  .navb { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 12px; border-radius: 10px; font-size: 14px; color: #cbd5e1; text-align: left; }
+  .navb:hover { background: #1e293b; }
+  .navb.on { background: #2563eb; color: #fff; }
+  .row { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-bottom: 1px solid #f1f5f9; cursor: pointer; }
+  .row:hover { background: #f8fafc; }
+  table.t { width: 100%; font-size: 13px; border-collapse: collapse; }
+  table.t th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .03em; color: #64748b; padding: 8px; background: #f8fafc; white-space: nowrap; }
+  table.t td { padding: 8px; border-top: 1px solid #f1f5f9; vertical-align: top; }
+  table.t tr.clk { cursor: pointer; } table.t tr.clk:hover td { background: #f8fafc; }
+  .sec { font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #64748b; margin: 18px 0 8px; }
+  .spinner { width: 40px; height: 40px; border: 4px solid #bfdbfe; border-top-color: #2563eb; border-radius: 50%; animation: spin .8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .chartbox { position: relative; width: 100%; }
 </style>
 </head>
 <body>
 
-<canvas id="cv" class="hidden"></canvas>
+<div id="loading" class="hidden fixed inset-0 z-[3000] bg-white/70 flex flex-col items-center justify-center gap-3">
+  <div class="spinner"></div><div id="loadingMsg" class="text-sm font-medium text-slate-600">Cargando…</div>
+</div>
+<div id="toast" class="hidden fixed left-1/2 -translate-x-1/2 top-3 z-[4000] max-w-[92%] px-4 py-2 rounded-xl text-sm text-white shadow-lg"></div>
 
-<div id="loading" class="hidden fixed inset-0 z-[3000] bg-white/70 flex items-center justify-center"><div class="spinner"></div></div>
-<div id="toast" class="hidden fixed left-1/2 -translate-x-1/2 z-[4000] max-w-[92%] px-4 py-2 rounded-xl text-sm text-white shadow-lg" style="top: calc(env(safe-area-inset-top) + 12px)"></div>
-
-<!-- ======================= LOGIN ======================= -->
-<div id="login" class="hidden fixed inset-0 overflow-y-auto bg-gradient-to-b from-blue-700 to-sky-500">
-  <div class="min-h-full flex flex-col justify-center px-6 py-10">
-    <div class="max-w-sm w-full mx-auto">
-      <div class="text-center text-white mb-6">
-        <img src="icons/icon-192.png" alt="" class="w-20 h-20 mx-auto rounded-2xl shadow-lg mb-3">
-        <h1 class="text-2xl font-bold">Visitas Técnicas</h1>
-        <p class="text-blue-100 text-sm">Auditoría de bodegas, markets y minimarkets</p>
-      </div>
-      <form id="loginForm" class="bg-white rounded-2xl p-5 shadow-xl space-y-3" autocomplete="on">
-        <div><label class="lbl" for="lgUser">Usuario</label><input id="lgUser" class="inp" autocomplete="username" autocapitalize="none" autocorrect="off" required></div>
-        <div>
-          <label class="lbl" for="lgPass">Contraseña</label>
-          <div class="relative">
-            <input id="lgPass" type="password" class="inp pr-16" autocomplete="current-password" required>
-            <button type="button" id="lgToggle" class="absolute right-2 top-1/2 -translate-y-1/2 text-sm text-blue-600 px-2">Ver</button>
-          </div>
-        </div>
-        <div id="lgErr" class="hidden text-sm text-red-600 bg-red-50 rounded-lg p-2"></div>
-        <button id="lgBtn" class="btn btn-primary w-full">Iniciar sesión</button>
-      </form>
+<!-- ============ LOGIN ============ -->
+<div id="login" class="hidden min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-blue-900 to-sky-700 p-4">
+  <form id="loginForm" class="card w-full max-w-sm p-6 space-y-3 shadow-2xl">
+    <div class="text-center mb-2">
+      <img src="../icons/admin-192.png" alt="" class="w-16 h-16 mx-auto rounded-2xl shadow mb-2">
+      <h1 class="text-xl font-bold">Panel de Supervisión</h1>
+      <p class="text-sm text-slate-500">Acceso exclusivo para Supervisores</p>
     </div>
+    <div><label class="text-sm font-semibold text-slate-600" for="lgUser">Usuario</label><input id="lgUser" class="inp mt-1" autocomplete="username" autocapitalize="none" autocorrect="off" required></div>
+    <div><label class="text-sm font-semibold text-slate-600" for="lgPass">Contraseña</label><input id="lgPass" type="password" class="inp mt-1" autocomplete="current-password" required></div>
+    <div id="lgErr" class="hidden text-sm text-red-700 bg-red-50 rounded-lg p-2"></div>
+    <button id="lgBtn" class="btn btn-primary w-full">Ingresar</button>
+    <button type="button" class="js-install hidden w-full text-center text-sm text-blue-600 font-medium pt-1">⬇ Instalar esta app en tu dispositivo</button>
+  </form>
+</div>
+
+<!-- ============ APP ============ -->
+<div id="app" class="hidden min-h-screen">
+  <div id="backdrop" class="hidden fixed inset-0 bg-black/50 z-30 lg:hidden"></div>
+
+  <aside id="sidebar" class="fixed inset-y-0 left-0 z-40 w-64 bg-slate-900 text-slate-200 flex flex-col -translate-x-full lg:translate-x-0 transition-transform duration-200">
+    <div class="flex items-center gap-3 px-4 py-4 border-b border-slate-800">
+      <img src="../icons/admin-192.png" alt="" class="w-9 h-9 rounded-lg">
+      <div class="leading-tight"><div class="font-bold text-white">Visitas Técnicas</div><div class="text-xs text-slate-400">Panel de Supervisión</div></div>
+    </div>
+    <nav id="nav" class="flex-1 overflow-y-auto p-3 space-y-1"></nav>
+    <div class="p-3 border-t border-slate-800 space-y-2">
+      <div class="flex items-center gap-2 px-1">
+        <div id="uAvatar" class="w-9 h-9 rounded-full bg-blue-600 text-white font-bold text-sm flex items-center justify-center"></div>
+        <div class="min-w-0 leading-tight"><div id="uName" class="text-sm font-semibold text-white truncate"></div><div class="text-xs text-slate-400">Supervisor</div></div>
+      </div>
+      <button id="btnInstall" class="js-install navb !py-2 !text-xs hidden">⬇ Instalar app</button>
+      <a href="../index.html" class="navb !py-2 !text-xs">↗ Abrir app de campo</a>
+      <button id="btnLogout" class="navb !py-2 !text-xs">⎋ Cerrar sesión</button>
+    </div>
+  </aside>
+
+  <div class="lg:pl-64 min-h-screen flex flex-col">
+    <header class="sticky top-0 z-20 bg-white/95 backdrop-blur border-b border-slate-200">
+      <div class="flex items-center gap-3 px-3 sm:px-5 py-3">
+        <button id="btnMenu" class="lg:hidden p-2 -ml-2 rounded-lg hover:bg-slate-100" aria-label="Menú">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+        </button>
+        <h1 id="title" class="text-lg font-bold flex-1 truncate">Dashboard</h1>
+        <span id="updated" class="hidden sm:inline text-xs text-slate-400"></span>
+        <button id="btnRefresh" class="btn btn-outline !py-1.5">↻ <span class="hidden sm:inline">Actualizar</span></button>
+      </div>
+    </header>
+    <main id="content" class="flex-1 p-3 sm:p-5 max-w-[1500px] w-full mx-auto">
+      <section id="v-dash" class="view hidden"></section>
+      <section id="v-asig" class="view hidden"></section>
+      <section id="v-pend" class="view hidden"></section>
+      <section id="v-hist" class="view hidden"></section>
+      <section id="v-tiendas" class="view hidden"></section>
+      <section id="v-equipo" class="view hidden"></section>
+      <section id="v-logs" class="view hidden"></section>
+    </main>
   </div>
 </div>
 
-<!-- ======================= APP SHELL ======================= -->
-<div id="shell" class="hidden fixed inset-0 flex flex-col">
-  <header class="bg-blue-700 text-white pt-safe">
-    <div class="flex items-center justify-between px-4 py-3">
-      <h1 id="hdrTitle" class="text-lg font-semibold">Inicio</h1>
-      <button id="btnSync" class="text-sm bg-white/15 rounded-lg px-3 py-1.5">↻ Actualizar</button>
-    </div>
-    <div id="offBanner" class="hidden bg-amber-500 text-xs text-center py-1">Sin conexión — mostrando datos guardados</div>
-  </header>
-
-  <main class="relative flex-1 min-h-0">
-    <!-- INICIO -->
-    <section id="v-inicio" class="view hidden absolute inset-0 overflow-y-auto"><div id="inicioBody" class="p-3 space-y-3 pb-24"></div></section>
-
-    <!-- PENDIENTES -->
-    <section id="v-pend" class="view hidden absolute inset-0 overflow-y-auto">
-      <div class="sticky top-0 z-10 bg-slate-100 p-3 space-y-2">
-        <input id="qPend" type="search" class="inp" placeholder="Buscar por nombre o ID de tienda">
-        <div id="supBarPend" class="hidden flex gap-2">
-          <select id="selTecPend" class="inp flex-1"></select>
-          <button id="btnAsignar" class="btn btn-primary">Asignar</button>
-        </div>
-        <div id="cargaChips" class="hidden flex flex-wrap gap-1.5"></div>
-        <button id="btnFuera" class="btn btn-outline w-full">+ Visita fuera de ruta</button>
-      </div>
-      <div id="listPend" class="p-3 pt-1 space-y-2 pb-28"></div>
-    </section>
-
-    <!-- MAPA -->
-    <section id="v-mapa" class="view hidden absolute inset-0">
-      <div id="map" class="absolute inset-0"></div>
-      <div class="absolute top-2 left-2 right-2 z-[1000] flex gap-2 items-center">
-        <label class="bg-white rounded-xl shadow px-3 py-2 text-sm flex items-center gap-2"><input id="chkRes" type="checkbox"> Resueltas hoy</label>
-        <select id="selTecMapa" class="hidden flex-1 min-w-0 bg-white rounded-xl shadow px-2 py-2 text-sm"></select>
-        <button id="btnLocate" class="ml-auto bg-white rounded-xl shadow px-3 py-2 text-lg" title="Mi ubicación">📍</button>
-      </div>
-    </section>
-
-    <!-- RESUELTAS -->
-    <section id="v-res" class="view hidden absolute inset-0 overflow-y-auto">
-      <div class="sticky top-0 z-10 bg-slate-100 p-3 space-y-2">
-        <input id="qRes" type="search" class="inp" placeholder="Buscar por tienda, ID o estado">
-        <select id="selPerRes" class="inp">
-          <option value="hoy">Hoy</option>
-          <option value="ayer">Ayer</option>
-          <option value="7d">Últimos 7 días</option>
-          <option value="30d">Últimos 30 días</option>
-        </select>
-        <select id="selTecRes" class="hidden inp"></select>
-        <div id="resCount" class="text-xs text-slate-500"></div>
-      </div>
-      <div id="listRes" class="p-3 pt-1 space-y-2 pb-24"></div>
-    </section>
-
-    <button id="fab" class="hidden absolute right-4 bottom-4 z-[1000] w-14 h-14 rounded-full bg-blue-600 text-white text-3xl leading-none shadow-lg active:scale-95" aria-label="Visita fuera de ruta">+</button>
-  </main>
-
-  <nav class="bg-white border-t border-slate-200 grid grid-cols-4 pb-safe">
-    <button class="nav-btn" data-nav="inicio">
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8M5 10v10h5v-6h4v6h5V10"/></svg><span>Inicio</span>
-    </button>
-    <button class="nav-btn" data-nav="pend">
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 3h6v3H9zM9 12h6M9 16h4"/></svg><span>Pendientes</span>
-      <span id="navBadge" class="hidden absolute top-1 left-1/2 ml-2 bg-red-600 text-white text-[10px] rounded-full px-1.5 min-w-[18px] text-center"></span>
-    </button>
-    <button class="nav-btn" data-nav="mapa">
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 20l-6 2V6l6-2 6 2 6-2v16l-6 2-6-2zM9 4v16M15 6v16"/></svg><span>Mapa</span>
-    </button>
-    <button class="nav-btn" data-nav="res">
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l3 3 5-6"/></svg><span>Resueltas</span>
-    </button>
-  </nav>
-</div>
-
-<!-- ======================= MODAL ======================= -->
-<div id="modal" class="hidden fixed inset-0 z-[2000] bg-black/50 flex items-end sm:items-center justify-center">
-  <div id="modalBody" class="bg-slate-50 w-full max-w-lg overflow-y-auto rounded-t-3xl sm:rounded-3xl pb-safe" style="max-height: calc(100% - env(safe-area-inset-top) - 12px); overscroll-behavior: contain; -webkit-overflow-scrolling: touch;"></div>
+<div id="modal" class="hidden fixed inset-0 z-[2000] bg-black/50 flex items-center justify-center p-3">
+  <div id="modalBody" class="bg-white w-full max-w-lg max-h-[92vh] overflow-y-auto rounded-2xl"></div>
 </div>
 
 <script>
@@ -160,30 +131,49 @@
 'use strict';
 
 /* =====================================================================
- *  CONFIGURACIÓN — edita solo esta sección
+ *  CONFIGURACIÓN — usa la MISMA URL /exec que en index.html
  * ===================================================================== */
 const CONFIG = {
-  API_URL: 'https://script.google.com/macros/s/AKfycbyxXyopm-75R4CK7iISmdWroa8OO70j3rNzLAkfRCiYhSs7_dn4Hmj4-sykwb5K-AerLQ/exec',   // URL terminada en /exec
-  GEOCERCA_METROS: 100,
-  FOTO_MAX_ANCHO: 1200,
-  FOTO_CALIDAD: 0.7,
-  MONITOR_OBLIGATORIO_FISICA: true,          // foto del monitor obligatoria en Visita Física (fachada es opcional); debe coincidir con Code.gs
-  SESION_KEY: 'vt_sesion',
-  CACHE_KEY: 'vt_cache'
+  API_URL: 'https://script.google.com/macros/s/AKfycbyxXyopm-75R4CK7iISmdWroa8OO70j3rNzLAkfRCiYhSs7_dn4Hmj4-sykwb5K-AerLQ/exec',
+  SESION_KEY: 'vta_sesion',
+  AUTO_REFRESH_MS: 60000,
+  LOTE_ASIGNAR: 300,
+  LOTE_REASIGNAR: 300,
+  LOTE_ELIMINAR: 150,
+  PAGE: 100
 };
 
 const TIPOS = ['Visita Física', 'Visita Remota', 'No Visitado'];
-const STATUS = ['Activa Validada', 'Activa Sin Validación', 'Avería ISP', 'Avería NUC/RB', 'Avería CAM', 'Avería Otros', 'Tienda Cerrada', 'Solicitud de Retiro'];
-const STATUS_COLOR = {
-  'Activa Validada': 'bg-green-100 text-green-700',
-  'Activa Sin Validación': 'bg-lime-100 text-lime-700',
-  'Avería ISP': 'bg-red-100 text-red-700',
-  'Avería NUC/RB': 'bg-red-100 text-red-700',
-  'Avería CAM': 'bg-orange-100 text-orange-700',
-  'Avería Otros': 'bg-orange-100 text-orange-700',
-  'Tienda Cerrada': 'bg-slate-200 text-slate-700',
-  'Solicitud de Retiro': 'bg-purple-100 text-purple-700'
+const ACT = ['Activa Validada', 'Activa Sin Validación'];
+const AV = ['Avería ISP', 'Avería NUC/RB', 'Avería CAM', 'Avería Otros'];
+const INC = [...ACT, ...AV, 'Tienda Cerrada', 'Solicitud de Retiro'];
+const COLOR = {
+  'Visita Física': '#2563eb', 'Visita Remota': '#8b5cf6', 'No Visitado': '#94a3b8',
+  'Activa Validada': '#16a34a', 'Activa Sin Validación': '#84cc16',
+  'Avería ISP': '#dc2626', 'Avería NUC/RB': '#ea580c', 'Avería CAM': '#f59e0b', 'Avería Otros': '#be185d',
+  'Tienda Cerrada': '#475569', 'Solicitud de Retiro': '#7c3aed'
 };
+const VCOLS = ['ID_Visita', 'Fecha_Asignacion', 'Usuario_Asignado', 'ID_Cliente', 'Nombre_Cliente', 'Latitud_Tienda', 'Longitud_Tienda', 'Estado_Tarea', 'Tipo_Visita', 'Status_Tienda', 'URL_Foto_Fachada', 'URL_Foto_Monitor', 'Observacion', 'Fecha_Resolucion', 'Lat_Real_Tecnico', 'Lng_Real_Tecnico', 'Distancia_Metros', 'Es_Fuera_De_Ruta', 'Retiro_Equipos', 'Reinstalacion_Equipo', 'USB_Monitor', 'Mantenimiento', 'Confirma_Equipo', 'Confirma_USB', 'Retiro_USB'];
+
+// Retiro de equipos (solo Visita Física + Avería NUC/RB). '' = sin retiro
+const RET = { nuc: 'NUC', rb: 'RB' };   // solo se recoge uno por visita
+const REI_COLOR = { 'NUC': '#059669', 'RB': '#34d399', usb: '#6366f1', mant: '#64748b' };
+const RET_COLOR = { 'NUC': '#0ea5e9', 'RB': '#8b5cf6', '': '#94a3b8' };
+
+const ICONS = {
+  dash: '<path d="M3 3h7v9H3zM14 3h7v5h-7zM14 12h7v9h-7zM3 16h7v5H3z"/>',
+  assign: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/>',
+  pend: '<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 3h6v3H9zM9 12h6M9 16h4"/>',
+  hist: '<circle cx="12" cy="12" r="9"/><path d="M8 12.5l3 3 5-6"/>',
+  store: '<path d="M3 9l1.5-5h15L21 9"/><path d="M4 9v11h16V9"/><path d="M3 9a3 3 0 0 0 6 0 3 3 0 0 0 6 0 3 3 0 0 0 6 0"/><path d="M10 20v-6h4v6"/>',
+  team: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>',
+  logs: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'
+};
+const NAV = [
+  ['dash', 'Dashboard', 'dash'], ['asig', 'Asignación masiva', 'assign'], ['pend', 'Visitas pendientes', 'pend'],
+  ['hist', 'Historial de visitas', 'hist'], ['tiendas', 'Información de Tienda', 'store'], ['equipo', 'Equipo', 'team'], ['logs', 'Accesos', 'logs']
+];
+const TITLES = { dash: 'Dashboard', asig: 'Asignación masiva', pend: 'Visitas pendientes', hist: 'Historial de visitas', tiendas: 'Información de Tienda', equipo: 'Equipo', logs: 'Accesos al sistema' };
 
 /* =====================================================================
  *  UTILIDADES
@@ -191,51 +181,36 @@ const STATUS_COLOR = {
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const norm = s => String(s ?? '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+const norm = s => String(s ?? '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 const pad = n => String(n).padStart(2, '0');
-const ymdOf = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-const todayStr = () => ymdOf(new Date());
-// ¿La fecha 'yyyy-MM-dd HH:mm:ss' cae dentro del periodo elegido? (hoy | ayer | 7d | 30d)
-function enPeriodo(fecha, p) {
-  const d = String(fecha || '').slice(0, 10); if (!d) return false;
-  const hoy = todayStr(), ref = new Date();
-  if (p === 'hoy') return d === hoy;
-  if (p === 'ayer') { ref.setDate(ref.getDate() - 1); return d === ymdOf(ref); }
-  ref.setDate(ref.getDate() - (p === '7d' ? 6 : 29));
-  return d >= ymdOf(ref) && d <= hoy;
-}
+const ymd = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const dOf = s => String(s || '').slice(0, 10);
+const n0 = n => Number(n || 0).toLocaleString('es-PE');
+const pct = (a, b) => b ? Math.round(a * 1000 / b) / 10 : 0;
 const isNum = n => typeof n === 'number' && isFinite(n);
 const initials = n => String(n || '?').trim().split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase();
+const col = s => COLOR[s] || '#64748b';
+const chunk = (a, n) => { const o = []; for (let i = 0; i < a.length; i += n) o.push(a.slice(i, i + n)); return o; };
 
-function fmt(s) {
+function fmtDT(s) {
   const m = /^(\d{4})-(\d{2})-(\d{2})(?: (\d{2}):(\d{2}))?/.exec(String(s || ''));
   if (!m) return s ? esc(s) : '—';
   return `${m[3]}/${m[2]}/${m[1]}${m[4] ? ' ' + m[4] + ':' + m[5] : ''}`;
 }
-
-function haversine(lat1, lon1, lat2, lon2) {
-  const R = 6371000, rad = x => x * Math.PI / 180;
-  const dLat = rad(lat2 - lat1), dLon = rad(lon2 - lon1);
-  const a = Math.sin(dLat / 2) ** 2 + Math.cos(rad(lat1)) * Math.cos(rad(lat2)) * Math.sin(dLon / 2) ** 2;
-  return 2 * R * Math.asin(Math.sqrt(a));
-}
-
-function driveDirect(url) {
-  if (!url) return '';
-  const m = /\/d\/([\w-]+)/.exec(url) || /[?&]id=([\w-]+)/.exec(url);
-  if (m && /drive\.google\.com|docs\.google\.com/.test(url)) return `https://drive.google.com/thumbnail?id=${m[1]}&sz=w400`;
-  return url;
-}
+function fmtD(s) { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(s || '')); return m ? `${m[3]}/${m[2]}/${m[1]}` : ''; }
 
 let toastTimer;
 function toast(msg, type = 'info') {
   const t = $('#toast');
   t.textContent = msg;
-  t.className = `fixed left-1/2 -translate-x-1/2 z-[4000] max-w-[92%] px-4 py-2 rounded-xl text-sm text-white shadow-lg ${type === 'error' ? 'bg-red-600' : type === 'ok' ? 'bg-green-600' : type === 'warn' ? 'bg-amber-600' : 'bg-slate-800'}`;
+  t.className = `fixed left-1/2 -translate-x-1/2 top-3 z-[4000] max-w-[92%] px-4 py-2 rounded-xl text-sm text-white shadow-lg ${type === 'error' ? 'bg-red-600' : type === 'ok' ? 'bg-green-600' : type === 'warn' ? 'bg-amber-600' : 'bg-slate-800'}`;
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => t.classList.add('hidden'), 4000);
+  toastTimer = setTimeout(() => t.classList.add('hidden'), 4500);
 }
-const showLoading = b => $('#loading').classList.toggle('hidden', !b);
+function showLoading(b, msg) { $('#loading').classList.toggle('hidden', !b); $('#loadingMsg').textContent = msg || 'Cargando…'; }
+function openModal(html) { $('#modalBody').innerHTML = html; $('#modal').classList.remove('hidden'); }
+function closeModal() { $('#modal').classList.add('hidden'); $('#modalBody').innerHTML = ''; }
+const ico = k => `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONS[k]}</svg>`;
 
 async function getDevice() {
   const ua = navigator.userAgent;
@@ -246,946 +221,1380 @@ async function getDevice() {
   else if (/CrOS/i.test(ua)) os = 'ChromeOS';
   else if (/Mac OS X|Macintosh/i.test(ua)) os = 'macOS';
   else if (/Linux/i.test(ua)) os = 'Linux';
-  let br = 'Navegador';
-  let brave = false;
+  let br = 'Navegador', brave = false;
   try { brave = !!(navigator.brave && await navigator.brave.isBrave()); } catch (_) {}
   if (brave) br = 'Brave';
   else if (/EdgA|EdgiOS|Edg\//.test(ua)) br = 'Edge';
   else if (/OPR\/|OPiOS/.test(ua)) br = 'Opera';
-  else if (/SamsungBrowser/.test(ua)) br = 'Samsung Internet';
   else if (/Firefox|FxiOS/.test(ua)) br = 'Firefox';
   else if (/CriOS|Chrome/.test(ua)) br = 'Chrome';
   else if (/Safari/.test(ua)) br = 'Safari';
-  return `${os} - ${br}`;
+  return `Panel web · ${os} - ${br}`;
 }
 
 /* =====================================================================
  *  ESTADO
  * ===================================================================== */
 const S = {
-  token: null, user: null, loginAt: null, device: '',
-  clientes: [], visitas: [], usuarios: [], equipos: {},
-  view: 'inicio', filtroTec: '', limiteRes: 50, mostrarResMapa: false, periodoRes: 'hoy'
+  token: null, user: null, usuarios: [], clientes: [], visitas: [], updated: null,
+  clientMap: {}, pendByClient: {},
+  view: 'dash', rango: { preset: 'hoy', desde: '', hasta: '' }, filtroTec: '',
+  drill: null, drillPage: 1, drillList: [],
+  asig: { q: '', ocultarPend: true, sel: new Set(), modo: 'zonas', destino: '', tecs: new Set(), tecsInit: false, omitir: true, page: 1 },
+  pend: { q: '', tec: '', soloAtras: false, sel: new Set(), page: 1 },
+  hist: { q: '', tipo: '', status: '', fuera: false, page: 1 },
+  tienda: { q: '', filtro: '', distrito: '', sel: '', page: 1, data: null, hoja: true, setup: false, hist: {} },
+  logs: [], logsFiltro: '', timer: null
 };
-const isSup = () => S.user && S.user.Rol === 'Supervisor';
-const techName = u => { const x = S.usuarios.find(y => y.Usuario === u); return x ? x.Nombre_Apellido : (S.user && S.user.Usuario === u ? S.user.Nombre_Apellido : u); };
-
-function saveSession() { try { localStorage.setItem(CONFIG.SESION_KEY, JSON.stringify({ token: S.token, user: S.user, loginAt: S.loginAt, device: S.device })); } catch (_) {} }
-function saveCache() { try { localStorage.setItem(CONFIG.CACHE_KEY, JSON.stringify({ clientes: S.clientes, visitas: S.visitas, usuarios: S.usuarios, equipos: S.equipos })); } catch (_) {} }
-function loadSession() { try { return JSON.parse(localStorage.getItem(CONFIG.SESION_KEY)); } catch (_) { return null; } }
-function loadCache() { try { return JSON.parse(localStorage.getItem(CONFIG.CACHE_KEY)); } catch (_) { return null; } }
+const U = u => S.usuarios.find(x => x.Usuario === u);
+const nameOf = u => (U(u) || {}).Nombre_Apellido || u;
+const shortName = t => { const n = String((t && (t.Nombre_Apellido || t.Usuario)) || ''); return n.length > 24 ? n.slice(0, 22) + '…' : n; };
 
 /* =====================================================================
- *  API (Apps Script Web App) — POST text/plain evita preflight CORS
+ *  API
  * ===================================================================== */
 async function api(action, data = {}) {
-  if (/PEGA_AQUI/.test(CONFIG.API_URL)) throw new Error('Falta configurar CONFIG.API_URL en index.html');
+  if (/PEGA_AQUI/.test(CONFIG.API_URL)) throw new Error('Falta configurar CONFIG.API_URL en admin.html');
   let res;
   try {
-    res = await fetch(CONFIG.API_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action, token: S.token, ...data }),
-      redirect: 'follow'
-    });
-  } catch (e) {
-    const err = new Error('Sin conexión con el servidor');
-    err.offline = true;
-    throw err;
-  }
+    res = await fetch(CONFIG.API_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action, token: S.token, ...data }), redirect: 'follow' });
+  } catch (e) { const err = new Error('Sin conexión con el servidor'); err.offline = true; throw err; }
   let json;
   try { json = await res.json(); } catch (_) { throw new Error('Respuesta inválida del servidor'); }
   if (!json.ok) {
     if (json.code === 'AUTH') logout('Tu sesión expiró. Inicia sesión nuevamente.');
-    const err = new Error(json.error || 'Error desconocido');
-    err.code = json.code;
-    throw err;
+    const err = new Error(json.error || 'Error desconocido'); err.code = json.code; throw err;
   }
   return json.data;
-}
-
-async function refreshData(silent) {
-  try {
-    if (!silent) showLoading(true);
-    const d = await api('getData');
-    S.clientes = d.clientes || [];
-    S.visitas = d.visitas || [];
-    S.usuarios = d.usuarios || [];
-    S.equipos = d.equipos || {};
-    if (d.user) { S.user = d.user; saveSession(); }
-    saveCache();
-    $('#offBanner').classList.add('hidden');
-    renderAll();
-  } catch (e) {
-    if (e.offline) { $('#offBanner').classList.remove('hidden'); if (!silent) toast('Sin conexión: mostrando datos guardados', 'warn'); }
-    else if (e.code !== 'AUTH') toast(e.message, 'error');
-  } finally { showLoading(false); }
 }
 
 /* =====================================================================
  *  SESIÓN
  * ===================================================================== */
+function saveSession() { try { localStorage.setItem(CONFIG.SESION_KEY, JSON.stringify({ token: S.token, user: S.user })); } catch (_) {} }
+function loadSession() { try { return JSON.parse(localStorage.getItem(CONFIG.SESION_KEY)); } catch (_) { return null; } }
+
 function showLogin(msg) {
-  $('#shell').classList.add('hidden');
-  $('#login').classList.remove('hidden');
-  const er = $('#lgErr');
-  if (msg) { er.textContent = msg; er.classList.remove('hidden'); } else er.classList.add('hidden');
+  $('#app').classList.add('hidden'); $('#login').classList.remove('hidden');
+  const er = $('#lgErr'); if (msg) { er.textContent = msg; er.classList.remove('hidden'); } else er.classList.add('hidden');
 }
-
-function showApp() {
-  $('#login').classList.add('hidden');
-  $('#shell').classList.remove('hidden');
-  setView(S.view);
-  renderAll();
-}
-
 function logout(msg) {
-  stopGps();
-  closeModal();
-  try { localStorage.removeItem(CONFIG.SESION_KEY); localStorage.removeItem(CONFIG.CACHE_KEY); } catch (_) {}
-  Object.assign(S, { token: null, user: null, loginAt: null, clientes: [], visitas: [], usuarios: [], equipos: {}, view: 'inicio', filtroTec: '' });
+  clearInterval(S.timer); closeModal(); destroyCharts();
+  try { localStorage.removeItem(CONFIG.SESION_KEY); } catch (_) {}
+  Object.assign(S, { token: null, user: null, usuarios: [], clientes: [], visitas: [], drill: null });
+  S.tienda = { q: '', filtro: '', distrito: '', sel: '', page: 1, data: null, hoja: true, setup: false, hist: {} };
+  S.asig.sel.clear(); S.pend.sel.clear();
   showLogin(typeof msg === 'string' ? msg : '');
 }
 
-async function doLogin(e) {
-  e.preventDefault();
-  const er = $('#lgErr'); er.classList.add('hidden');
-  const btn = $('#lgBtn'); btn.disabled = true; btn.textContent = 'Ingresando…';
-  try {
-    const device = await getDevice();
-    const d = await api('login', { usuario: $('#lgUser').value.trim(), password: $('#lgPass').value, dispositivo: device });
-    S.token = d.token; S.user = d.user; S.loginAt = d.loginAt; S.device = device;
-    saveSession();
-    $('#lgPass').value = '';
-    S.view = 'inicio';
-    showApp();
-    primeGps(true);
-    await refreshData(false);
-  } catch (err) {
-    er.textContent = err.message; er.classList.remove('hidden');
-  } finally { btn.disabled = false; btn.textContent = 'Iniciar sesión'; }
+function enterApp() {
+  $('#login').classList.add('hidden'); $('#app').classList.remove('hidden');
+  $('#uName').textContent = S.user.Nombre_Apellido; $('#uAvatar').textContent = initials(S.user.Nombre_Apellido);
+  if (!S.rango.desde) setPreset('hoy');
+  renderNav(); go(S.view || 'dash');
+  loadData(false);
+  clearInterval(S.timer);
+  S.timer = setInterval(() => { if (document.visibilityState === 'visible' && S.token) loadData(true); }, CONFIG.AUTO_REFRESH_MS);
 }
+
+/* =====================================================================
+ *  DATOS
+ * ===================================================================== */
+function setPreset(p) {
+  const t = new Date(); let d = new Date(t), h = new Date(t);
+  if (p === 'ayer') { d.setDate(d.getDate() - 1); h = new Date(d); }
+  else if (p === '7d') d.setDate(d.getDate() - 6);
+  else if (p === '30d') d.setDate(d.getDate() - 29);
+  else if (p === 'mes') d = new Date(t.getFullYear(), t.getMonth(), 1);
+  S.rango = { preset: p, desde: ymd(d), hasta: ymd(h) };
+}
+
+function indexData() {
+  S.clientMap = {}; S.clientes.forEach(c => { S.clientMap[c.ID_Cliente] = c; });
+  S.pendByClient = {};
+  S.visitas.forEach(v => { if (v.Estado_Tarea === 'Pendiente') (S.pendByClient[v.ID_Cliente] = S.pendByClient[v.ID_Cliente] || []).push(v); });
+  const pendIds = new Set(S.visitas.filter(v => v.Estado_Tarea === 'Pendiente').map(v => v.ID_Visita));
+  S.pend.sel = new Set([...S.pend.sel].filter(id => pendIds.has(id)));
+  S.asig.sel = new Set([...S.asig.sel].filter(id => S.clientMap[id]));
+}
+
+async function loadData(silent) {
+  try {
+    if (!silent) showLoading(true);
+    const d = await api('adminData', { desde: S.rango.desde, hasta: S.rango.hasta });
+    S.usuarios = d.usuarios || []; S.clientes = d.clientes || []; S.visitas = d.visitas || []; S.updated = new Date();
+    indexData();
+    $('#updated').textContent = 'Actualizado ' + S.updated.toLocaleTimeString('es-PE');
+    renderCurrent(silent);
+  } catch (e) {
+    if (e.offline) { if (!silent) toast('Sin conexión con el servidor', 'warn'); }
+    else if (e.code !== 'AUTH') toast(e.message, 'error');
+  } finally { showLoading(false); }
+}
+
+const pendCount = u => S.visitas.filter(v => v.Estado_Tarea === 'Pendiente' && v.Usuario_Asignado === u).length;
+function orderedUsers() { return [...S.usuarios].sort((a, b) => (a.Rol === b.Rol ? 0 : a.Rol === 'Técnico' ? -1 : 1) || String(a.Nombre_Apellido).localeCompare(String(b.Nombre_Apellido), 'es')); }
 
 /* =====================================================================
  *  NAVEGACIÓN
  * ===================================================================== */
-const TITLES = { inicio: 'Panel de control', pend: 'Tareas pendientes', mapa: 'Mapa de ruta', res: 'Visitas resueltas' };
-
-function setView(name) {
-  S.view = name;
-  $$('.view').forEach(v => v.classList.toggle('hidden', v.id !== 'v-' + name));
-  $$('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.nav === name));
-  $('#hdrTitle').textContent = TITLES[name];
-  $('#fab').classList.toggle('hidden', name === 'res');
-  if (name === 'mapa') { initMap(); setTimeout(() => { map.invalidateSize(); renderMapa(true); }, 60); }
-}
-
-function setFiltro(u) { S.filtroTec = u || ''; renderPendientes(); renderResueltas(); if (S.view === 'mapa') renderMapa(true); syncTecSelects(); }
-
-function renderAll() {
-  syncTecSelects();
-  renderInicio();
-  renderPendientes();
-  renderResueltas();
-  if (S.view === 'mapa' && map) renderMapa(false);
+function renderNav() {
   const n = S.visitas.filter(v => v.Estado_Tarea === 'Pendiente').length;
-  const b = $('#navBadge'); b.textContent = n; b.classList.toggle('hidden', !n);
-  $('#supBarPend').classList.toggle('hidden', !isSup());
-  $('#selTecRes').classList.toggle('hidden', !isSup());
-  $('#selTecMapa').classList.toggle('hidden', !isSup());
+  $('#nav').innerHTML = NAV.map(([k, l, i]) => `<button class="navb ${S.view === k ? 'on' : ''}" data-nav="${k}">${ico(i)}<span class="flex-1">${l}</span>${k === 'pend' && n ? `<span class="badge bg-red-600 text-white">${n}</span>` : ''}</button>`).join('');
+}
+function openDrawer(b) { $('#sidebar').classList.toggle('-translate-x-full', !b); $('#backdrop').classList.toggle('hidden', !b); }
+
+function go(v) {
+  S.view = v;
+  $$('.view').forEach(x => x.classList.toggle('hidden', x.id !== 'v-' + v));
+  $('#title').textContent = TITLES[v];
+  renderNav(); openDrawer(false);
+  if (v === 'dash') renderDash();
+  else if (v === 'asig') buildAsig();
+  else if (v === 'pend') buildPend();
+  else if (v === 'hist') buildHist();
+  else if (v === 'tiendas') buildTiendas();
+  else if (v === 'equipo') renderEquipo();
+  else if (v === 'logs') loadLogs();
+  window.scrollTo(0, 0);
 }
 
-function syncTecSelects() {
-  if (!isSup()) return;
-  const opts = `<option value="">Todos los técnicos</option>` + S.usuarios.map(u =>
-    `<option value="${esc(u.Usuario)}" ${S.filtroTec === u.Usuario ? 'selected' : ''}>${esc(u.Nombre_Apellido)} (${esc(u.Usuario)})</option>`).join('');
-  ['#selTecPend', '#selTecRes', '#selTecMapa'].forEach(id => { $(id).innerHTML = opts; });
+function renderCurrent(silent) {
+  renderNav();
+  if (!$('#modal').classList.contains('hidden')) return;
+  switch (S.view) {
+    case 'dash': renderDash(); break;
+    case 'asig': if (silent) { updateAsigList(); updateAsigPlan(); } else buildAsig(); break;
+    case 'pend': if (silent) updatePend(); else buildPend(); break;
+    case 'hist': if (silent) updateHist(); else buildHist(); break;
+    case 'tiendas': if (silent) loadTiendas(true); else buildTiendas(); break;
+    case 'equipo': renderEquipo(); break;
+  }
 }
 
 /* =====================================================================
- *  INICIO
+ *  FILTROS COMUNES (rango de fechas + técnico)
  * ===================================================================== */
-let deferredPrompt = null;
-window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredPrompt = e; if (S.user) renderInicio(); });
-window.addEventListener('appinstalled', () => { deferredPrompt = null; if (S.user) renderInicio(); });
-const isStandalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
-const isIOS = () => /iPhone|iPad|iPod/i.test(navigator.userAgent) || (/Macintosh/i.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
+function rangeLabel() { const { desde, hasta } = S.rango; return desde === hasta ? fmtD(desde) : `${fmtD(desde)} – ${fmtD(hasta)}`; }
 
-function avatar(u, size = 'w-16 h-16', text = 'text-xl') {
-  const url = driveDirect(u.URL_Foto_Perfil);
-  return `<div class="relative ${size} rounded-full bg-blue-100 text-blue-700 font-bold ${text} flex items-center justify-center shrink-0 overflow-hidden">
-    ${esc(initials(u.Nombre_Apellido))}
-    ${url ? `<img src="${esc(url)}" alt="" referrerpolicy="no-referrer" class="absolute inset-0 w-full h-full object-cover" onerror="this.remove()">` : ''}
-  </div>`;
-}
-
-function renderInicio() {
-  if (!S.user) return;
-  const u = S.user, hoy = todayStr();
-  const pend = S.visitas.filter(v => v.Estado_Tarea === 'Pendiente');
-  const resHoy = S.visitas.filter(v => v.Estado_Tarea === 'Resuelta' && String(v.Fecha_Resolucion).startsWith(hoy));
-  const pendHoy = pend.filter(v => String(v.Fecha_Asignacion).startsWith(hoy)).length;
-
-  let html = `
-  <div class="card flex gap-3 items-center">
-    ${avatar(u)}
-    <div class="min-w-0">
-      <div class="font-bold text-lg leading-tight truncate">${esc(u.Nombre_Apellido)}</div>
-      <div class="text-sm text-slate-500">@${esc(u.Usuario)} · <span class="badge ${isSup() ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}">${esc(u.Rol)}</span></div>
-      <div class="text-xs text-slate-500 mt-1">Conectado: ${fmt(S.loginAt)}</div>
-      <div class="text-xs text-slate-500">Dispositivo: ${esc(S.device || u.Dispositivo_Ultimo_Acceso || '—')}</div>
+function filterBar() {
+  const presets = [['hoy', 'Hoy'], ['ayer', 'Ayer'], ['7d', '7 días'], ['30d', '30 días'], ['mes', 'Este mes'], ['custom', 'Rango']];
+  const tecs = orderedUsers().filter(u => u.Rol === 'Técnico' || S.visitas.some(v => v.Usuario_Asignado === u.Usuario));
+  return `<div class="fbar card p-3 flex flex-wrap gap-2 items-center">
+    <div class="flex flex-wrap gap-1.5">${presets.map(([k, l]) => `<button data-preset="${k}" class="chip ${S.rango.preset === k ? 'chip-on' : ''}">${l}</button>`).join('')}</div>
+    <div class="flex items-center gap-1.5 ${S.rango.preset === 'custom' ? '' : 'hidden'}">
+      <input type="date" class="inp rg-desde !w-auto" value="${S.rango.desde}"><span class="text-slate-400">a</span>
+      <input type="date" class="inp rg-hasta !w-auto" value="${S.rango.hasta}"><button class="btn btn-primary !py-1.5 rg-apply">Aplicar</button>
     </div>
-  </div>
-  <div class="grid grid-cols-2 gap-3">
-    <div class="card text-center"><div class="text-3xl font-bold text-blue-600">${pend.length}</div><div class="text-xs text-slate-500">${isSup() ? 'Pendientes (global)' : 'Mis pendientes'}</div><div class="text-[11px] text-slate-400">${pendHoy} asignadas hoy</div></div>
-    <div class="card text-center"><div class="text-3xl font-bold text-green-600">${resHoy.length}</div><div class="text-xs text-slate-500">${isSup() ? 'Resueltas hoy (global)' : 'Mis resueltas hoy'}</div></div>
+    <span class="text-xs text-slate-500 font-medium">${rangeLabel()}</span>
+    <select class="inp f-tec !w-auto sm:ml-auto max-w-full">
+      <option value="">Todos los técnicos</option>
+      ${tecs.map(u => `<option value="${esc(u.Usuario)}" ${S.filtroTec === u.Usuario ? 'selected' : ''}>${esc(u.Nombre_Apellido)}</option>`).join('')}
+    </select>
   </div>`;
-
-  if (isSup()) {
-    const rows = S.usuarios.map(x => ({
-      u: x,
-      p: pend.filter(v => v.Usuario_Asignado === x.Usuario).length,
-      r: resHoy.filter(v => v.Usuario_Asignado === x.Usuario).length
-    })).filter(x => x.u.Rol === 'Técnico' || x.p || x.r);
-    html += `<div class="card"><div class="font-semibold mb-2">Carga por técnico</div>` +
-      (rows.length ? rows.map(x => `
-        <button class="w-full flex items-center justify-between py-2 border-b border-slate-100 last:border-0 text-left" data-tec="${esc(x.u.Usuario)}">
-          <span class="truncate">${esc(x.u.Nombre_Apellido)}</span>
-          <span class="text-xs whitespace-nowrap"><b class="text-blue-600">${x.p}</b> pend. · <b class="text-green-600">${x.r}</b> hoy</span>
-        </button>`).join('') : '<div class="text-sm text-slate-500">Aún no hay técnicos registrados.</div>') + `</div>`;
-  }
-
-  html += `<div class="card space-y-2">
-    <button id="btnPass" class="btn btn-ghost w-full">🔑 Cambiar contraseña</button>
-    ${isSup() ? `<button id="btnUsers" class="btn btn-ghost w-full">👥 Gestión de usuarios</button>
-    <button id="btnLogs" class="btn btn-ghost w-full">🕘 Historial de inicios de sesión</button>` : ''}
-    <button id="btnLogout" class="btn btn-danger w-full">Cerrar sesión</button>
-  </div>`;
-
-  if (!isStandalone()) {
-    html += `<div class="card text-sm">
-      <div class="font-semibold mb-1">Instalar la app</div>
-      ${deferredPrompt ? `<button id="btnInstall" class="btn btn-primary w-full">Instalar en este dispositivo</button>`
-        : isIOS() ? `<p class="text-slate-600">En iPhone/iPad: toca <b>Compartir</b> y luego <b>“Agregar a pantalla de inicio”</b>.</p>`
-        : `<p class="text-slate-600">Abre el menú del navegador (⋮) y elige <b>“Instalar app”</b> o <b>“Agregar a pantalla de inicio”</b>.</p>`}
-    </div>`;
-  }
-
-  $('#inicioBody').innerHTML = html;
 }
 
 /* =====================================================================
- *  PENDIENTES / RESUELTAS
+ *  DASHBOARD
  * ===================================================================== */
-function filtrar(estado, q) {
-  const nq = norm(q.trim());
-  return S.visitas.filter(v => v.Estado_Tarea === estado
-    && (!isSup() || !S.filtroTec || v.Usuario_Asignado === S.filtroTec)
-    && (!nq || norm(v.Nombre_Cliente).includes(nq) || norm(v.ID_Cliente).includes(nq) || norm(v.Status_Tienda).includes(nq)));
-}
+let DR = [];            // registro de "drill-downs" para los data-di
+let CH = {};            // instancias de Chart.js
+let CQ = [];            // cola de gráficos por crear
+const D = o => (DR.push(o), DR.length - 1);
 
-function renderPendientes() {
-  const list = filtrar('Pendiente', $('#qPend').value);
-  if (isSup()) {
-    const all = S.visitas.filter(v => v.Estado_Tarea === 'Pendiente');
-    const chips = S.usuarios.filter(x => x.Rol === 'Técnico' || all.some(v => v.Usuario_Asignado === x.Usuario)).map(x => {
-      const n = all.filter(v => v.Usuario_Asignado === x.Usuario).length;
-      const act = S.filtroTec === x.Usuario;
-      return `<button data-chip="${esc(x.Usuario)}" class="badge ${act ? 'bg-blue-600 text-white' : 'bg-white border border-slate-300 text-slate-700'}">${esc(x.Nombre_Apellido)}: ${n} pendiente${n === 1 ? '' : 's'}</button>`;
-    }).join('');
-    const cc = $('#cargaChips'); cc.innerHTML = chips; cc.classList.toggle('hidden', !chips);
-  }
-  $('#listPend').innerHTML = list.length ? list.map(v => `
-    <div class="card cursor-pointer" data-vid="${esc(v.ID_Visita)}">
-      <div class="flex justify-between gap-2">
-        <div class="min-w-0">
-          <div class="font-semibold truncate">${esc(v.Nombre_Cliente)}</div>
-          <div class="text-xs text-slate-500">${esc(v.ID_Cliente)} · Asignada ${fmt(v.Fecha_Asignacion)}</div>
-        </div>
-        <span class="badge bg-blue-100 text-blue-700 self-start">Pendiente</span>
-      </div>
-      ${isSup() ? `<div class="mt-2 flex items-center justify-between text-xs"><span class="text-slate-600">👤 ${esc(techName(v.Usuario_Asignado))}</span><button class="text-blue-600 font-semibold px-2 py-1" data-reasignar="${esc(v.ID_Visita)}">Reasignar</button></div>` : ''}
-    </div>`).join('') : `<div class="text-center text-slate-500 py-10 text-sm">No hay tareas pendientes 🎉</div>`;
-}
+function destroyCharts() { Object.keys(CH).forEach(k => { try { CH[k].destroy(); } catch (_) {} }); CH = {}; }
 
-function renderResueltas() {
-  const all = filtrar('Resuelta', $('#qRes').value).filter(v => enPeriodo(v.Fecha_Resolucion, S.periodoRes));
-  const list = all.slice(0, S.limiteRes);
-  $('#resCount').textContent = `${all.length} visita${all.length === 1 ? '' : 's'} resuelta${all.length === 1 ? '' : 's'}`;
-  $('#listRes').innerHTML = (list.length ? list.map(v => `
-    <div class="card">
-      <div class="flex justify-between gap-2">
-        <div class="min-w-0">
-          <div class="font-semibold truncate">${esc(v.Nombre_Cliente)}</div>
-          <div class="text-xs text-slate-500">${esc(v.ID_Cliente)} · ${fmt(v.Fecha_Resolucion)}</div>
-        </div>
-        ${v.Status_Tienda ? `<span class="badge ${STATUS_COLOR[v.Status_Tienda] || 'bg-slate-100 text-slate-700'} self-start text-right">${esc(v.Status_Tienda)}</span>` : ''}
-      </div>
-      <div class="mt-2 flex flex-wrap gap-1.5 text-xs">
-        <span class="badge bg-slate-100 text-slate-700">${esc(v.Tipo_Visita)}</span>
-        ${isNum(v.Distancia_Metros) ? `<span class="badge bg-slate-100 text-slate-700">${Math.round(v.Distancia_Metros)} m</span>` : ''}
-        ${v.Es_Fuera_De_Ruta === 'SI' ? `<span class="badge bg-amber-100 text-amber-700">Fuera de ruta</span>` : ''}
-        ${v.Retiro_Equipos ? `<span class="badge bg-orange-100 text-orange-700">📦 Retiro: ${esc(v.Retiro_Equipos)}</span>` : ''}
-        ${v.Reinstalacion_Equipo ? `<span class="badge bg-emerald-100 text-emerald-700">🔁 Reinstalado: ${esc(v.Reinstalacion_Equipo)}</span>` : ''}
-        ${v.USB_Monitor === 'SI' ? `<span class="badge bg-indigo-100 text-indigo-700">💾 USB en monitor</span>` : ''}
-        ${v.Mantenimiento === 'SI' ? `<span class="badge bg-slate-200 text-slate-700">🛠️ Mantenimiento</span>` : ''}
-        ${isSup() ? `<span class="badge bg-purple-50 text-purple-700">👤 ${esc(techName(v.Usuario_Asignado))}</span>` : ''}
-      </div>
-      ${v.Observacion ? `<div class="mt-2 text-sm text-slate-600">${esc(v.Observacion)}</div>` : ''}
-      <div class="mt-2 flex gap-3 text-sm">
-        ${v.URL_Foto_Fachada ? `<a class="text-blue-600 font-medium" href="${esc(v.URL_Foto_Fachada)}" target="_blank" rel="noopener">📷 Fachada</a>` : ''}
-        ${v.URL_Foto_Monitor ? `<a class="text-blue-600 font-medium" href="${esc(v.URL_Foto_Monitor)}" target="_blank" rel="noopener">🖥️ Monitor</a>` : ''}
-      </div>
-    </div>`).join('') : `<div class="text-center text-slate-500 py-10 text-sm">No hay visitas resueltas en este periodo.</div>`)
-    + (all.length > S.limiteRes ? `<button id="btnMasRes" class="btn btn-ghost w-full">Mostrar más (${all.length - S.limiteRes})</button>` : '');
-}
-
-/* =====================================================================
- *  MAPA PRINCIPAL
- * ===================================================================== */
-let map = null, pinLayer = null, meMarker = null;
-
-function pinIcon(color) {
-  return L.divIcon({
-    className: '',
-    html: `<svg width="30" height="40" viewBox="0 0 30 40"><path d="M15 1C7 1 1 7 1 15c0 10.5 14 24 14 24s14-13.5 14-24C29 7 23 1 15 1z" fill="${color}" stroke="#fff" stroke-width="2"/><circle cx="15" cy="15" r="5.5" fill="#fff"/></svg>`,
-    iconSize: [30, 40], iconAnchor: [15, 40], popupAnchor: [0, -36]
-  });
-}
-const meIcon = () => L.divIcon({ className: '', html: '<div class="me-dot"></div>', iconSize: [18, 18], iconAnchor: [9, 9] });
-
-function initMap() {
-  if (map) return;
-  map = L.map('map', { zoomControl: false }).setView([-12.0464, -77.0428], 12);
-  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap' }).addTo(map);
-  L.control.zoom({ position: 'bottomleft' }).addTo(map);
-  pinLayer = L.layerGroup().addTo(map);
-  map.on('popupopen', ev => {
-    const el = ev.popup.getElement();
-    $$('[data-resolver]', el).forEach(b => b.addEventListener('click', () => { map.closePopup(); openVisita(b.dataset.resolver); }));
-  });
-}
-
-function renderMapa(fit) {
-  if (!map) return;
-  pinLayer.clearLayers();
-  const items = S.visitas.filter(v =>
-    (v.Estado_Tarea === 'Pendiente' || (S.mostrarResMapa && v.Estado_Tarea === 'Resuelta' && enPeriodo(v.Fecha_Resolucion, 'hoy')))
-    && (!isSup() || !S.filtroTec || v.Usuario_Asignado === S.filtroTec)
-    && isNum(v.Latitud_Tienda) && isNum(v.Longitud_Tienda));
-  const pts = [];
-  items.forEach(v => {
-    const pendiente = v.Estado_Tarea === 'Pendiente';
-    const m = L.marker([v.Latitud_Tienda, v.Longitud_Tienda], { icon: pinIcon(pendiente ? '#2563eb' : '#16a34a') });
-    m.bindPopup(`<div class="text-sm" style="min-width:190px">
-      <div class="font-bold">${esc(v.Nombre_Cliente)}</div>
-      <div class="text-slate-500">ID: ${esc(v.ID_Cliente)}</div>
-      <div class="text-slate-500">Técnico: ${esc(techName(v.Usuario_Asignado))}</div>
-      <div class="mt-1 mb-2"><span class="badge ${pendiente ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'}">${pendiente ? 'Pendiente' : 'Resuelta'}</span></div>
-      <a class="btn btn-outline w-full block" style="padding:6px 10px;font-size:13px" target="_blank" rel="noopener" href="https://www.google.com/maps/dir/?api=1&destination=${v.Latitud_Tienda},${v.Longitud_Tienda}&travelmode=driving">Navegar (Google Maps)</a>
-      ${pendiente ? `<button class="btn btn-primary w-full block mt-2" style="padding:6px 10px;font-size:13px" data-resolver="${esc(v.ID_Visita)}">Resolver Visita</button>` : ''}
-    </div>`);
-    m.addTo(pinLayer);
-    pts.push([v.Latitud_Tienda, v.Longitud_Tienda]);
-  });
-  if (fit && pts.length) map.fitBounds(pts, { padding: [50, 50], maxZoom: 16 });
-}
-
-function locateMe() {
-  if (!navigator.geolocation) return toast('Tu dispositivo no soporta geolocalización', 'warn');
-  navigator.geolocation.getCurrentPosition(p => {
-    const ll = [p.coords.latitude, p.coords.longitude];
-    if (meMarker) meMarker.setLatLng(ll); else meMarker = L.marker(ll, { icon: meIcon() }).addTo(map);
-    map.setView(ll, 16);
-  }, () => toast('No se pudo obtener tu ubicación. Revisa los permisos de GPS.', 'warn'), { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
-}
-
-/* =====================================================================
- *  MODAL
- * ===================================================================== */
-const M = { onClose: null };
-function openModal(html, onClose) {
-  M.onClose = onClose || null;
-  $('#modalBody').innerHTML = html;
-  $('#modal').classList.remove('hidden');
-  const body = $('#modalBody');
-  body.scrollTop = 0;
-  if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur();
-  // iOS puede desplazar el panel al renderizar mapas/inputs: se reinicia el scroll
-  requestAnimationFrame(() => { body.scrollTop = 0; });
-  setTimeout(() => { if (!$('#modal').classList.contains('hidden')) body.scrollTop = 0; }, 350);
-  document.body.style.overflow = 'hidden';
-}
-function closeModal() {
-  if (M.onClose) { const f = M.onClose; M.onClose = null; try { f(); } catch (_) {} }
-  $('#modal').classList.add('hidden');
-  $('#modalBody').innerHTML = '';
-  document.body.style.overflow = '';
-}
-const modalHeader = (title, extra = '') => `<div class="sticky top-0 z-10 bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between">
-  <div class="font-bold text-lg">${title} ${extra}</div><button data-close class="text-2xl leading-none text-slate-500 px-2" aria-label="Cerrar">×</button></div>`;
-
-/* ---------- Selector de clientes con buscador (autocomplete) ---------- */
-function pickerHTML(id) {
-  return `<div id="${id}"><input type="search" class="inp" placeholder="Buscar cliente por nombre o ID…" autocomplete="off">
-    <div class="pl hidden mt-1 max-h-56 overflow-y-auto border border-slate-200 rounded-xl bg-white"></div></div>`;
-}
-function mountPicker(id, onPick) {
-  const root = $('#' + id), inp = $('input', root), list = $('.pl', root);
-  const render = () => {
-    const q = norm(inp.value.trim());
-    const res = S.clientes.filter(c => !q || norm(c.Nombre_Cliente).includes(q) || norm(c.ID_Cliente).includes(q)).slice(0, 40);
-    list.innerHTML = res.length ? res.map(c => `<button type="button" data-id="${esc(c.ID_Cliente)}" class="w-full text-left px-3 py-2 border-b border-slate-100 last:border-0 active:bg-blue-50">
-      <div class="text-sm font-medium">${esc(c.Nombre_Cliente)}</div><div class="text-xs text-slate-500">${esc(c.ID_Cliente)}</div></button>`).join('')
-      : `<div class="p-3 text-sm text-slate-500">Sin resultados en la base de clientes</div>`;
-    list.classList.remove('hidden');
+function sets() {
+  const { desde, hasta } = S.rango, t = S.filtroTec, ok = v => !t || v.Usuario_Asignado === t;
+  const inR = s => { const d = dOf(s); return d >= desde && d <= hasta; };
+  return {
+    res: S.visitas.filter(v => v.Estado_Tarea === 'Resuelta' && ok(v) && inR(v.Fecha_Resolucion)),
+    pend: S.visitas.filter(v => v.Estado_Tarea === 'Pendiente' && ok(v)),
+    asig: S.visitas.filter(v => ok(v) && inR(v.Fecha_Asignacion))
   };
-  inp.addEventListener('input', render);
-  inp.addEventListener('focus', render);
-  list.addEventListener('click', e => {
-    const b = e.target.closest('[data-id]'); if (!b) return;
-    const c = S.clientes.find(x => x.ID_Cliente === b.dataset.id); if (!c) return;
-    inp.value = c.Nombre_Cliente; list.classList.add('hidden'); onPick(c);
-  });
 }
 
-/* ---------- Visita fuera de ruta ---------- */
-function openFueraRuta() {
-  let sel = null;
-  openModal(`${modalHeader('Visita fuera de ruta')}
-    <div class="p-4 space-y-3">
-      <p class="text-sm text-slate-600">Busca la tienda en la base de clientes. El ID y las coordenadas se completan automáticamente.</p>
-      ${pickerHTML('pkFuera')}
-      <div id="pkInfo" class="hidden card text-sm"></div>
-      <button id="btnContinuar" class="btn btn-primary w-full" disabled>Continuar a la visita</button>
-    </div>`);
-  mountPicker('pkFuera', c => {
-    sel = c;
-    $('#pkInfo').classList.remove('hidden');
-    $('#pkInfo').innerHTML = `<b>${esc(c.Nombre_Cliente)}</b><br>ID: ${esc(c.ID_Cliente)}<br>Lat/Lng: ${esc(c.Latitud)}, ${esc(c.Longitud)}`;
-    $('#btnContinuar').disabled = false;
-  });
-  $('#btnContinuar').addEventListener('click', () => { if (sel) openVisita({ cliente: sel }); });
+function techsIn(...lists) {
+  const m = new Map();
+  S.usuarios.filter(u => u.Rol === 'Técnico').forEach(u => m.set(u.Usuario, u));
+  lists.forEach(l => l.forEach(v => { if (!m.has(v.Usuario_Asignado)) m.set(v.Usuario_Asignado, U(v.Usuario_Asignado) || { Usuario: v.Usuario_Asignado, Nombre_Apellido: v.Usuario_Asignado, Rol: '' }); }));
+  let a = [...m.values()].sort((x, y) => String(x.Nombre_Apellido).localeCompare(String(y.Nombre_Apellido), 'es'));
+  if (S.filtroTec) a = a.filter(u => u.Usuario === S.filtroTec);
+  return a;
 }
 
-/* ---------- Asignar / reasignar (Supervisor) ---------- */
-const userOptions = (sel) => S.usuarios.map(u => `<option value="${esc(u.Usuario)}" ${sel === u.Usuario ? 'selected' : ''}>${esc(u.Nombre_Apellido)} (${esc(u.Usuario)} · ${esc(u.Rol)})</option>`).join('');
-
-function openAsignar() {
-  let sel = null;
-  openModal(`${modalHeader('Asignar nueva visita')}
-    <div class="p-4 space-y-3">
-      <div><label class="lbl">Cliente</label>${pickerHTML('pkAsig')}</div>
-      <div id="pkInfo" class="hidden card text-sm"></div>
-      <div><label class="lbl">Asignar a</label><select id="asigTec" class="inp">${userOptions(S.filtroTec)}</select></div>
-      <button id="btnDoAsig" class="btn btn-primary w-full" disabled>Asignar visita</button>
-    </div>`);
-  mountPicker('pkAsig', c => {
-    sel = c;
-    $('#pkInfo').classList.remove('hidden');
-    $('#pkInfo').innerHTML = `<b>${esc(c.Nombre_Cliente)}</b><br>ID: ${esc(c.ID_Cliente)}<br>Lat/Lng: ${esc(c.Latitud)}, ${esc(c.Longitud)}`;
-    $('#btnDoAsig').disabled = false;
-  });
-  $('#btnDoAsig').addEventListener('click', async () => {
-    const b = $('#btnDoAsig'); b.disabled = true;
-    try { showLoading(true); await api('assignVisit', { idCliente: sel.ID_Cliente, usuario: $('#asigTec').value }); toast('Visita asignada', 'ok'); closeModal(); await refreshData(true); }
-    catch (e) { toast(e.message, 'error'); b.disabled = false; } finally { showLoading(false); }
-  });
+// Agrupación temporal de la tendencia: por hora (1 día), por día (≤62 días) o por mes
+function bucketMode() {
+  const a = new Date(S.rango.desde + 'T00:00:00'), b = new Date(S.rango.hasta + 'T00:00:00');
+  const days = Math.round((b - a) / 86400000) + 1;
+  return days <= 1 ? 'h' : days <= 62 ? 'd' : 'm';
+}
+function bucketKey(v) { const m = bucketMode(), s = String(v.Fecha_Resolucion || ''); return m === 'h' ? s.slice(11, 13) : m === 'd' ? s.slice(0, 10) : s.slice(0, 7); }
+function bucketLabels(res) {
+  const m = bucketMode(), keys = [];
+  if (m === 'h') {
+    const hs = res.map(v => +bucketKey(v)).filter(n => !isNaN(n));
+    const lo = Math.min(7, ...(hs.length ? hs : [7])), hi = Math.max(19, ...(hs.length ? hs : [19]));
+    for (let h = lo; h <= hi; h++) keys.push(pad(h));
+    return keys.map(k => [k, k + ':00']);
+  }
+  if (m === 'd') {
+    for (let d = new Date(S.rango.desde + 'T00:00:00'), e = new Date(S.rango.hasta + 'T00:00:00'); d <= e; d.setDate(d.getDate() + 1)) keys.push(ymd(d));
+    return keys.map(k => [k, k.slice(8) + '/' + k.slice(5, 7)]);
+  }
+  for (let d = new Date(S.rango.desde.slice(0, 7) + '-01T00:00:00'), e = new Date(S.rango.hasta + 'T00:00:00'); d <= e; d.setMonth(d.getMonth() + 1)) keys.push(ymd(d).slice(0, 7));
+  return keys.map(k => [k, k.slice(5) + '/' + k.slice(0, 4)]);
 }
 
-function openReasignar(idVisita) {
-  const v = S.visitas.find(x => x.ID_Visita === idVisita); if (!v) return;
-  openModal(`${modalHeader('Reasignar visita')}
-    <div class="p-4 space-y-3">
-      <div class="card text-sm"><b>${esc(v.Nombre_Cliente)}</b><br>${esc(v.ID_Cliente)} · Actual: ${esc(techName(v.Usuario_Asignado))}</div>
-      <div><label class="lbl">Nuevo responsable</label><select id="reaTec" class="inp">${userOptions(v.Usuario_Asignado)}</select></div>
-      <button id="btnDoRea" class="btn btn-primary w-full">Reasignar</button>
-    </div>`);
-  $('#btnDoRea').addEventListener('click', async () => {
-    const b = $('#btnDoRea'); b.disabled = true;
-    try { showLoading(true); await api('reassignVisit', { idVisita, usuario: $('#reaTec').value }); toast('Visita reasignada', 'ok'); closeModal(); await refreshData(true); }
-    catch (e) { toast(e.message, 'error'); b.disabled = false; } finally { showLoading(false); }
+function applyDrill(list, d) {
+  return list.filter(v => (!d.tec || v.Usuario_Asignado === d.tec) && (!d.tipo || v.Tipo_Visita === d.tipo) && (!d.status || d.status.includes(v.Status_Tienda)) && (!d.bucket || bucketKey(v) === d.bucket) && (!d.fuera || v.Es_Fuera_De_Ruta === 'SI') && (!d.retiro || d.retiro.includes(v.Retiro_Equipos || '')) && (!d.reinst || d.reinst.includes(v.Reinstalacion_Equipo || '')) && (!d.usb || v.USB_Monitor === 'SI') && (!d.usbret || !!v.Retiro_USB) && (!d.mant || v.Mantenimiento === 'SI'));
+}
+
+function renderDash() {
+  destroyCharts(); DR = []; CQ = [];
+  const { res, pend, asig } = sets();
+  const total = res.length, c = fn => res.filter(fn).length;
+  const fis = c(v => v.Tipo_Visita === 'Visita Física'), rem = c(v => v.Tipo_Visita === 'Visita Remota'), nov = c(v => v.Tipo_Visita === 'No Visitado');
+  const st = {}; INC.forEach(s => { st[s] = c(v => v.Status_Tienda === s); });
+  const act = ACT.reduce((a, s) => a + st[s], 0), ave = AV.reduce((a, s) => a + st[s], 0), cer = st['Tienda Cerrada'], ret = st['Solicitud de Retiro'];
+  // Avería NUC/RB: detalle de retiro de equipos
+  const nr = res.filter(v => v.Status_Tienda === 'Avería NUC/RB');
+  const rc = k => nr.filter(v => (v.Retiro_Equipos || '') === k).length;
+  const rNuc = rc(RET.nuc), rRb = rc(RET.rb), rSin = nr.length - rNuc - rRb, rCon = rNuc + rRb;
+  // Reinstalación de equipos, USB y mantenimiento (solo visitas físicas)
+  const rein = res.filter(v => v.Reinstalacion_Equipo), reN = rein.filter(v => v.Reinstalacion_Equipo === 'NUC'), reR = rein.filter(v => v.Reinstalacion_Equipo === 'RB');
+  const okv = a => a.filter(v => v.Status_Tienda === 'Activa Validada').length;
+  const usbN = c(v => v.USB_Monitor === 'SI'), usbRetN = c(v => !!v.Retiro_USB), mantN = c(v => v.Mantenimiento === 'SI');
+  const hoy = ymd(new Date()), atras = pend.filter(v => dOf(v.Fecha_Asignacion) < hoy).length;
+  const fuera = c(v => v.Es_Fuera_De_Ruta === 'SI');
+  const dists = res.filter(v => v.Tipo_Visita === 'Visita Física' && isNum(v.Distancia_Metros)).map(v => v.Distancia_Metros);
+  const distAvg = dists.length ? Math.round(dists.reduce((a, b) => a + b, 0) / dists.length) : null;
+  const carga = total + pend.length, avance = pct(total, carga);
+  const techs = techsIn(res, pend, asig);
+
+  const kpi = (label, val, o = {}) => `<button class="card kpi" ${o.d !== undefined ? `data-di="${D(o.d)}"` : ''} ${o.go ? `data-go="${o.go}"` : ''}>
+      <div class="text-xs font-semibold text-slate-500 flex items-center gap-1.5">${o.dot ? `<i class="dot" style="background:${o.dot}"></i>` : ''}${label}</div>
+      <div class="text-3xl font-bold ${o.color || 'text-slate-800'} leading-tight">${val}</div>
+      <div class="text-xs text-slate-400 mt-0.5">${o.sub || '&nbsp;'}</div>${o.extra || ''}</button>`;
+  const group = (title, tot, color, rows, dTot) => `<div class="card p-3.5">
+      <button class="w-full text-left" data-di="${D(dTot)}"><div class="flex items-baseline justify-between gap-2"><div class="text-sm font-semibold">${title}</div><div class="text-3xl font-bold ${color}">${tot}</div></div>
+      <div class="text-xs text-slate-400">${pct(tot, total)}% de las visitas resueltas</div></button>
+      <div class="mt-2 divide-y divide-slate-100 text-sm">${rows.map(s => `<button class="w-full flex items-center justify-between py-1.5 hover:bg-slate-50 rounded" data-di="${D({ status: [s], label: s })}"><span class="flex items-center gap-2"><i class="dot" style="background:${col(s)}"></i>${s}</span><b>${st[s]}</b></button>`).join('')}</div></div>`;
+
+  $('#v-dash').innerHTML = `${filterBar()}
+  ${!total && !pend.length ? `<div class="card p-4 mt-3 text-sm text-slate-500">No hay visitas para el rango y técnico seleccionados.</div>` : ''}
+  <div class="sec">Volumen de visitas</div>
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+    ${kpi('Asignadas en el rango', n0(asig.length), { d: { label: 'Visitas asignadas en el rango', asigRango: true }, sub: 'creadas en el periodo' })}
+    ${kpi('Resueltas', n0(total), { color: 'text-green-600', d: { label: 'Visitas resueltas' }, sub: 'en el periodo' })}
+    ${kpi('Pendientes (cola actual)', n0(pend.length), { color: 'text-blue-600', go: 'pend', sub: `${n0(atras)} de días anteriores` })}
+    <div class="card kpi cursor-default"><div class="text-xs font-semibold text-slate-500">Avance</div><div class="text-3xl font-bold text-slate-800 leading-tight">${avance}%</div>
+      <div class="h-2 bg-slate-100 rounded mt-2"><div class="h-2 rounded bg-green-500" style="width:${Math.min(100, avance)}%"></div></div>
+      <div class="text-xs text-slate-400 mt-1">resueltas ÷ (resueltas + pendientes)</div></div>
+  </div>
+
+  <div class="sec">Tipo de visita</div>
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+    ${kpi('Visitas físicas', n0(fis), { color: 'text-blue-600', dot: COLOR['Visita Física'], d: { tipo: 'Visita Física', label: 'Visitas físicas' }, sub: `${pct(fis, total)}%${distAvg !== null ? ' · dist. prom. ' + distAvg + ' m' : ''}` })}
+    ${kpi('Visitas remotas', n0(rem), { color: 'text-violet-600', dot: COLOR['Visita Remota'], d: { tipo: 'Visita Remota', label: 'Visitas remotas' }, sub: `${pct(rem, total)}%` })}
+    ${kpi('No visitados', n0(nov), { color: 'text-slate-600', dot: COLOR['No Visitado'], d: { tipo: 'No Visitado', label: 'No visitados' }, sub: `${pct(nov, total)}%` })}
+    ${kpi('Fuera de ruta', n0(fuera), { color: 'text-amber-600', d: { fuera: true, label: 'Visitas fuera de ruta' }, sub: 'agregadas por el técnico' })}
+  </div>
+
+  <div class="sec">Incidencias del periodo</div>
+  <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+    ${group('Visitas activas', act, 'text-green-600', ACT, { status: ACT, label: 'Visitas activas (validada + sin validación)' })}
+    ${group('Total averías', ave, 'text-red-600', AV, { status: AV, label: 'Total de averías' })}
+    ${kpi('Tienda cerrada', n0(cer), { color: 'text-slate-700', dot: COLOR['Tienda Cerrada'], d: { status: ['Tienda Cerrada'], label: 'Tiendas cerradas' }, sub: `${pct(cer, total)}% · incidencia única` })}
+    ${kpi('Solicitud de retiro', n0(ret), { color: 'text-violet-600', dot: COLOR['Solicitud de Retiro'], d: { status: ['Solicitud de Retiro'], label: 'Solicitudes de retiro' }, sub: `${pct(ret, total)}% · otra incidencia` })}
+  </div>
+
+  <div class="sec">Avería NUC/RB · retiro de equipos <span class="normal-case font-normal text-slate-400">· ${n0(rNuc)} NUC y ${n0(rRb)} RB recogidas</span></div>
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+    ${kpi('Averías NUC/RB', n0(nr.length), { color: 'text-orange-600', dot: COLOR['Avería NUC/RB'], d: { status: ['Avería NUC/RB'], label: 'Averías NUC/RB' }, sub: `${n0(rCon)} con retiro · ${pct(rCon, nr.length)}%` })}
+    ${kpi('Se recogió NUC', n0(rNuc), { color: 'text-sky-600', dot: RET_COLOR['NUC'], d: { status: ['Avería NUC/RB'], retiro: [RET.nuc], label: 'Avería NUC/RB · se recogió NUC' }, sub: `${pct(rNuc, nr.length)}% de las averías NUC/RB` })}
+    ${kpi('Se recogió RB', n0(rRb), { color: 'text-violet-600', dot: RET_COLOR['RB'], d: { status: ['Avería NUC/RB'], retiro: [RET.rb], label: 'Avería NUC/RB · se recogió RB' }, sub: `${pct(rRb, nr.length)}% de las averías NUC/RB` })}
+    ${kpi('Sin retiro', n0(rSin), { color: 'text-slate-600', dot: RET_COLOR[''], d: { status: ['Avería NUC/RB'], retiro: [''], label: 'Avería NUC/RB · sin retiro de equipos' }, sub: `${pct(rSin, nr.length)}% · incluye remotas` })}
+  </div>
+
+  <div class="sec">Reinstalación de equipos, USB y mantenimiento <span class="normal-case font-normal text-slate-400">· solo visitas físicas</span></div>
+  <div class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
+    ${kpi('Equipos reinstalados', n0(rein.length), { color: 'text-emerald-600', dot: REI_COLOR['NUC'], d: { reinst: ['NUC', 'RB'], label: 'Equipos reinstalados (NUC + RB)' }, sub: `${n0(okv(rein))} validados · ${n0(rein.length - okv(rein))} sin validar` })}
+    ${kpi('Se reinstaló NUC', n0(reN.length), { color: 'text-emerald-700', dot: REI_COLOR['NUC'], d: { reinst: ['NUC'], label: 'Se reinstaló NUC' }, sub: `${n0(okv(reN))} validados · ${n0(reN.length - okv(reN))} sin validar` })}
+    ${kpi('Se reinstaló RB', n0(reR.length), { color: 'text-emerald-500', dot: REI_COLOR['RB'], d: { reinst: ['RB'], label: 'Se reinstaló RB' }, sub: `${n0(okv(reR))} validados · ${n0(reR.length - okv(reR))} sin validar` })}
+    ${kpi('USB en monitor', n0(usbN), { color: 'text-indigo-600', dot: REI_COLOR.usb, d: { usb: true, label: 'Visitas con USB dejado en el monitor' }, sub: 'solo en Activa Sin Validación' })}
+    ${kpi('USB retirados', n0(usbRetN), { color: 'text-red-600', dot: '#dc2626', d: { usbret: true, label: 'Visitas en que un Supervisor retiró el USB del monitor' }, sub: 'solo lo retira un Supervisor' })}
+    ${kpi('Mantenimientos', n0(mantN), { color: 'text-slate-700', dot: REI_COLOR.mant, d: { mant: true, label: 'Visitas con mantenimiento' }, sub: `${pct(mantN, fis)}% de las visitas físicas` })}
+  </div>
+
+  <div class="sec">Distribución y tendencia</div>
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-3">
+    <div class="card p-3"><div class="text-sm font-semibold mb-2">Tipo de visita</div><div class="chartbox" style="height:260px"><canvas id="ch-tipo"></canvas></div></div>
+    <div class="card p-3"><div class="text-sm font-semibold mb-2">Incidencias</div><div class="chartbox" style="height:260px"><canvas id="ch-inc"></canvas></div></div>
+    <div class="card p-3"><div class="text-sm font-semibold mb-2">Visitas ${bucketMode() === 'h' ? 'por hora' : bucketMode() === 'd' ? 'por día' : 'por mes'}</div><div class="chartbox" style="height:260px"><canvas id="ch-trend"></canvas></div></div>
+  </div>
+
+  <div class="sec">Desempeño por técnico <span class="normal-case font-normal text-slate-400">· toca una barra para ver el detalle</span></div>
+  <div class="grid grid-cols-1 xl:grid-cols-2 gap-3">
+    ${techCard('ch-t1', 'Visitas por técnico', techs, res, TIPOS.map(t => ({ label: t, color: COLOR[t], match: v => v.Tipo_Visita === t, drill: { tipo: t } })))}
+    ${techCard('ch-t2', 'Visitas activas por técnico', techs, res, ACT.map(s => ({ label: s, color: COLOR[s], match: v => v.Status_Tienda === s, drill: { status: [s] } })))}
+    ${techCard('ch-t3', 'Averías por técnico', techs, res, AV.map(s => ({ label: s, color: COLOR[s], match: v => v.Status_Tienda === s, drill: { status: [s] } })))}
+    ${techCard('ch-t5', 'Retiro de equipos por técnico (Avería NUC/RB)', techs, res, [RET.nuc, RET.rb].map(k => ({ label: 'Se recogió ' + k, color: RET_COLOR[k], match: v => v.Status_Tienda === 'Avería NUC/RB' && v.Retiro_Equipos === k, drill: { status: ['Avería NUC/RB'], retiro: [k] } })))}
+    ${techCard('ch-t6', 'Reinstalación, USB y mantenimiento por técnico', techs, res, [
+      { label: 'Reinstaló NUC', color: REI_COLOR['NUC'], match: v => v.Reinstalacion_Equipo === 'NUC', drill: { reinst: ['NUC'] } },
+      { label: 'Reinstaló RB', color: REI_COLOR['RB'], match: v => v.Reinstalacion_Equipo === 'RB', drill: { reinst: ['RB'] } },
+      { label: 'USB en monitor', color: REI_COLOR.usb, match: v => v.USB_Monitor === 'SI', drill: { usb: true } },
+      { label: 'USB retirado', color: '#dc2626', match: v => !!v.Retiro_USB, drill: { usbret: true } },
+      { label: 'Mantenimiento', color: REI_COLOR.mant, match: v => v.Mantenimiento === 'SI', drill: { mant: true } }], false)}
+    ${techCard('ch-t4', 'Tiendas cerradas y no visitados por técnico', techs, res, [
+      { label: 'Tienda Cerrada', color: COLOR['Tienda Cerrada'], match: v => v.Status_Tienda === 'Tienda Cerrada', drill: { status: ['Tienda Cerrada'] } },
+      { label: 'No Visitado', color: COLOR['No Visitado'], match: v => v.Tipo_Visita === 'No Visitado', drill: { tipo: 'No Visitado' } }], false)}
+  </div>
+
+  <div class="sec">Resumen por técnico</div>
+  <div class="card overflow-hidden"><div class="overflow-x-auto">${resumenTable(techs, res, pend, asig)}</div></div>
+
+  <div id="drillBox" class="mt-5"></div>`;
+
+  // Gráficos
+  CQ.push({ id: 'ch-tipo', cfg: {
+    type: 'doughnut', data: { labels: TIPOS, datasets: [{ data: [fis, rem, nov], backgroundColor: TIPOS.map(col), borderWidth: 2, borderColor: '#fff' }] },
+    options: { responsive: true, maintainAspectRatio: false, cutout: '62%', plugins: { legend: { position: 'bottom', labels: { boxWidth: 12 } } },
+      onClick: (e, els) => { if (els.length) setDrill({ tipo: TIPOS[els[0].index], label: TIPOS[els[0].index] }); }, onHover: hoverPtr },
+    plugins: [{ id: 'center', afterDraw(ch) { const a = ch.chartArea; if (!a) return; const x = (a.left + a.right) / 2, y = (a.top + a.bottom) / 2, g = ch.ctx; g.save(); g.textAlign = 'center'; g.fillStyle = '#0f172a'; g.font = '700 26px system-ui'; g.fillText(String(total), x, y + 6); g.fillStyle = '#94a3b8'; g.font = '12px system-ui'; g.fillText('visitas', x, y + 24); g.restore(); } }]
+  } });
+  CQ.push({ id: 'ch-inc', cfg: {
+    type: 'bar', data: { labels: INC, datasets: [{ data: INC.map(s => st[s]), backgroundColor: INC.map(col), borderRadius: 4 }] },
+    options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true, ticks: { precision: 0 } } },
+      onClick: (e, els) => { if (els.length) setDrill({ status: [INC[els[0].index]], label: INC[els[0].index] }); }, onHover: hoverPtr }
+  } });
+  const bl = bucketLabels(res);
+  CQ.push({ id: 'ch-trend', cfg: {
+    type: 'bar', data: { labels: bl.map(b => b[1]), datasets: TIPOS.map(t => ({ label: t, backgroundColor: col(t), data: bl.map(b => res.filter(v => v.Tipo_Visita === t && bucketKey(v) === b[0]).length) })) },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { boxWidth: 12 } } }, scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true, ticks: { precision: 0 } } },
+      onClick: (e, els) => { if (els.length) { const el = els[0]; setDrill({ tipo: TIPOS[el.datasetIndex], bucket: bl[el.index][0], label: `${TIPOS[el.datasetIndex]} · ${bl[el.index][1]}` }); } }, onHover: hoverPtr }
+  } });
+  buildCharts();
+  renderDrill(false);
+}
+
+const hoverPtr = (e, els) => { if (e && e.native && e.native.target) e.native.target.style.cursor = els.length ? 'pointer' : 'default'; };
+
+function techCard(id, title, techs, res, series, stacked = true) {
+  const h = Math.max(190, techs.length * 40 + 90);
+  if (!techs.length) return `<div class="card p-3"><div class="text-sm font-semibold mb-2">${title}</div><div class="text-sm text-slate-400 p-6 text-center">Sin técnicos</div></div>`;
+  CQ.push({ id, cfg: {
+    type: 'bar',
+    data: { labels: techs.map(shortName), datasets: series.map(s => ({ label: s.label, backgroundColor: s.color, borderRadius: 3, data: techs.map(t => res.filter(v => v.Usuario_Asignado === t.Usuario && s.match(v)).length) })) },
+    options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { boxWidth: 12 } } },
+      scales: { x: { stacked, beginAtZero: true, ticks: { precision: 0 } }, y: { stacked } },
+      onClick: (e, els) => { if (!els.length) return; const el = els[0], s = series[el.datasetIndex], t = techs[el.index]; setDrill({ ...s.drill, tec: t.Usuario, label: `${s.label} · ${shortName(t)}` }); }, onHover: hoverPtr }
+  } });
+  return `<div class="card p-3"><div class="text-sm font-semibold mb-2">${title}</div><div class="chartbox" style="height:${h}px"><canvas id="${id}"></canvas></div></div>`;
+}
+
+function buildCharts() {
+  CQ.forEach(q => {
+    const cv = document.getElementById(q.id); if (!cv) return;
+    if (typeof Chart === 'undefined') { cv.parentElement.innerHTML = '<div class="text-sm text-slate-500 p-4">No se pudo cargar la librería de gráficos. Revisa tu conexión.</div>'; return; }
+    try { CH[q.id] = new Chart(cv, q.cfg); } catch (e) { cv.parentElement.innerHTML = '<div class="text-sm text-red-600 p-4">Error al dibujar el gráfico.</div>'; }
   });
+  CQ = [];
+}
+
+function resumenTable(techs, res, pend, asig) {
+  const rows = techs.map(t => {
+    const r = res.filter(v => v.Usuario_Asignado === t.Usuario), p = pend.filter(v => v.Usuario_Asignado === t.Usuario), a = asig.filter(v => v.Usuario_Asignado === t.Usuario);
+    const f = x => r.filter(x).length;
+    return { t, a: a.length, r: r.length, p: p.length, fis: f(v => v.Tipo_Visita === 'Visita Física'), rem: f(v => v.Tipo_Visita === 'Visita Remota'), nov: f(v => v.Tipo_Visita === 'No Visitado'),
+      act: f(v => ACT.includes(v.Status_Tienda)), ave: f(v => AV.includes(v.Status_Tienda)), cer: f(v => v.Status_Tienda === 'Tienda Cerrada') };
+  }).sort((x, y) => y.r - x.r);
+  const sum = k => rows.reduce((a, r) => a + r[k], 0);
+  if (!rows.length) return '<div class="p-6 text-center text-sm text-slate-400">Sin técnicos</div>';
+  return `<table class="t"><thead><tr><th>Técnico</th><th>Asignadas</th><th>Resueltas</th><th>Pendientes</th><th>Físicas</th><th>Remotas</th><th>No visit.</th><th>Activas</th><th>Averías</th><th>Cerradas</th><th>Avance</th></tr></thead><tbody>
+    ${rows.map(r => `<tr class="clk" data-di="${D({ tec: r.t.Usuario, label: 'Visitas de ' + shortName(r.t) })}"><td class="font-medium whitespace-nowrap">${esc(r.t.Nombre_Apellido)}</td><td>${r.a}</td><td><b>${r.r}</b></td><td>${r.p}</td><td>${r.fis}</td><td>${r.rem}</td><td>${r.nov}</td><td class="text-green-700">${r.act}</td><td class="text-red-700">${r.ave}</td><td>${r.cer}</td><td>${pct(r.r, r.r + r.p)}%</td></tr>`).join('')}
+    <tr class="bg-slate-50 font-semibold"><td>Total</td><td>${sum('a')}</td><td>${sum('r')}</td><td>${sum('p')}</td><td>${sum('fis')}</td><td>${sum('rem')}</td><td>${sum('nov')}</td><td>${sum('act')}</td><td>${sum('ave')}</td><td>${sum('cer')}</td><td>${pct(sum('r'), sum('r') + sum('p'))}%</td></tr></tbody></table>`;
+}
+
+function setDrill(d) {
+  if (d.asigRango) { toast('Esta tarjeta es informativa. Usa el Historial para ver las visitas por fecha.', 'info'); return; }
+  S.drill = d; S.drillPage = 1; renderDrill(true);
+}
+function renderDrill(scroll) {
+  const box = $('#drillBox'); if (!box) return;
+  if (!S.drill) { box.innerHTML = '<div class="text-center text-sm text-slate-400 py-6">Toca una tarjeta, un gráfico o una fila para ver el detalle de las visitas.</div>'; return; }
+  const { res } = sets(), d = S.drill;
+  S.drillList = applyDrill(res, d).sort((a, b) => String(b.Fecha_Resolucion).localeCompare(String(a.Fecha_Resolucion)));
+  box.innerHTML = `<div class="card overflow-hidden"><div class="p-3 flex flex-wrap items-center gap-2 border-b border-slate-100">
+      <div class="font-semibold">Detalle: ${esc(d.label || 'Visitas')}</div><span class="badge bg-blue-100 text-blue-700">${n0(S.drillList.length)} visitas</span>
+      ${d.tec ? `<span class="badge bg-slate-100 text-slate-700">${esc(nameOf(d.tec))}</span>` : ''}
+      <div class="ml-auto flex gap-2"><button class="btn btn-outline !py-1.5" data-csv="drill">Exportar CSV</button><button class="btn btn-ghost !py-1.5" data-drillclear>Limpiar</button></div></div>
+    ${tableHTML(S.drillList, S.drillPage, 'drill')}</div>`;
+  if (scroll) box.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+/* ---------- Tabla de visitas resueltas (detalle e historial) ---------- */
+function tipoBadge(t) { const c = col(t); return `<span class="badge" style="background:${c}1a;color:${c}">${esc(t || '—')}</span>`; }
+function tableHTML(list, page, key) {
+  if (!list.length) return '<div class="p-8 text-center text-sm text-slate-500">Sin visitas para mostrar.</div>';
+  const rows = list.slice(0, page * CONFIG.PAGE);
+  return `<div class="overflow-x-auto"><table class="t"><thead><tr><th>Resolución</th><th>Técnico</th><th>Tienda</th><th>Tipo</th><th>Status</th><th>Dist.</th><th>Fotos</th><th>Observación</th></tr></thead><tbody>
+    ${rows.map(v => `<tr><td class="whitespace-nowrap">${fmtDT(v.Fecha_Resolucion)}</td>
+      <td>${esc(nameOf(v.Usuario_Asignado))}${v.Es_Fuera_De_Ruta === 'SI' ? ' <span class="badge bg-amber-100 text-amber-700">Fuera de ruta</span>' : ''}</td>
+      <td><b>${esc(v.Nombre_Cliente)}</b><div class="text-xs text-slate-400">${esc(v.ID_Cliente)}</div></td>
+      <td>${tipoBadge(v.Tipo_Visita)}</td>
+      <td><span class="badge" style="background:${col(v.Status_Tienda)}1a;color:${col(v.Status_Tienda)}">${esc(v.Status_Tienda || '—')}</span>${v.Retiro_Equipos ? `<div class="mt-1"><span class="badge" style="background:#ffedd5;color:#c2410c">📦 ${esc(v.Retiro_Equipos)}</span></div>` : ''}${v.Reinstalacion_Equipo ? `<div class="mt-1"><span class="badge" style="background:#d1fae5;color:#047857">🔁 Reinstaló ${esc(v.Reinstalacion_Equipo)}</span></div>` : ''}${v.USB_Monitor === 'SI' ? `<div class="mt-1"><span class="badge" style="background:#e0e7ff;color:#4338ca">💾 USB</span></div>` : ''}${v.Mantenimiento === 'SI' ? `<div class="mt-1"><span class="badge" style="background:#e2e8f0;color:#334155">🛠️ Mantenimiento</span></div>` : ''}</td>
+      <td class="whitespace-nowrap">${isNum(v.Distancia_Metros) ? Math.round(v.Distancia_Metros) + ' m' : '—'}</td>
+      <td class="whitespace-nowrap">${v.URL_Foto_Fachada ? `<a class="text-blue-600" target="_blank" rel="noopener" href="${esc(v.URL_Foto_Fachada)}">Fachada</a>` : ''} ${v.URL_Foto_Monitor ? `<a class="text-blue-600" target="_blank" rel="noopener" href="${esc(v.URL_Foto_Monitor)}">Monitor</a>` : ''}${!v.URL_Foto_Fachada && !v.URL_Foto_Monitor ? '—' : ''}</td>
+      <td class="min-w-[160px] max-w-[320px] text-slate-600">${esc(v.Observacion)}</td></tr>`).join('')}</tbody></table></div>
+    ${list.length > rows.length ? `<div class="p-3 text-center"><button class="btn btn-ghost" data-more="${key}">Mostrar más (${n0(list.length - rows.length)})</button></div>` : ''}`;
+}
+
+function exportCSV(list, name) {
+  const q = (v) => { if (v === null || v === undefined) return '""'; let s = String(v); if (typeof v !== 'number' && /^[=+\-@\t\r]/.test(s)) s = "'" + s; return '"' + s.replace(/"/g, '""') + '"'; };
+  const csv = [VCOLS.join(',')].concat(list.map(v => VCOLS.map(c => q(v[c])).join(','))).join('\r\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' }));
+  a.download = name; document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
 }
 
 /* =====================================================================
- *  FORMULARIO DE RESOLUCIÓN DE VISITA
+ *  HISTORIAL
  * ===================================================================== */
-let F = null;
-
-function openVisita(arg) {
-  let v;
-  if (typeof arg === 'string') {
-    v = S.visitas.find(x => x.ID_Visita === arg);
-    if (!v) return toast('No se encontró la visita', 'error');
-    if (v.Estado_Tarea !== 'Pendiente') return toast('Esta visita ya fue resuelta', 'warn');
-  } else {
-    const c = arg.cliente;
-    v = { ID_Visita: '', Usuario_Asignado: S.user.Usuario, ID_Cliente: c.ID_Cliente, Nombre_Cliente: c.Nombre_Cliente, Latitud_Tienda: c.Latitud, Longitud_Tienda: c.Longitud, _fuera: true };
-  }
-  F = { v, fachada: null, monitor: null, galF: false, galM: false, pos: null, dist: null, watchId: null, mini: null, storeMarker: null, meMarker: null, fitted: false };
-
-  openModal(`${modalHeader('Resolver visita', v._fuera ? '<span class="badge bg-amber-100 text-amber-700 align-middle">Fuera de ruta</span>' : '')}
-  <div class="p-4 space-y-4">
-    <div class="card space-y-2">
-      <div class="grid grid-cols-2 gap-2">
-        <div><label class="lbl">Usuario asignado</label><input class="inp" readonly value="${esc(v.Usuario_Asignado)}"></div>
-        <div><label class="lbl">ID Cliente</label><input class="inp" readonly value="${esc(v.ID_Cliente)}"></div>
-      </div>
-      <div><label class="lbl">Nombre del cliente</label><input class="inp" readonly value="${esc(v.Nombre_Cliente)}"></div>
-      <div class="grid grid-cols-2 gap-2">
-        <div><label class="lbl">Latitud</label><input class="inp" readonly value="${esc(v.Latitud_Tienda)}"></div>
-        <div><label class="lbl">Longitud</label><input class="inp" readonly value="${esc(v.Longitud_Tienda)}"></div>
-      </div>
+function buildHist() {
+  const h = S.hist;
+  $('#v-hist').innerHTML = `${filterBar()}
+    <div class="card p-3 mt-3 flex flex-wrap gap-2 items-center">
+      <input id="hQ" type="search" class="inp flex-1 min-w-[180px]" placeholder="Buscar tienda, ID, técnico u observación" value="${esc(h.q)}">
+      <select id="hTipo" class="inp !w-auto"><option value="">Todos los tipos</option>${TIPOS.map(t => `<option ${h.tipo === t ? 'selected' : ''}>${t}</option>`).join('')}</select>
+      <select id="hStatus" class="inp !w-auto"><option value="">Todos los status</option>${INC.map(t => `<option ${h.status === t ? 'selected' : ''}>${t}</option>`).join('')}</select>
+      <label class="flex items-center gap-2 text-sm"><input id="hFuera" type="checkbox" ${h.fuera ? 'checked' : ''}> Solo fuera de ruta</label>
+      <button class="btn btn-outline" data-csv="hist">Exportar CSV</button>
     </div>
-
-    ${avisoEquipos(v)}
-    <div class="card space-y-2">
-      <div id="miniMap" class="w-full h-48 rounded-xl overflow-hidden"></div>
-      <div id="distBox" class="rounded-xl p-2 text-sm bg-slate-100 text-slate-700">Obteniendo ubicación GPS…</div>
-      <button id="btnRecal" type="button" class="btn btn-ghost w-full">📡 Recalibrar GPS</button>
-    </div>
-
-    <div>
-      <label class="lbl">Tipo de visita *</label>
-      <select id="fTipo" class="inp"><option value="">Selecciona…</option>${TIPOS.map(t => `<option>${t}</option>`).join('')}</select>
-      <p class="text-xs text-slate-500 mt-1">“Visita Física” solo se permite a ${CONFIG.GEOCERCA_METROS} m o menos de la tienda.</p>
-    </div>
-
-    <div class="grid grid-cols-2 gap-3">
-      <div>
-        <label class="lbl">Foto de fachada <span class="font-normal text-slate-400">(opcional)</span></label>
-        <label for="fFachada" class="btn btn-outline w-full block text-sm">📷 Tomar foto</label>
-        <input id="fFachada" type="file" accept="image/*" capture="environment" class="hidden">
-        <label for="fFachadaG" class="gal-btn btn btn-ghost w-full text-sm mt-1.5 hidden">🖼️ Elegir de galería</label>
-        <input id="fFachadaG" type="file" accept="image/*" class="hidden">
-        <img id="prevFachada" alt="" class="hidden mt-2 w-full h-28 object-cover rounded-xl border">
-      </div>
-      <div>
-        <label class="lbl">Foto del monitor <span class="font-normal text-slate-400">(obligatoria en visita física)</span></label>
-        <label for="fMonitor" class="btn btn-outline w-full block text-sm">📷 Tomar foto</label>
-        <input id="fMonitor" type="file" accept="image/*" capture="environment" class="hidden">
-        <label for="fMonitorG" class="gal-btn btn btn-ghost w-full text-sm mt-1.5 hidden">🖼️ Elegir de galería</label>
-        <input id="fMonitorG" type="file" accept="image/*" class="hidden">
-        <img id="prevMonitor" alt="" class="hidden mt-2 w-full h-28 object-cover rounded-xl border">
-      </div>
-    </div>
-
-    <div id="fStatusBox">
-      <label class="lbl">Status *</label>
-      <select id="fStatus" class="inp"><option value="">Selecciona…</option>${STATUS.map(t => `<option>${t}</option>`).join('')}</select>
-    </div>
-    <div id="fRetiroBox" class="hidden rounded-xl border border-orange-200 bg-orange-50 p-3 space-y-2.5">
-      <div class="text-sm font-semibold text-orange-800">Equipo que se retira de la tienda</div>
-      <label class="flex items-center gap-3 text-sm font-medium text-slate-800"><input id="fRetNuc" type="checkbox" class="w-5 h-5 accent-orange-600"> Se recoge NUC</label>
-      <label class="flex items-center gap-3 text-sm font-medium text-slate-800"><input id="fRetRb" type="checkbox" class="w-5 h-5 accent-orange-600"> Se recoge RB</label>
-      <p class="text-xs text-orange-700">Solo se puede recoger uno: NUC o RB. Si no se recoge ninguno, deja ambas casillas vacías y explica el motivo en Observación.</p>
-    </div>
-    <div id="fReinstBox" class="hidden rounded-xl border border-emerald-200 bg-emerald-50 p-3 space-y-2.5">
-      <div class="text-sm font-semibold text-emerald-800">Equipo que se reinstala</div>
-      ${((S.equipos || {})[v.ID_Cliente] || {}).pend ? `<div class="text-xs font-semibold text-amber-700">⚠️ Pendiente de reinstalar en esta tienda: ${esc(S.equipos[v.ID_Cliente].pend)}</div>` : ''}
-      <label class="flex items-center gap-3 text-sm font-medium text-slate-800"><input id="fReNuc" type="checkbox" class="w-5 h-5 accent-emerald-600"> Se reinstala NUC</label>
-      <label class="flex items-center gap-3 text-sm font-medium text-slate-800"><input id="fReRb" type="checkbox" class="w-5 h-5 accent-emerald-600"> Se reinstala RB</label>
-      <p class="text-xs text-emerald-700">Solo se puede reinstalar uno: NUC o RB (puede ser distinto al que se retiró). Si no se reinstala ninguno, deja ambas vacías.</p>
-    </div>
-    <div id="fUsbBox" class="hidden rounded-xl border border-indigo-200 bg-indigo-50 p-3 space-y-1.5">
-      <label class="flex items-center gap-3 text-sm font-medium text-slate-800"><input id="fUsb" type="checkbox" class="w-5 h-5 accent-indigo-600"> Instalado USB en Monitor</label>
-      <p class="text-xs text-indigo-700">Marca esta casilla si dejaste un USB en el monitor como salvaguarda.</p>
-    </div>
-    <div id="fMantBox" class="hidden rounded-xl border border-slate-200 bg-slate-50 p-3">
-      <label class="flex items-center gap-3 text-sm font-medium text-slate-800"><input id="fMant" type="checkbox" class="w-5 h-5 accent-slate-700"> Mantenimiento realizado a los equipos</label>
-    </div>
-    <div><label class="lbl">Observación *</label><textarea id="fObs" rows="3" class="inp" placeholder="Comentarios adicionales…"></textarea></div>
-
-    <div id="fErr" class="hidden text-sm text-red-700 bg-red-50 border border-red-200 rounded-xl p-2"></div>
-    <div class="grid grid-cols-2 gap-3">
-      <button data-close class="btn btn-ghost">Cancelar</button>
-      <button id="btnGuardar" class="btn btn-primary">Guardar visita</button>
-    </div>
-  </div>`, cleanupVisita);
-
-  // mini-mapa
-  const hasStore = isNum(v.Latitud_Tienda) && isNum(v.Longitud_Tienda);
-  F.mini = L.map('miniMap', { zoomControl: true }).setView(hasStore ? [v.Latitud_Tienda, v.Longitud_Tienda] : [-12.0464, -77.0428], 17);
-  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap' }).addTo(F.mini);
-  if (hasStore) F.storeMarker = L.marker([v.Latitud_Tienda, v.Longitud_Tienda], { icon: pinIcon('#2563eb') }).addTo(F.mini);
-  setTimeout(() => F && F.mini && F.mini.invalidateSize(), 250);
-
-  $('#btnRecal').addEventListener('click', recalibrarGps);
-  $('#fTipo').addEventListener('change', e => {
-    if (e.target.value === 'Visita Física') {
-      const g = geofenceError();
-      if (g) { alert('⚠️ ' + g); e.target.value = ''; }
-    }
-    // "No Visitado" no lleva Status: se oculta el campo y la observación basta
-    const nv = e.target.value === 'No Visitado';
-    $('#fStatusBox').classList.toggle('hidden', nv);
-    if (nv) $('#fStatus').value = '';
-    // La galería solo se habilita en Visita Remota; al cambiar de tipo se descartan las fotos elegidas de galería
-    const rem = e.target.value === 'Visita Remota';
-    document.querySelectorAll('.gal-btn').forEach(b => b.classList.toggle('hidden', !rem));
-    if (!rem) {
-      let quitadas = false;
-      if (F.galF) { quitarFoto('fachada', 'prevFachada'); quitadas = true; }
-      if (F.galM) { quitarFoto('monitor', 'prevMonitor'); quitadas = true; }
-      if (quitadas) toast('Se quitaron las fotos de galería: solo se permiten en Visita Remota.', 'error');
-    }
-  });
-  // NUC y RB son excluyentes: al marcar una se desmarca la otra
-  $('#fRetNuc').addEventListener('change', e => { if (e.target.checked) $('#fRetRb').checked = false; });
-  $('#fRetRb').addEventListener('change', e => { if (e.target.checked) $('#fRetNuc').checked = false; });
-  $('#fReNuc').addEventListener('change', e => { if (e.target.checked) $('#fReRb').checked = false; });
-  $('#fReRb').addEventListener('change', e => { if (e.target.checked) $('#fReNuc').checked = false; });
-  $('#fTipo').addEventListener('change', syncExtras);
-  $('#fStatus').addEventListener('change', syncExtras);
-  $('#fFachada').addEventListener('change', e => onFoto('fachada', e.target, 'prevFachada', false));
-  $('#fMonitor').addEventListener('change', e => onFoto('monitor', e.target, 'prevMonitor', false));
-  $('#fFachadaG').addEventListener('change', e => onFoto('fachada', e.target, 'prevFachada', true));
-  $('#fMonitorG').addEventListener('change', e => onFoto('monitor', e.target, 'prevMonitor', true));
-  $('#btnGuardar').addEventListener('click', guardarVisita);
-  startGps();
+    <div class="text-xs text-slate-500 mt-2" id="hCount"></div>
+    <div class="card mt-1 overflow-hidden" id="hList"></div>`;
+  updateHist();
 }
-
-/* Campos que dependen del tipo y del status: checklist de retiro (Física + Avería NUC/RB) y observación obligatoria */
-function esFisica() { return $('#fTipo').value === 'Visita Física'; }
-function retiroAplica() { return esFisica() && $('#fStatus').value === 'Avería NUC/RB'; }
-function reinstAplica() { const st = $('#fStatus').value; return esFisica() && (st === 'Activa Validada' || st === 'Activa Sin Validación'); }
-function usbAplica() { return esFisica() && $('#fStatus').value === 'Activa Sin Validación'; }
-function mantAplica() { const st = $('#fStatus').value; return esFisica() && !!st && st !== 'Tienda Cerrada'; }
-function syncExtras() {
-  [['#fRetiroBox', retiroAplica(), ['#fRetNuc', '#fRetRb']], ['#fReinstBox', reinstAplica(), ['#fReNuc', '#fReRb']],
-   ['#fUsbBox', usbAplica(), ['#fUsb']], ['#fMantBox', mantAplica(), ['#fMant']]].forEach(([box, on, checks]) => {
-    $(box).classList.toggle('hidden', !on);
-    if (!on) checks.forEach(c => { $(c).checked = false; });   // al ocultarse se descartan las marcas
-  });
-}
-/* Aviso con el estado de equipos de la tienda (pendiente de reinstalar, USB, instalado sin validar) */
-function avisoEquipos(v) {
-  const eq = (S.equipos || {})[v.ID_Cliente]; if (!eq) return '';
-  const f = d => d ? ` (retirado el ${d.slice(8, 10)}/${d.slice(5, 7)})` : '';
-  const l = [];
-  if (eq.pend) l.push(`⚠️ <b>Equipo pendiente de reinstalar:</b> ${esc(eq.pend)}${f(eq.retiro)}`);
-  if (eq.estado === 'Instalado sin validar') l.push(`🔧 ${esc(eq.comp || 'Equipo')} instalado en la visita anterior, <b>sin validar</b>`);
-  if (eq.usb) l.push('💾 Esta tienda tiene un <b>USB dejado en el monitor</b>');
-  return l.length ? `<div class="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 space-y-1">${l.map(x => `<div>${x}</div>`).join('')}</div>` : '';
-}
-
-function cleanupVisita() {
-  stopGps();
-  if (F && F.mini) { try { F.mini.remove(); } catch (_) {} }
-  F = null;
-}
-
-/* ---------- GPS ---------- */
-function startGps() {
-  stopGps();
-  if (!navigator.geolocation) return gpsMsg('Tu dispositivo no soporta geolocalización.', true);
-  F.watchId = navigator.geolocation.watchPosition(onPos, onGpsErr, { enableHighAccuracy: true, maximumAge: 0, timeout: 20000 });
-}
-function stopGps() { if (F && F.watchId !== null && navigator.geolocation) { navigator.geolocation.clearWatch(F.watchId); F.watchId = null; } }
-function recalibrarGps() {
-  if (!F) return;
-  F.pos = null; F.dist = null; F.fitted = false;
-  gpsMsg('Recalibrando GPS…', false);
-  if (navigator.geolocation) navigator.geolocation.getCurrentPosition(onPos, onGpsErr, { enableHighAccuracy: true, maximumAge: 0, timeout: 20000 });
-  startGps();
-}
-function onGpsErr(err) {
-  const m = { 1: 'Permiso de ubicación denegado. Actívalo en los ajustes del navegador.', 2: 'Ubicación no disponible. Sal a un lugar abierto e inténtalo de nuevo.', 3: 'Tiempo de espera agotado. Pulsa “Recalibrar GPS”.' };
-  gpsMsg(m[err.code] || 'No se pudo obtener el GPS.', true);
-}
-function gpsMsg(text, bad) {
-  const b = $('#distBox'); if (!b) return;
-  b.className = `rounded-xl p-2 text-sm ${bad ? 'bg-red-50 text-red-700' : 'bg-slate-100 text-slate-700'}`;
-  b.textContent = text;
-}
-function onPos(p) {
-  if (!F) return;
-  F.pos = { lat: p.coords.latitude, lng: p.coords.longitude, acc: p.coords.accuracy };
-  const ll = [F.pos.lat, F.pos.lng];
-  if (F.mini) {
-    if (F.meMarker) F.meMarker.setLatLng(ll); else F.meMarker = L.marker(ll, { icon: meIcon() }).addTo(F.mini);
-    if (!F.fitted && F.storeMarker) { F.fitted = true; F.mini.fitBounds([ll, F.storeMarker.getLatLng()], { padding: [30, 30], maxZoom: 18 }); }
-  }
-  updateDist();
-}
-function updateDist() {
-  if (!F || !F.pos) return;
-  const v = F.v;
-  if (!isNum(v.Latitud_Tienda) || !isNum(v.Longitud_Tienda)) return gpsMsg('La tienda no tiene coordenadas válidas.', true);
-  F.dist = haversine(F.pos.lat, F.pos.lng, v.Latitud_Tienda, v.Longitud_Tienda);
-  const ok = F.dist <= CONFIG.GEOCERCA_METROS;
-  const b = $('#distBox'); if (!b) return;
-  b.className = `rounded-xl p-2 text-sm ${ok ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-700'}`;
-  b.innerHTML = `<b class="text-base">${Math.round(F.dist)} m</b> de la tienda · ${ok ? '✅ Dentro de la geocerca' : `⛔ Fuera de geocerca (máx. ${CONFIG.GEOCERCA_METROS} m para Visita Física)`}
-    <div class="text-xs opacity-75">Precisión GPS ±${Math.round(F.pos.acc)} m</div>`;
-}
-function geofenceError() {
-  if (!F.pos) return 'Aún no hay señal GPS. Espera a que se detecte tu ubicación o pulsa “Recalibrar GPS”.';
-  if (F.dist === null) return 'La tienda no tiene coordenadas válidas.';
-  if (F.dist > CONFIG.GEOCERCA_METROS) return `Estás a ${Math.round(F.dist)} metros de la tienda. Para registrar una Visita Física debes estar a ${CONFIG.GEOCERCA_METROS} m o menos.`;
-  return null;
-}
-
-/* ---------- Fotos (compresión en cliente) ---------- */
-function compressImage(file) {
-  return new Promise((resolve, reject) => {
-    const url = URL.createObjectURL(file);
-    const img = new Image();
-    img.onload = () => {
-      try {
-        const cv = $('#cv');
-        const scale = Math.min(1, CONFIG.FOTO_MAX_ANCHO / img.naturalWidth);
-        const w = Math.round(img.naturalWidth * scale), h = Math.round(img.naturalHeight * scale);
-        cv.width = w; cv.height = h;
-        const ctx = cv.getContext('2d');
-        ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, w, h);
-        ctx.drawImage(img, 0, 0, w, h);
-        const data = cv.toDataURL('image/jpeg', CONFIG.FOTO_CALIDAD);
-        URL.revokeObjectURL(url);
-        resolve(data);
-      } catch (e) { reject(e); }
-    };
-    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('No se pudo leer la imagen')); };
-    img.src = url;
-  });
-}
-function quitarFoto(kind, prevId) {
-  F[kind] = null;
-  if (kind === 'fachada') F.galF = false; else F.galM = false;
-  const pv = $('#' + prevId); pv.removeAttribute('src'); pv.classList.add('hidden');
-}
-async function onFoto(kind, input, prevId, gal) {
-  const f = input.files && input.files[0]; if (!f || !F) return;
-  if (gal && $('#fTipo').value !== 'Visita Remota') { input.value = ''; return toast('La galería solo se permite en Visita Remota.', 'error'); }
-  try {
-    const data = await compressImage(f);
-    F[kind] = data;
-    if (kind === 'fachada') F.galF = !!gal; else F.galM = !!gal;
-    const pv = $('#' + prevId); pv.src = data; pv.classList.remove('hidden');
-  } catch (e) { toast(e.message, 'error'); }
-  input.value = '';
-}
-
-/* ---------- Guardar ---------- */
-function fErr(msg) { const e = $('#fErr'); e.textContent = msg; e.classList.remove('hidden'); e.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
-
-async function guardarVisita() {
-  if (!F) return;
-  $('#fErr').classList.add('hidden');
-  const tipo = $('#fTipo').value, status = $('#fStatus').value, obs = $('#fObs').value.trim();
-  if (!tipo) return fErr('Selecciona el tipo de visita.');
-  if (tipo !== 'No Visitado' && !status) return fErr('Selecciona el Status de la tienda.');
-  if (!obs) return fErr('La Observación es obligatoria. Escribe el detalle de la visita.');
-  if (tipo !== 'Visita Remota' && (F.galF || F.galM)) return fErr('Las fotos de galería solo se permiten en Visita Remota.');
-  if (tipo === 'Visita Física') {
-    const g = geofenceError();
-    if (g) { alert('⚠️ ' + g); return; }
-    if (CONFIG.MONITOR_OBLIGATORIO_FISICA && !F.monitor) return fErr('Para una Visita Física debes adjuntar la foto del monitor.');
-  }
-  const v = F.v;
-  const btn = $('#btnGuardar'); btn.disabled = true; btn.textContent = 'Guardando…';
-  showLoading(true);
-  try {
-    await api('resolveVisit', {
-      idVisita: v.ID_Visita || '',
-      fueraDeRuta: !!v._fuera,
-      idCliente: v.ID_Cliente,
-      tipoVisita: tipo,
-      status: tipo === 'No Visitado' ? '' : status,
-      observacion: obs,
-      latReal: F.pos ? F.pos.lat : null,
-      lngReal: F.pos ? F.pos.lng : null,
-      fotoFachada: F.fachada,
-      fotoMonitor: F.monitor,
-      fotoGaleria: !!(F.galF || F.galM),
-      retiroNuc: retiroAplica() && $('#fRetNuc').checked,
-      retiroRb: retiroAplica() && $('#fRetRb').checked,
-      reinstalaNuc: reinstAplica() && $('#fReNuc').checked,
-      reinstalaRb: reinstAplica() && $('#fReRb').checked,
-      usbMonitor: usbAplica() && $('#fUsb').checked,
-      mantenimiento: mantAplica() && $('#fMant').checked
-    });
-    toast('Visita guardada correctamente', 'ok');
-    closeModal();
-    await refreshData(true);
-  } catch (e) {
-    showLoading(false);
-    if (e.code === 'GEOFENCE') alert('⚠️ ' + e.message); else fErr(e.message);
-    btn.disabled = false; btn.textContent = 'Guardar visita';
-  } finally { showLoading(false); }
+function updateHist() {
+  const h = S.hist, { res } = sets(), q = norm(h.q.trim());
+  const list = res.filter(v => (!h.tipo || v.Tipo_Visita === h.tipo) && (!h.status || v.Status_Tienda === h.status) && (!h.fuera || v.Es_Fuera_De_Ruta === 'SI')
+    && (!q || norm(v.Nombre_Cliente).includes(q) || norm(v.ID_Cliente).includes(q) || norm(nameOf(v.Usuario_Asignado)).includes(q) || norm(v.Observacion).includes(q)))
+    .sort((a, b) => String(b.Fecha_Resolucion).localeCompare(String(a.Fecha_Resolucion)));
+  S.histList = list;
+  const c = $('#hCount'), l = $('#hList'); if (!c || !l) return;
+  c.textContent = `${n0(list.length)} visitas resueltas · ${rangeLabel()}`;
+  l.innerHTML = tableHTML(list, h.page, 'hist');
 }
 
 /* =====================================================================
- *  PERFIL: CAMBIAR CONTRASEÑA
+ *  VISITAS PENDIENTES (gestión masiva)
  * ===================================================================== */
-function openPass() {
-  openModal(`${modalHeader('Cambiar contraseña')}
-    <div class="p-4 space-y-3">
-      <div><label class="lbl">Contraseña actual</label><input id="pwA" type="password" class="inp" autocomplete="current-password"></div>
-      <div><label class="lbl">Nueva contraseña (mín. 6)</label><input id="pwN" type="password" class="inp" autocomplete="new-password"></div>
-      <div><label class="lbl">Repetir nueva contraseña</label><input id="pwR" type="password" class="inp" autocomplete="new-password"></div>
-      <div id="pwErr" class="hidden text-sm text-red-700 bg-red-50 rounded-xl p-2"></div>
-      <button id="btnPwOk" class="btn btn-primary w-full">Guardar</button>
-    </div>`);
-  $('#btnPwOk').addEventListener('click', async () => {
-    const er = $('#pwErr'); er.classList.add('hidden');
-    const a = $('#pwA').value, n = $('#pwN').value, r = $('#pwR').value;
+function buildPend() {
+  const p = S.pend;
+  $('#v-pend').innerHTML = `
+    <div class="card p-3 flex flex-wrap gap-2 items-center">
+      <input id="pQ" type="search" class="inp flex-1 min-w-[200px]" placeholder="Buscar por tienda, ID o técnico" value="${esc(p.q)}">
+      <select id="pTec" class="inp !w-auto"><option value="">Todos los técnicos</option>${orderedUsers().map(u => `<option value="${esc(u.Usuario)}" ${p.tec === u.Usuario ? 'selected' : ''}>${esc(u.Nombre_Apellido)}</option>`).join('')}</select>
+      <label class="flex items-center gap-2 text-sm"><input id="pAtr" type="checkbox" ${p.soloAtras ? 'checked' : ''}> Solo de días anteriores</label>
+    </div>
+    <div id="pChips" class="flex flex-wrap gap-1.5 mt-3"></div>
+    <div class="card mt-3 overflow-hidden">
+      <label class="flex items-center gap-3 p-3 border-b border-slate-100 cursor-pointer text-sm font-medium"><input id="pAll" type="checkbox"><span id="pCount"></span></label>
+      <div id="pList"></div>
+    </div>
+    <div id="pBar" class="sticky bottom-3 mt-3 z-10"></div>`;
+  updatePend();
+}
+function pendFiltered() {
+  const p = S.pend, q = norm(p.q.trim()), hoy = ymd(new Date());
+  return S.visitas.filter(v => v.Estado_Tarea === 'Pendiente' && (!p.tec || v.Usuario_Asignado === p.tec) && (!p.soloAtras || dOf(v.Fecha_Asignacion) < hoy)
+    && (!q || norm(v.Nombre_Cliente).includes(q) || norm(v.ID_Cliente).includes(q) || norm(nameOf(v.Usuario_Asignado)).includes(q)))
+    .sort((a, b) => String(a.Fecha_Asignacion).localeCompare(String(b.Fecha_Asignacion)));
+}
+function daysAgo(s) { const d = dOf(s); if (!d) return 0; return Math.max(0, Math.round((new Date(ymd(new Date()) + 'T00:00:00') - new Date(d + 'T00:00:00')) / 86400000)); }
+function updatePend() {
+  const p = S.pend, list = pendFiltered(); S.pendList = list;
+  const all = S.visitas.filter(v => v.Estado_Tarea === 'Pendiente');
+  const chips = orderedUsers().filter(u => u.Rol === 'Técnico' || all.some(v => v.Usuario_Asignado === u.Usuario)).map(u => {
+    const n = all.filter(v => v.Usuario_Asignado === u.Usuario).length;
+    return `<button class="chip ${p.tec === u.Usuario ? 'chip-on' : ''}" data-pchip="${esc(u.Usuario)}">${esc(shortName(u))}: ${n}</button>`;
+  }).join('');
+  const ch = $('#pChips'), pl = $('#pList'); if (!ch || !pl) return;
+  ch.innerHTML = chips;
+  const rows = list.slice(0, p.page * CONFIG.PAGE);
+  pl.innerHTML = rows.length ? rows.map(v => { const d = daysAgo(v.Fecha_Asignacion);
+    return `<label class="row"><input type="checkbox" data-pid="${esc(v.ID_Visita)}" ${p.sel.has(v.ID_Visita) ? 'checked' : ''}>
+      <div class="min-w-0 flex-1"><div class="font-medium truncate">${esc(v.Nombre_Cliente)}</div><div class="text-xs text-slate-400">${esc(v.ID_Cliente)} · asignada ${fmtDT(v.Fecha_Asignacion)}</div></div>
+      <div class="text-right"><div class="text-sm">${esc(shortName(U(v.Usuario_Asignado) || { Usuario: v.Usuario_Asignado }))}</div>${d > 0 ? `<span class="badge bg-amber-100 text-amber-700">hace ${d} d</span>` : '<span class="badge bg-blue-100 text-blue-700">hoy</span>'}</div></label>`; }).join('')
+      + (list.length > rows.length ? `<div class="p-3 text-center"><button class="btn btn-ghost" data-more="pend">Mostrar más (${n0(list.length - rows.length)})</button></div>` : '')
+    : '<div class="p-8 text-center text-sm text-slate-500">No hay visitas pendientes con ese filtro 🎉</div>';
+  updatePendBar();
+}
+function updatePendBar() {
+  const p = S.pend, list = S.pendList || [], n = p.sel.size;
+  const allOn = list.length && list.every(v => p.sel.has(v.ID_Visita));
+  const a = $('#pAll'); if (a) { a.checked = !!allOn; }
+  const c = $('#pCount'); if (c) c.textContent = `Seleccionar las ${n0(list.length)} visitas filtradas${n ? ` · ${n0(n)} seleccionadas` : ''}`;
+  const bar = $('#pBar'); if (!bar) return;
+  bar.innerHTML = n ? `<div class="card p-3 shadow-xl border-blue-300 flex flex-wrap items-center gap-2">
+      <b class="text-sm">${n0(n)} seleccionadas</b>
+      <select id="pDest" class="inp !w-auto ml-auto"><option value="">Reasignar a…</option>${orderedUsers().map(u => `<option value="${esc(u.Usuario)}">${esc(u.Nombre_Apellido)} (${pendCount(u.Usuario)} pend.)</option>`).join('')}</select>
+      <button class="btn btn-primary" data-pact="reasignar">Reasignar</button>
+      <button class="btn btn-danger" data-pact="eliminar">Eliminar</button>
+      <button class="btn btn-ghost" data-pact="limpiar">Limpiar</button></div>` : '';
+}
+
+async function pendAction(kind) {
+  const ids = [...S.pend.sel]; if (!ids.length) return;
+  if (kind === 'limpiar') { S.pend.sel.clear(); updatePend(); return; }
+  if (kind === 'reasignar') {
+    const dest = $('#pDest') ? $('#pDest').value : '';
+    if (!dest) return toast('Elige el técnico destino', 'warn');
+    if (!confirm(`¿Reasignar ${ids.length} visitas a ${nameOf(dest)}?`)) return;
+    showLoading(true, 'Reasignando…');
+    let ok = 0;
+    try { for (const lote of chunk(ids, CONFIG.LOTE_REASIGNAR)) { const r = await api('reassignVisitsBulk', { idsVisita: lote, usuario: dest }); ok += r.reasignadas; } toast(`${ok} visitas reasignadas a ${nameOf(dest)}`, 'ok'); }
+    catch (e) { toast(`${e.message} (reasignadas: ${ok})`, 'error'); }
+    S.pend.sel.clear(); await loadData(true); buildPend();
+  } else if (kind === 'eliminar') {
+    if (!confirm(`¿Eliminar ${ids.length} visitas pendientes? Esta acción no se puede deshacer.`)) return;
+    showLoading(true, 'Eliminando…');
+    let ok = 0;
+    try { for (const lote of chunk(ids, CONFIG.LOTE_ELIMINAR)) { const r = await api('deleteVisitsBulk', { idsVisita: lote }); ok += r.eliminadas; } toast(`${ok} visitas eliminadas`, 'ok'); }
+    catch (e) { toast(`${e.message} (eliminadas: ${ok})`, 'error'); }
+    S.pend.sel.clear(); await loadData(true); buildPend();
+  }
+  showLoading(false);
+}
+
+/* =====================================================================
+ *  ASIGNACIÓN MASIVA
+ * ===================================================================== */
+function buildAsig() {
+  const a = S.asig;
+  if (!a.tecsInit && S.usuarios.length) { S.usuarios.filter(u => u.Rol === 'Técnico').forEach(u => a.tecs.add(u.Usuario)); a.tecsInit = true; }
+  $('#v-asig').innerHTML = `
+    <div class="grid grid-cols-1 lg:grid-cols-5 gap-3 items-start">
+      <div class="lg:col-span-3 space-y-3">
+        <div class="card p-3 space-y-2">
+          <div class="font-semibold">1 · Elige las tiendas</div>
+          <div class="flex flex-wrap gap-2 items-center">
+            <input id="aQ" type="search" class="inp flex-1 min-w-[180px]" placeholder="Buscar por nombre o ID de tienda" value="${esc(a.q)}">
+            <label class="flex items-center gap-2 text-sm"><input id="aOcultar" type="checkbox" ${a.ocultarPend ? 'checked' : ''}> Ocultar las que ya tienen visita pendiente</label>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <button class="btn btn-outline !py-1.5" data-aact="todos">Seleccionar todas las filtradas</button>
+            <button class="btn btn-ghost !py-1.5" data-aact="limpiar">Limpiar selección</button>
+            <button class="btn btn-ghost !py-1.5" data-aact="pegar">Pegar lista de IDs</button>
+          </div>
+          <div id="aPasteBox" class="hidden space-y-2">
+            <textarea id="aPaste" rows="4" class="inp" placeholder="Pega aquí los ID de cliente (uno por línea o separados por comas/espacios)"></textarea>
+            <div class="flex items-center gap-2"><button class="btn btn-primary !py-1.5" data-aact="aplicarids">Seleccionar estos IDs</button><span id="aPasteMsg" class="text-xs text-slate-500"></span></div>
+          </div>
+          <div class="text-xs text-slate-500" id="aCount"></div>
+        </div>
+        <div class="card overflow-y-auto max-h-[55vh] lg:max-h-[72vh]" id="aList"></div>
+      </div>
+      <div class="lg:col-span-2 lg:sticky lg:top-20"><div class="card p-3 space-y-3" id="aPlan"></div></div>
+    </div>
+    <div id="aBar" class="lg:hidden sticky bottom-3 mt-3 z-10"></div>`;
+  updateAsigList(); updateAsigPlan();
+}
+function clientesFiltrados() {
+  const a = S.asig, q = norm(a.q.trim());
+  return S.clientes.filter(c => (!q || norm(c.Nombre_Cliente).includes(q) || norm(c.ID_Cliente).includes(q)) && (!a.ocultarPend || !(S.pendByClient[c.ID_Cliente] || []).length));
+}
+function updateAsigList() {
+  const a = S.asig, list = clientesFiltrados(); S.asigFiltered = list;
+  const rows = list.slice(0, a.page * CONFIG.PAGE), box = $('#aList'); if (!box) return;
+  box.innerHTML = rows.length ? rows.map(c => { const pd = S.pendByClient[c.ID_Cliente] || [];
+    return `<label class="row"><input type="checkbox" data-cid="${esc(c.ID_Cliente)}" ${a.sel.has(c.ID_Cliente) ? 'checked' : ''}>
+      <div class="min-w-0 flex-1"><div class="font-medium truncate">${esc(c.Nombre_Cliente)}</div><div class="text-xs text-slate-400">${esc(c.ID_Cliente)}${isNum(c.Latitud) && isNum(c.Longitud) ? '' : ' · sin coordenadas'}</div></div>
+      ${pd.length ? `<span class="badge bg-amber-100 text-amber-700">Pendiente · ${esc(shortName(U(pd[0].Usuario_Asignado) || { Usuario: pd[0].Usuario_Asignado }))}</span>` : ''}</label>`; }).join('')
+    + (list.length > rows.length ? `<div class="p-3 text-center"><button class="btn btn-ghost" data-more="asig">Mostrar más (${n0(list.length - rows.length)})</button></div>` : '')
+    : '<div class="p-8 text-center text-sm text-slate-500">No hay tiendas con ese filtro.</div>';
+  updateAsigCount();
+}
+function updateAsigCount() {
+  const c = $('#aCount'); if (c) c.textContent = `${n0((S.asigFiltered || []).length)} tiendas en la lista · ${n0(S.asig.sel.size)} seleccionadas`;
+  const b = $('#aBar'); if (b) b.innerHTML = S.asig.sel.size ? `<button class="btn btn-primary w-full shadow-xl" data-aact="irplan">${n0(S.asig.sel.size)} seleccionadas · Definir reparto y asignar ↓</button>` : '';
+}
+
+// Algoritmo de "zonas": recorre las tiendas por vecino más cercano y corta la ruta en tramos consecutivos
+function ordenZonas(ids) {
+  const pts = ids.map(id => S.clientMap[id]);
+  const ok = c => isNum(c.Latitud) && isNum(c.Longitud);
+  const con = pts.filter(ok), sin = pts.filter(c => !ok(c));
+  if (!con.length) return pts.map(c => c.ID_Cliente);
+  const kx = Math.cos(con[0].Latitud * Math.PI / 180), rest = con.slice();
+  let cur = rest.reduce((m, c) => c.Longitud < m.Longitud ? c : m); rest.splice(rest.indexOf(cur), 1);
+  const out = [cur];
+  while (rest.length) {
+    let bi = 0, bd = Infinity;
+    for (let i = 0; i < rest.length; i++) { const dx = (rest[i].Longitud - cur.Longitud) * kx, dy = rest[i].Latitud - cur.Latitud, d = dx * dx + dy * dy; if (d < bd) { bd = d; bi = i; } }
+    cur = rest.splice(bi, 1)[0]; out.push(cur);
+  }
+  return out.concat(sin).map(c => c.ID_Cliente);
+}
+
+function planAsig() {
+  const a = S.asig;
+  let ids = [...a.sel].filter(id => S.clientMap[id]);
+  const total = ids.length; let omit = 0;
+  if (a.omitir) { const f = ids.filter(id => !(S.pendByClient[id] || []).length); omit = ids.length - f.length; ids = f; }
+  ids.sort((x, y) => String(S.clientMap[x].Nombre_Cliente).localeCompare(String(S.clientMap[y].Nombre_Cliente), 'es'));
+  const tecs = a.modo === 'uno' ? (a.destino ? [a.destino] : []) : orderedUsers().filter(u => a.tecs.has(u.Usuario)).map(u => u.Usuario);
+  const items = [];
+  if (tecs.length && ids.length) {
+    if (a.modo === 'uno') ids.forEach(id => items.push({ idCliente: id, usuario: tecs[0] }));
+    else if (a.modo === 'turnos') ids.forEach((id, i) => items.push({ idCliente: id, usuario: tecs[i % tecs.length] }));
+    else if (a.modo === 'zonas') {
+      const ord = ordenZonas(ids), n = ord.length, k = tecs.length, base = Math.floor(n / k), extra = n % k; let p = 0;
+      tecs.forEach((t, i) => { const sz = base + (i < extra ? 1 : 0); for (let j = 0; j < sz; j++) items.push({ idCliente: ord[p++], usuario: t }); });
+    } else {
+      const load = {}; tecs.forEach(t => { load[t] = pendCount(t); });
+      ids.forEach(id => { let b = tecs[0]; tecs.forEach(t => { if (load[t] < load[b]) b = t; }); load[b]++; items.push({ idCliente: id, usuario: b }); });
+    }
+  }
+  const per = {}; items.forEach(i => { per[i.usuario] = (per[i.usuario] || 0) + 1; });
+  return { items, per, total, omit, tecs, efectivas: ids.length };
+}
+
+function updateAsigPlan() {
+  const a = S.asig, box = $('#aPlan'); if (!box) return;
+  const plan = planAsig(), users = orderedUsers();
+  const modos = [['zonas', 'Por zonas cercanas', 'Cada técnico recibe tiendas próximas entre sí (según coordenadas).'],
+    ['turnos', 'En partes iguales (por turnos)', 'Reparto 1 a 1 entre los técnicos elegidos.'],
+    ['carga', 'Equilibrar por carga actual', 'Prioriza a quien tiene menos pendientes.'],
+    ['uno', 'Todo a un solo técnico', 'Asigna todas las tiendas a la misma persona.']];
+  box.innerHTML = `
+    <div class="font-semibold">2 · Define el reparto</div>
+    <div class="space-y-1.5">${modos.map(([k, l, d]) => `<label class="flex items-start gap-2 p-2 rounded-lg border ${a.modo === k ? 'border-blue-500 bg-blue-50' : 'border-slate-200'} cursor-pointer"><input type="radio" name="amodo" value="${k}" ${a.modo === k ? 'checked' : ''} class="mt-0.5"><span><span class="text-sm font-medium">${l}</span><span class="block text-xs text-slate-500">${d}</span></span></label>`).join('')}</div>
+    ${a.modo === 'uno'
+      ? `<div><label class="text-xs font-semibold text-slate-500">Técnico destino</label><select id="aDestino" class="inp mt-1"><option value="">Selecciona…</option>${users.map(u => `<option value="${esc(u.Usuario)}" ${a.destino === u.Usuario ? 'selected' : ''}>${esc(u.Nombre_Apellido)} (${pendCount(u.Usuario)} pend.)${u.Rol === 'Supervisor' ? ' · Supervisor' : ''}</option>`).join('')}</select></div>`
+      : `<div><div class="flex items-center justify-between text-xs font-semibold text-slate-500 mb-1"><span>Técnicos que participan</span><span><button class="text-blue-600" data-aact="tec-todos">Todos</button> · <button class="text-blue-600" data-aact="tec-ninguno">Ninguno</button></span></div>
+        <div class="max-h-48 overflow-y-auto border border-slate-200 rounded-lg divide-y divide-slate-100">${users.map(u => `<label class="flex items-center gap-2 px-2.5 py-2 cursor-pointer hover:bg-slate-50"><input type="checkbox" data-atec="${esc(u.Usuario)}" ${a.tecs.has(u.Usuario) ? 'checked' : ''}><span class="text-sm flex-1 truncate">${esc(u.Nombre_Apellido)}${u.Rol === 'Supervisor' ? ' <span class="badge bg-purple-100 text-purple-700">Sup.</span>' : ''}</span><span class="text-xs text-slate-400">${pendCount(u.Usuario)} pend.</span></label>`).join('')}</div></div>`}
+    <label class="flex items-start gap-2 text-sm"><input id="aOmitir" type="checkbox" ${a.omitir ? 'checked' : ''} class="mt-0.5"><span>Omitir tiendas que ya tienen una visita pendiente<span class="block text-xs text-slate-400">Evita duplicar visitas abiertas.</span></span></label>
+    <div class="font-semibold">3 · Revisa y asigna</div>
+    <div class="text-sm">Seleccionadas: <b>${n0(plan.total)}</b>${plan.omit ? ` · se omitirán <b class="text-amber-700">${n0(plan.omit)}</b> con visita pendiente` : ''} · a asignar: <b class="text-blue-700">${n0(plan.items.length)}</b></div>
+    ${plan.tecs.length ? `<div class="overflow-x-auto"><table class="t"><thead><tr><th>Técnico</th><th>Pend. hoy</th><th>Nuevas</th><th>Total</th></tr></thead><tbody>${plan.tecs.map(t => `<tr><td>${esc(shortName(U(t) || { Usuario: t }))}</td><td>${pendCount(t)}</td><td class="font-semibold text-blue-700">+${plan.per[t] || 0}</td><td>${pendCount(t) + (plan.per[t] || 0)}</td></tr>`).join('')}</tbody></table></div>` : '<div class="text-xs text-slate-400">Elige al menos un técnico para ver la vista previa.</div>'}
+    <button class="btn btn-primary w-full" data-aact="ejecutar" ${plan.items.length ? '' : 'disabled'}>Asignar ${n0(plan.items.length)} visitas</button>`;
+}
+
+async function ejecutarAsig() {
+  const plan = planAsig(); if (!plan.items.length) return;
+  const resumen = plan.tecs.map(t => `• ${nameOf(t)}: +${plan.per[t] || 0}`).join('\n');
+  if (!confirm(`¿Asignar ${plan.items.length} visitas?\n\n${resumen}`)) return;
+  showLoading(true, 'Asignando visitas…');
+  let ok = 0; const omit = []; let fallo = '';
+  try {
+    const lotes = chunk(plan.items, CONFIG.LOTE_ASIGNAR);
+    for (let i = 0; i < lotes.length; i++) {
+      showLoading(true, `Asignando visitas… (${i + 1}/${lotes.length})`);
+      const r = await api('assignVisitsBulk', { items: lotes[i], omitirPendientes: S.asig.omitir });
+      ok += r.asignadas; omit.push(...r.omitidas);
+    }
+  } catch (e) { fallo = e.message; }
+  S.asig.sel.clear(); S.asig.page = 1;
+  await loadData(true); showLoading(false);
+  buildAsig();
+  openModal(`<div class="p-5 space-y-3">
+    <div class="text-lg font-bold ${fallo ? 'text-amber-700' : 'text-green-700'}">${fallo ? 'Asignación incompleta' : 'Asignación completada'}</div>
+    <div class="text-sm">Visitas creadas: <b>${n0(ok)}</b>${omit.length ? ` · Omitidas: <b>${n0(omit.length)}</b>` : ''}</div>
+    ${fallo ? `<div class="text-sm text-red-700 bg-red-50 rounded-lg p-2">${esc(fallo)}</div>` : ''}
+    ${omit.length ? `<div class="max-h-48 overflow-y-auto text-xs border border-slate-200 rounded-lg divide-y">${omit.slice(0, 80).map(o => `<div class="p-2"><b>${esc(o.idCliente)}</b> · ${esc(o.motivo)}</div>`).join('')}${omit.length > 80 ? `<div class="p-2 text-slate-400">… y ${omit.length - 80} más</div>` : ''}</div>` : ''}
+    <button class="btn btn-primary w-full" data-close>Aceptar</button></div>`);
+}
+
+function aplicarIds() {
+  const raw = $('#aPaste').value, ids = [...new Set(raw.split(/[\s,;]+/).map(s => s.trim()).filter(Boolean))];
+  let ok = 0; const no = [];
+  ids.forEach(id => { if (S.clientMap[id]) { S.asig.sel.add(id); ok++; } else no.push(id); });
+  $('#aPasteMsg').textContent = `${ok} seleccionados${no.length ? ` · ${no.length} no encontrados: ${no.slice(0, 5).join(', ')}${no.length > 5 ? '…' : ''}` : ''}`;
+  updateAsigList(); updateAsigPlan();
+}
+
+/* =====================================================================
+ *  EQUIPO Y ACCESOS
+ * ===================================================================== */
+function renderEquipo() {
+  const { res } = sets(), hoy = ymd(new Date());
+  $('#v-equipo').innerHTML = `${filterBar()}<div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 mt-3">${orderedUsers().map(u => {
+    const p = pendCount(u.Usuario), r = res.filter(v => v.Usuario_Asignado === u.Usuario).length;
+    const ult = String(u.Ultimo_Acceso || ''), reciente = dOf(ult) === hoy;
+    return `<div class="card p-3.5"><div class="flex items-center gap-3">
+      <div class="w-11 h-11 rounded-full bg-blue-100 text-blue-700 font-bold flex items-center justify-center shrink-0">${esc(initials(u.Nombre_Apellido))}</div>
+      <div class="min-w-0"><div class="font-semibold truncate">${esc(u.Nombre_Apellido)}</div><div class="text-xs text-slate-500">@${esc(u.Usuario)} · <span class="badge ${u.Rol === 'Supervisor' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}">${esc(u.Rol)}</span></div></div></div>
+      <div class="grid grid-cols-2 gap-2 mt-3 text-center"><div class="bg-slate-50 rounded-lg p-2"><div class="text-xl font-bold text-blue-600">${p}</div><div class="text-[11px] text-slate-500">pendientes</div></div><div class="bg-slate-50 rounded-lg p-2"><div class="text-xl font-bold text-green-600">${r}</div><div class="text-[11px] text-slate-500">resueltas (${rangeLabel()})</div></div></div>
+      <div class="text-xs text-slate-500 mt-2"><span class="dot" style="background:${reciente ? '#16a34a' : '#cbd5e1'}"></span> Último acceso: ${ult ? fmtDT(ult) : 'nunca'}${u.Dispositivo_Ultimo_Acceso ? ' · ' + esc(u.Dispositivo_Ultimo_Acceso) : ''}</div>
+      <div class="flex gap-2 mt-3"><button class="btn btn-outline !py-1.5 flex-1" data-teamgo="dash" data-u="${esc(u.Usuario)}">Dashboard</button><button class="btn btn-outline !py-1.5 flex-1" data-teamgo="pend" data-u="${esc(u.Usuario)}">Pendientes</button></div></div>`; }).join('')}</div>`;
+}
+
+async function loadLogs() {
+  $('#v-logs').innerHTML = '<div class="card p-8 text-center text-sm text-slate-500">Cargando accesos…</div>';
+  try { S.logs = await api('getLogs'); renderLogs(); } catch (e) { if (e.code !== 'AUTH') toast(e.message, 'error'); }
+}
+function renderLogs() {
+  const f = S.logsFiltro, list = S.logs.filter(l => !f || l.Usuario === f);
+  $('#v-logs').innerHTML = `<div class="card p-3 flex flex-wrap items-center gap-2"><select id="lgFiltro" class="inp !w-auto"><option value="">Todos los usuarios</option>${orderedUsers().map(u => `<option value="${esc(u.Usuario)}" ${f === u.Usuario ? 'selected' : ''}>${esc(u.Nombre_Apellido)}</option>`).join('')}</select><span class="text-xs text-slate-500">Últimos ${n0(S.logs.length)} accesos</span></div>
+    <div class="card mt-3 overflow-hidden"><div class="overflow-x-auto"><table class="t"><thead><tr><th>Fecha y hora</th><th>Usuario</th><th>Rol</th><th>Dispositivo</th></tr></thead><tbody>${list.length ? list.map(l => `<tr><td class="whitespace-nowrap">${fmtDT(l.Timestamp)}</td><td>${esc(nameOf(l.Usuario))} <span class="text-xs text-slate-400">@${esc(l.Usuario)}</span></td><td>${esc(l.Rol)}</td><td>${esc(l.Dispositivo_UserAgent)}</td></tr>`).join('') : '<tr><td colspan="4" class="text-center text-slate-400 p-6">Sin registros</td></tr>'}</tbody></table></div></div>`;
+}
+
+/* =====================================================================
+ *  INFORMACIÓN DE TIENDA (matriz con la última incidencia de cada tienda)
+ * ===================================================================== */
+const diasDesde = s => { const d = dOf(s); if (!d) return null; return Math.round((new Date(ymd(new Date()) + 'T00:00:00') - new Date(d + 'T00:00:00')) / 86400000); };
+const ESTADO_COL = { 'En Línea': ['#dcfce7', '#15803d'], 'Pendiente': ['#fef3c7', '#b45309'], 'Avería': ['#fee2e2', '#b91c1c'], 'Tienda Cerrada': ['#e2e8f0', '#475569'], 'Solicitud de Retiro': ['#ede9fe', '#6d28d9'] };
+const estadoBadge = (t, big) => t.Estado_Tienda
+  ? `<span class="badge ${big ? '!text-sm !px-3 !py-1' : ''}" style="background:${(ESTADO_COL[t.Estado_Tienda] || ['#f1f5f9', '#475569'])[0]};color:${(ESTADO_COL[t.Estado_Tienda] || ['#f1f5f9', '#475569'])[1]}">${esc(t.Estado_Tienda)}</span>`
+  : '<span class="text-xs text-slate-400">Sin dato</span>';
+const origenTxt = o => o === 'Importado' ? 'base anterior' : o === 'Visita' ? 'visita' : '';
+const TFILTROS = [['', 'Todas las tiendas'],
+  ['enlinea', 'Estado: En Línea'], ['pendiente', 'Estado: Pendiente'], ['averia', 'Estado: Avería'], ['cerrada', 'Estado: Tienda Cerrada'], ['solret', 'Estado: Solicitud de Retiro'], ['sinestado', 'Estado: sin dato'],
+  ['pend', 'Equipo pendiente de reinstalar'], ['sinval', 'Instalado sin validar'], ['usb', 'Con USB en monitor'], ['usbret', 'USB por retirar (Supervisor)'], ['nuc', 'Tiene NUC'], ['rb', 'Tiene RB'], ['sineq', 'Equipo sin dato'],
+  ['sinvisita', 'Sin visitas'], ['atras', 'Sin visita hace más de 30 días'], ['sinmant', 'Sin mantenimiento registrado'], ['sincontacto', 'Sin contacto'], ['sindistrito', 'Sin distrito']];
+const TPRED = {
+  '': () => true,
+  enlinea: t => t.Estado_Tienda === 'En Línea',
+  pendiente: t => t.Estado_Tienda === 'Pendiente',
+  averia: t => t.Estado_Tienda === 'Avería',
+  cerrada: t => t.Estado_Tienda === 'Tienda Cerrada',
+  solret: t => t.Estado_Tienda === 'Solicitud de Retiro',
+  sinestado: t => !t.Estado_Tienda,
+  pend: t => !!t.Equipo_Pendiente_Reinstalar,
+  sinval: t => t.Estado_Equipo === 'Instalado sin validar',
+  usb: t => t.Tiene_USB === 'SI',
+  usbret: t => t.USB_Por_Retirar === 'SI',
+  nuc: t => t.Componente_Actual === 'NUC',
+  rb: t => t.Componente_Actual === 'RB',
+  sineq: t => !t.Componente_Actual && !t.Equipo_Pendiente_Reinstalar && !t.Origen_Equipo,
+  sinvisita: t => !t.Total_Visitas,
+  atras: t => { const d = diasDesde(t.Ultima_Visita); return d === null || d > 30; },
+  sinmant: t => !t.Ultimo_Mantenimiento,
+  sincontacto: t => !t.Contacto_1,
+  sindistrito: t => !t.Distrito
+};
+const compTxt = t => t.Componente_Actual || (t.Equipo_Pendiente_Reinstalar ? 'Sin equipo (retirado)' : t.Origen_Equipo ? 'Ninguno' : 'Sin dato');
+const diasCol = d => d === null ? 'text-slate-400' : d > 30 ? 'text-red-600' : d > 14 ? 'text-amber-600' : 'text-green-600';
+const diasTxt = d => d === null ? 'sin visitas' : d === 0 ? 'hoy' : d === 1 ? 'ayer' : `hace ${d} días`;
+const fmtTel = s => { s = String(s || ''); return s.length === 9 ? s.replace(/(\d{3})(\d{3})(\d{3})/, '$1 $2 $3') : s; };
+const telLink = s => !s ? '' : `<a class="text-blue-600" href="tel:+51${esc(s)}">${esc(fmtTel(s))}</a>${/^9\d{8}$/.test(s) ? ` <a class="text-green-600 text-xs font-semibold" target="_blank" rel="noopener" href="https://wa.me/51${esc(s)}">WhatsApp</a>` : ''}`;
+const tBadges = t => [
+  t.Equipo_Pendiente_Reinstalar ? `<span class="badge bg-amber-100 text-amber-800">⚠ Reinstalar ${esc(t.Equipo_Pendiente_Reinstalar)}</span>` : '',
+  t.Estado_Equipo === 'Instalado sin validar' ? '<span class="badge bg-orange-100 text-orange-700">🔧 Sin validar</span>' : '',
+  t.USB_Por_Retirar === 'SI' ? '<span class="badge bg-red-100 text-red-700">💾 USB por retirar</span>' : (t.Tiene_USB === 'SI' ? '<span class="badge bg-indigo-100 text-indigo-700">💾 USB</span>' : '')
+].join(' ');
+
+async function loadTiendas(silent) {
+  try {
+    const d = await api('getTiendas');
+    S.tienda.data = d.tiendas || []; S.tienda.hoja = d.hojaTiendas !== false; S.tienda.setup = !!d.faltaSetup;
+    if (S.view === 'tiendas' && $('#tList') && $('#modal').classList.contains('hidden')) updateTiendas();
+    else if (S.view === 'tiendas' && $('#tList')) updateTiendas(true);
+  } catch (e) { if (!silent && e.code !== 'AUTH') toast(e.message, 'error'); }
+}
+
+function buildTiendas() {
+  const T = S.tienda;
+  $('#v-tiendas').innerHTML = `
+    <div id="tWarn"></div>
+    <div id="tChips" class="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-7 gap-2"></div>
+    <div class="card p-3 mt-3 flex flex-wrap gap-2 items-center">
+      <input id="tQ" type="search" class="inp flex-1 min-w-[200px]" placeholder="Buscar tienda, ID, distrito, contacto…" value="${esc(T.q)}">
+      <select id="tFiltro" class="inp !w-auto max-w-full">${TFILTROS.map(([k, l]) => `<option value="${k}" ${T.filtro === k ? 'selected' : ''}>${l}</option>`).join('')}</select>
+      <select id="tDist" class="inp !w-auto max-w-full"><option value="">Todos los distritos</option></select>
+      <button class="btn btn-outline" data-timp="1">⬆ Importar base</button>
+      <button class="btn btn-outline" data-texp="csv">⬇ CSV</button>
+      <button class="btn btn-outline" data-texp="xlsx">⬇ Excel</button>
+    </div>
+    <div class="text-xs text-slate-500 mt-2" id="tCount"></div>
+    <div class="grid grid-cols-1 lg:grid-cols-5 gap-3 mt-1">
+      <div class="card lg:col-span-3 overflow-hidden"><div id="tList"><div class="p-8 text-center text-sm text-slate-500">Cargando tiendas…</div></div></div>
+      <div id="tDetail" class="hidden lg:block lg:col-span-2"><div class="lg:sticky lg:top-20" id="tDetailBox"></div></div>
+    </div>`;
+  if (T.data) { updateTiendas(); loadTiendas(true); } else loadTiendas(false);   // con datos en memoria se muestra al instante y se actualiza detrás
+}
+
+function tiendaFiltrada() {
+  const T = S.tienda, q = norm(T.q.trim()), qd = T.q.replace(/\D/g, '');
+  return (T.data || []).filter(t => TPRED[T.filtro](t) && (!T.distrito || t.Distrito === T.distrito)
+      && (!q || norm(t.Nombre_Cliente).includes(q) || norm(t.ID_Cliente).includes(q) || norm(nameOf(t.Ultimo_Tecnico)).includes(q) || norm(t.Ultima_Observacion).includes(q)
+        || norm(t.Distrito).includes(q) || norm(t.Direccion).includes(q) || (qd.length >= 4 && ((t.Contacto_1 || '').includes(qd) || (t.Contacto_2 || '').includes(qd)))))
+    .sort((a, b) => String(a.Nombre_Cliente).localeCompare(String(b.Nombre_Cliente), 'es'));
+}
+function refreshDistritos() {
+  const sel = $('#tDist'); if (!sel) return;
+  const cnt = {}; (S.tienda.data || []).forEach(t => { if (t.Distrito) cnt[t.Distrito] = (cnt[t.Distrito] || 0) + 1; });
+  const ks = Object.keys(cnt).sort((a, b) => a.localeCompare(b, 'es'));
+  sel.innerHTML = '<option value="">Todos los distritos</option>' + ks.map(k => `<option value="${esc(k)}" ${S.tienda.distrito === k ? 'selected' : ''}>${esc(k)} (${cnt[k]})</option>`).join('');
+}
+
+function updateTiendas(soloLista) {
+  const T = S.tienda; if (!$('#tList')) return;
+  const data = T.data || [];
+  $('#tWarn').innerHTML = !T.hoja ? '<div class="card p-3 mb-3 text-sm bg-amber-50 border-amber-200 text-amber-900">La hoja <b>Tiendas</b> todavía no existe en tu Google Sheet. Ejecuta <b>setupSheet</b> en Apps Script una vez; mientras tanto solo se muestra la lista de clientes sin datos de visitas.</div>'
+    : T.setup ? '<div class="card p-3 mb-3 text-sm bg-amber-50 border-amber-200 text-amber-900">Faltan columnas nuevas en tu Google Sheet (estado, distrito, contactos, USB). Ejecuta <b>setupSheet</b> en Apps Script una vez para activarlas: no se pierde ningún dato.</div>' : '';
+  refreshDistritos();
+  const chips = [['', 'Total tiendas'], ['enlinea', 'En Línea'], ['pendiente', 'Pendiente'], ['averia', 'Avería'], ['cerrada', 'Tienda Cerrada'], ['sinvisita', 'Sin visitas'], ['atras', '+30 días sin visita'],
+    ['nuc', 'Con NUC'], ['rb', 'Con RB'], ['sineq', 'Equipo sin dato'], ['pend', 'Pend. reinstalar'], ['sinval', 'Sin validar'], ['usb', 'Con USB'], ['usbret', 'USB por retirar']];
+  const chipCol = { enlinea: 'text-green-600', pendiente: 'text-amber-600', averia: 'text-red-600', cerrada: 'text-slate-600', pend: 'text-amber-600', usb: 'text-indigo-600', usbret: 'text-red-600' };
+  $('#tChips').innerHTML = chips.map(([k, l]) => `<button data-tchip="${k}" class="card kpi !p-2.5 ${T.filtro === k ? 'ring-2 ring-blue-500' : ''}"><div class="text-[11px] font-semibold text-slate-500 leading-tight">${l}</div><div class="text-2xl font-bold ${chipCol[k] || 'text-slate-800'}">${n0(data.filter(TPRED[k]).length)}</div></button>`).join('');
+  const list = tiendaFiltrada();
+  S.tiendaList = list;
+  $('#tCount').textContent = `${n0(list.length)} de ${n0(data.length)} tiendas`;
+  const rows = list.slice(0, T.page * CONFIG.PAGE);
+  $('#tList').innerHTML = !list.length ? '<div class="p-8 text-center text-sm text-slate-500">No hay tiendas para mostrar.</div>' :
+    `<div class="overflow-x-auto"><table class="t"><thead><tr><th>Tienda</th><th>Última visita</th><th>Técnico</th><th>Estado</th><th>Equipo</th></tr></thead><tbody>
+    ${rows.map(t => { const d = diasDesde(t.Ultima_Visita); return `<tr class="clk ${T.sel === t.ID_Cliente ? 'bg-blue-50' : ''}" data-tsel="${esc(t.ID_Cliente)}">
+      <td><b>${esc(t.Nombre_Cliente)}</b><div class="text-xs text-slate-400">${esc(t.ID_Cliente)}${t.Distrito ? ' · ' + esc(t.Distrito) : ''}</div></td>
+      <td class="whitespace-nowrap">${t.Ultima_Visita ? fmtD(t.Ultima_Visita) : '—'}<div class="text-xs ${diasCol(d)}">${diasTxt(d)}</div></td>
+      <td>${t.Ultimo_Tecnico ? esc(nameOf(t.Ultimo_Tecnico)) : '—'}</td>
+      <td>${estadoBadge(t)}${t.Estado_Tienda === 'Avería' && /^Avería/.test(t.Ultimo_Status || '') ? `<div class="text-[11px] text-slate-500 mt-0.5">${esc(t.Ultimo_Status)}</div>` : ''}${t.Estado_Tienda && t.Origen_Estado === 'Importado' ? '<div class="text-[10px] text-slate-400 mt-0.5">base anterior</div>' : ''}</td>
+      <td><b>${esc(compTxt(t))}</b><div class="flex flex-wrap gap-1 mt-0.5">${tBadges(t)}</div></td></tr>`; }).join('')}</tbody></table></div>
+    ${list.length > rows.length ? `<div class="p-3 text-center"><button class="btn btn-ghost" data-more="tienda">Mostrar más (${n0(list.length - rows.length)})</button></div>` : ''}`;
+  if (!soloLista) renderTiendaDetail();
+}
+
+const TWIDE = () => matchMedia('(min-width: 1024px)').matches;
+function selTienda(id) {
+  S.tienda.sel = id; updateTiendas(true);
+  const t = (S.tienda.data || []).find(x => x.ID_Cliente === id); if (!t) return;
+  if (TWIDE()) renderTiendaDetail(); else { openModal(`<div class="p-4">${tiendaDetailHTML(t, true)}</div>`); ensureHist(id); }
+}
+function renderTiendaDetail() {
+  const box = $('#tDetailBox'); if (!box || !TWIDE()) return;
+  const t = (S.tienda.data || []).find(x => x.ID_Cliente === S.tienda.sel);
+  box.innerHTML = t ? tiendaDetailHTML(t, false) : '<div class="card p-8 text-center text-sm text-slate-400">Selecciona una tienda de la lista para ver su información actualizada.</div>';
+  if (t) ensureHist(t.ID_Cliente);
+}
+
+function tiendaDetailHTML(t, modal) {
+  const dias = diasDesde(t.Ultima_Visita);
+  const kv = (l, v) => `<div class="flex justify-between gap-3 py-1.5 border-b border-slate-100 text-sm"><span class="text-slate-500 shrink-0">${l}</span><span class="font-medium text-right break-words min-w-0">${v || '—'}</span></div>`;
+  const maps = isNum(t.Latitud) && isNum(t.Longitud) ? `https://www.google.com/maps?q=${t.Latitud},${t.Longitud}` : '';
+  const dt = s => s ? fmtDT(s) : '';
+  const eq = (f, e) => f ? `${fmtD(f)}${e ? ' · ' + esc(e) : ''}` : '';
+  const sub = x => `<div class="sec !mt-4 !mb-1">${x}</div>`;
+  const desde = t.Fecha_Estado ? ` <span class="text-xs text-slate-500 font-normal">desde ${fmtD(t.Fecha_Estado)}${origenTxt(t.Origen_Estado) ? ' · ' + origenTxt(t.Origen_Estado) : ''}</span>` : (t.Origen_Estado ? ` <span class="text-xs text-slate-500 font-normal">${origenTxt(t.Origen_Estado)}</span>` : '');
+  const base = t.Registro_Base_Anterior || t.Ultima_Reubicacion || t.AppRadar === 'SI';
+  return `<div class="card ${modal ? '!shadow-none !border-0 !p-0' : 'p-4'}">
+    <div class="flex items-start gap-2">
+      <div class="min-w-0 flex-1"><div class="text-lg font-bold leading-tight" id="tdName">${esc(t.Nombre_Cliente)}</div><div class="text-xs text-slate-400">${esc(t.ID_Cliente)}${t.Distrito ? ' · ' + esc(t.Distrito) : ''}</div></div>
+      <button class="btn btn-outline !py-1 !px-3 text-sm" data-tedit="${esc(t.ID_Cliente)}">✏️ Editar</button>
+      ${modal ? '<button data-close class="btn btn-ghost !py-1 !px-3">✕</button>' : ''}
+    </div>
+    <div class="mt-2 flex flex-wrap items-center gap-2" id="tdEstado"><span class="text-xs font-semibold text-slate-500 uppercase tracking-wide">Estado</span> ${estadoBadge(t, true)}${desde}</div>
+    <div class="flex flex-wrap gap-1 mt-2">${tBadges(t) || '<span class="text-xs text-slate-400">Sin alertas de equipos</span>'}</div>
+
+    ${sub('Datos de la tienda')}
+    ${kv('Distrito', esc(t.Distrito))}
+    ${kv('Dirección', esc(t.Direccion))}
+    ${kv('Contacto 1', telLink(t.Contacto_1))}
+    ${kv('Contacto 2', telLink(t.Contacto_2))}
+    ${kv('Coordenadas', isNum(t.Latitud) && isNum(t.Longitud) ? `${t.Latitud.toFixed(6)}, ${t.Longitud.toFixed(6)}` : '')}
+    ${maps ? `<a class="text-blue-600 text-sm font-medium inline-block mt-1" target="_blank" rel="noopener" href="${maps}">📍 Abrir en Google Maps</a>` : ''}
+
+    ${sub('Última visita')}
+    ${kv('Fecha', t.Ultima_Visita ? `${dt(t.Ultima_Visita)} <span class="${diasCol(dias)} text-xs">(${diasTxt(dias)})</span>` : '')}
+    ${kv('Técnico', t.Ultimo_Tecnico ? esc(nameOf(t.Ultimo_Tecnico)) : '')}
+    ${kv('Tipo', t.Ultimo_Tipo_Visita ? esc(t.Ultimo_Tipo_Visita) : '')}
+    ${kv('Status', t.Ultimo_Status ? esc(t.Ultimo_Status) : '')}
+    ${t.Ultima_Observacion ? `<div class="mt-2 text-sm bg-slate-50 rounded-lg p-2.5 text-slate-700 whitespace-pre-wrap">${esc(t.Ultima_Observacion)}</div>` : ''}
+    ${kv('Última visita física', dt(t.Ultima_Visita_Fisica))}
+
+    ${sub('Equipos')}
+    ${kv('Componente actual', `<b>${esc(compTxt(t))}</b>`)}
+    ${kv('Equipo verificado', t.Equipo_Verificado ? `${fmtD(t.Equipo_Verificado)}${origenTxt(t.Origen_Equipo) ? ' · ' + origenTxt(t.Origen_Equipo) : ''}` : (t.Origen_Equipo ? origenTxt(t.Origen_Equipo) : ''))}
+    ${kv('Estado del equipo', esc(t.Estado_Equipo || 'Sin dato'))}
+    ${kv('Pendiente de reinstalar', t.Equipo_Pendiente_Reinstalar ? `<span class="text-amber-700 font-bold">${esc(t.Equipo_Pendiente_Reinstalar)}</span>` : 'No')}
+    ${kv('USB en el monitor', t.USB_Por_Retirar === 'SI' ? '<span class="text-red-700 font-bold">Sí · por retirar (Supervisor)</span>' : t.Tiene_USB === 'SI' ? '<span class="text-indigo-700 font-bold">Sí</span>' : 'No')}
+    ${kv('Último retiro de USB', t.Ultimo_Retiro_USB ? `${fmtD(t.Ultimo_Retiro_USB)}${t.Retiro_USB_Por ? ' · ' + esc(nameOf(t.Retiro_USB_Por)) : ''}` : '')}
+    ${kv('Último retiro', eq(t.Ultimo_Retiro, t.Equipo_Retirado))}
+    ${kv('Última reinstalación', eq(t.Ultima_Reinstalacion, t.Equipo_Reinstalado))}
+
+    ${sub('Mantenimiento y averías')}
+    ${kv('Último mantenimiento', t.Ultimo_Mantenimiento ? `${fmtD(t.Ultimo_Mantenimiento)}${t.Tecnico_Mantenimiento ? ' · ' + esc(nameOf(t.Tecnico_Mantenimiento)) : ''}` : '')}
+    ${kv('Mantenimientos registrados', n0(t.Total_Mantenimientos))}
+    ${kv('Última avería', t.Ultima_Averia ? `${fmtD(t.Ultima_Averia)} · ${esc(t.Ultima_Averia_Status)}` : '')}
+    ${kv('Averías registradas', n0(t.Total_Averias))}
+    ${kv('Visitas registradas', n0(t.Total_Visitas))}
+
+    ${base ? `${sub('Base anterior')}${t.Registro_Base_Anterior ? `<div class="text-sm bg-slate-50 rounded-lg p-2.5 text-slate-700 whitespace-pre-wrap">${esc(t.Registro_Base_Anterior)}</div>` : ''}${kv('Última reubicación', t.Ultima_Reubicacion ? fmtD(t.Ultima_Reubicacion) : '')}${kv('AppRadar', t.AppRadar === 'SI' ? 'Sí' : t.AppRadar === 'NO' ? 'No' : '')}` : ''}
+
+    ${(t.URL_Foto_Fachada || t.URL_Foto_Monitor) ? `${sub('Últimas fotos')}<div class="flex gap-4 text-sm font-medium">${t.URL_Foto_Fachada ? `<a class="text-blue-600" target="_blank" rel="noopener" href="${esc(t.URL_Foto_Fachada)}">📷 Fachada</a>` : ''}${t.URL_Foto_Monitor ? `<a class="text-blue-600" target="_blank" rel="noopener" href="${esc(t.URL_Foto_Monitor)}">🖥️ Monitor</a>` : ''}</div>` : ''}
+
+    ${sub('Historial reciente')}
+    <div id="tHist" class="text-sm text-slate-400">Cargando historial…</div>
+  </div>`;
+}
+
+/* ---------- Editar datos de la tienda (distrito, dirección, contactos, coordenadas) ---------- */
+// "-12.04, -77.09" → { lat, lng }. Repara el punto decimal perdido ("-11994298" → -11.994298). null si no hay dos números.
+function fixCoord(x) {
+  x = String(x).replace(',', '.').trim();
+  if (/^-?\d+\.\d+$/.test(x)) return { v: parseFloat(x), rep: false };
+  const m = /^(-?)(\d{2})(\d{3,})$/.exec(x);
+  return m ? { v: parseFloat(`${m[1]}${m[2]}.${m[3]}`), rep: true } : (/^-?\d{1,2}$/.test(x) ? { v: parseFloat(x), rep: false } : null);
+}
+function parseUbic(s) {
+  const m = String(s ?? '').match(/-?\d+(?:[.,]\d+)?/g);
+  if (!m || m.length < 2) return null;
+  const a = fixCoord(m[0]), b = fixCoord(m[1]);
+  return a && b ? { lat: a.v, lng: b.v, rep: a.rep || b.rep } : null;
+}
+function openEditTienda(id) {
+  const t = (S.tienda.data || []).find(x => x.ID_Cliente === id); if (!t) return;
+  const ds = [...new Set([...DISTRITOS, ...(S.tienda.data || []).map(x => distritoCanon(x.Distrito)).filter(Boolean)])].sort((a, b) => a.localeCompare(b, 'es'));
+  const f = (l, inner, hint) => `<div><label class="lbl">${l}</label>${inner}${hint ? `<div class="text-xs text-slate-400 mt-0.5">${hint}</div>` : ''}</div>`;
+  openModal(`<div class="p-5 space-y-3">
+    <div class="flex items-start gap-2"><div class="flex-1 min-w-0"><div class="text-lg font-bold leading-tight">Editar datos de la tienda</div><div class="text-sm text-slate-500">${esc(t.Nombre_Cliente)} · ${esc(t.ID_Cliente)}</div></div><button data-close class="btn btn-ghost !py-1 !px-3">✕</button></div>
+    ${f('Distrito', `<input id="eDist" class="inp" list="eDistList" maxlength="60" value="${esc(t.Distrito)}" autocomplete="off"><datalist id="eDistList">${ds.map(d => `<option value="${esc(d)}">`).join('')}</datalist>`)}
+    ${f('Dirección', `<input id="eDir" class="inp" maxlength="200" value="${esc(t.Direccion)}">`)}
+    <div class="grid grid-cols-2 gap-3">
+      ${f('Contacto 1', `<input id="eC1" class="inp" type="tel" inputmode="tel" maxlength="20" placeholder="999 999 999" value="${esc(t.Contacto_1)}">`)}
+      ${f('Contacto 2', `<input id="eC2" class="inp" type="tel" inputmode="tel" maxlength="20" placeholder="opcional" value="${esc(t.Contacto_2)}">`)}
+    </div>
+    ${f('Pegar coordenadas', '<input id="ePega" class="inp" placeholder="-12.046400, -77.042800" autocomplete="off">', 'Pega “latitud, longitud” desde Google Maps y se llenan los dos campos de abajo.')}
+    <div class="grid grid-cols-2 gap-3">
+      ${f('Latitud', `<input id="eLat" class="inp" inputmode="decimal" value="${isNum(t.Latitud) ? +t.Latitud.toFixed(7) : ''}">`)}
+      ${f('Longitud', `<input id="eLng" class="inp" inputmode="decimal" value="${isNum(t.Longitud) ? +t.Longitud.toFixed(7) : ''}">`)}
+    </div>
+    <div class="text-xs text-slate-500 bg-slate-50 rounded-lg p-2">Si cambias las coordenadas, las <b>visitas pendientes</b> de esta tienda usarán las nuevas (la geocerca de 100 m). Las visitas ya resueltas conservan las suyas. Cada cambio queda registrado.</div>
+    <div id="eErr" class="hidden text-sm text-red-700 bg-red-50 rounded-xl p-2"></div>
+    <div class="grid grid-cols-2 gap-3"><button data-close class="btn btn-ghost">Cancelar</button><button id="btnTSave" class="btn btn-primary">Guardar cambios</button></div>
+  </div>`);
+  $('#ePega').addEventListener('input', e => { const u = parseUbic(e.target.value); if (u) { $('#eLat').value = u.lat; $('#eLng').value = u.lng; } });
+  $('#btnTSave').addEventListener('click', async () => {
+    const er = $('#eErr'); er.classList.add('hidden');
     const bad = m => { er.textContent = m; er.classList.remove('hidden'); };
-    if (!a) return bad('Ingresa tu contraseña actual.');
-    if (n.length < 6) return bad('La nueva contraseña debe tener al menos 6 caracteres.');
-    if (n !== r) return bad('Las contraseñas nuevas no coinciden.');
-    try { showLoading(true); await api('changePassword', { actual: a, nueva: n }); toast('Contraseña actualizada', 'ok'); closeModal(); }
-    catch (e) { bad(e.message); } finally { showLoading(false); }
-  });
-}
-
-/* =====================================================================
- *  GESTIÓN DE USUARIOS (Supervisor)
- * ===================================================================== */
-function openUsers() {
-  openModal(`${modalHeader('Gestión de usuarios')}
-    <div class="p-4 space-y-4">
-      <div class="card space-y-2" id="usersList">
-        ${S.usuarios.map(u => `
-          <div class="flex items-center gap-3 py-1 border-b border-slate-100 last:border-0">
-            ${avatar(u, 'w-10 h-10', 'text-sm')}
-            <div class="min-w-0 flex-1">
-              <div class="text-sm font-semibold truncate">${esc(u.Nombre_Apellido)}</div>
-              <div class="text-xs text-slate-500 truncate">@${esc(u.Usuario)} · ${esc(u.Rol)}${u.Correo ? ' · ' + esc(u.Correo) : ''}</div>
-            </div>
-            ${u.ID_Usuario !== S.user.ID_Usuario ? `<button class="text-red-600 text-sm font-semibold px-2 py-1" data-deluser="${esc(u.ID_Usuario)}">Eliminar</button>` : '<span class="text-xs text-slate-400">Tú</span>'}
-          </div>`).join('')}
-      </div>
-      <div class="card space-y-2">
-        <div class="font-semibold">Nuevo usuario</div>
-        <input id="nuUser" class="inp" placeholder="Usuario (sin espacios)" autocapitalize="none" autocomplete="off">
-        <input id="nuPass" type="text" class="inp" placeholder="Contraseña inicial (mín. 6)" autocomplete="off">
-        <input id="nuName" class="inp" placeholder="Nombre y apellido">
-        <select id="nuRol" class="inp"><option value="Técnico">Técnico</option><option value="Supervisor">Supervisor</option></select>
-        <input id="nuMail" type="email" class="inp" placeholder="Correo (opcional)">
-        <input id="nuTel" type="tel" class="inp" placeholder="Teléfono (opcional)">
-        <input id="nuFoto" type="url" class="inp" placeholder="URL de foto de perfil (opcional)">
-        <div id="nuErr" class="hidden text-sm text-red-700 bg-red-50 rounded-xl p-2"></div>
-        <button id="btnNuOk" class="btn btn-primary w-full">Crear usuario</button>
-      </div>
-    </div>`);
-  $$('[data-deluser]').forEach(b => b.addEventListener('click', async () => {
-    const u = S.usuarios.find(x => x.ID_Usuario === b.dataset.deluser);
-    if (!u || !confirm(`¿Eliminar a ${u.Nombre_Apellido} (@${u.Usuario})? Esta acción no se puede deshacer.`)) return;
-    try { showLoading(true); await api('deleteUser', { idUsuario: u.ID_Usuario }); toast('Usuario eliminado', 'ok'); await refreshData(true); openUsers(); }
-    catch (e) { toast(e.message, 'error'); } finally { showLoading(false); }
-  }));
-  $('#btnNuOk').addEventListener('click', async () => {
-    const er = $('#nuErr'); er.classList.add('hidden');
+    const lat = $('#eLat').value.trim().replace(',', '.'), lng = $('#eLng').value.trim().replace(',', '.');
+    if (!lat || !lng || isNaN(+lat) || isNaN(+lng)) return bad('Latitud y longitud deben ser números (por ejemplo -12.0464 y -77.0428).');
+    const body = { idCliente: id, distrito: distritoCanon($('#eDist').value), direccion: $('#eDir').value, contacto1: $('#eC1').value, contacto2: $('#eC2').value };
+    if (!isNum(t.Latitud) || (+lat).toFixed(7) !== t.Latitud.toFixed(7)) body.latitud = +lat;
+    if (!isNum(t.Longitud) || (+lng).toFixed(7) !== t.Longitud.toFixed(7)) body.longitud = +lng;
+    const btn = $('#btnTSave'); btn.disabled = true; btn.textContent = 'Guardando…';
     try {
-      showLoading(true);
-      await api('createUser', { usuario: $('#nuUser').value.trim(), password: $('#nuPass').value, nombre: $('#nuName').value.trim(), rol: $('#nuRol').value, correo: $('#nuMail').value.trim(), telefono: $('#nuTel').value.trim(), fotoUrl: $('#nuFoto').value.trim() });
-      toast('Usuario creado', 'ok'); await refreshData(true); openUsers();
-    } catch (e) { er.textContent = e.message; er.classList.remove('hidden'); } finally { showLoading(false); }
+      const r = await api('updateTienda', body);
+      const i = (S.tienda.data || []).findIndex(x => x.ID_Cliente === id); if (i >= 0) S.tienda.data[i] = r.tienda;
+      closeModal(); updateTiendas();
+      if (!TWIDE()) selTienda(id);
+      toast(r.cambios ? `Datos guardados (${r.cambios} cambio${r.cambios > 1 ? 's' : ''})${r.visitasPendientesActualizadas ? ` · ${r.visitasPendientesActualizadas} visita(s) pendiente(s) con coordenadas nuevas` : ''}` : 'No había cambios que guardar', r.cambios ? 'ok' : 'info');
+    } catch (e) { bad(e.message); btn.disabled = false; btn.textContent = 'Guardar cambios'; }
   });
 }
 
+async function ensureHist(id) {
+  const H = S.tienda.hist;
+  const paint = () => { const box = $('#tHist'); if (!box || S.tienda.sel !== id) return; const h = H[id];
+    box.innerHTML = !h ? '' : !h.visitas.length ? '<span class="text-slate-400">Esta tienda aún no tiene visitas resueltas.</span>' :
+      `<div class="divide-y divide-slate-100">${h.visitas.map(v => `<div class="py-2"><div class="flex flex-wrap items-center gap-1.5"><b class="text-xs">${fmtDT(v.Fecha_Resolucion)}</b>${tipoBadge(v.Tipo_Visita)}${v.Status_Tienda ? `<span class="badge" style="background:${col(v.Status_Tienda)}1a;color:${col(v.Status_Tienda)}">${esc(v.Status_Tienda)}</span>` : ''}${v.Retiro_Equipos ? `<span class="badge" style="background:#ffedd5;color:#c2410c">📦 ${esc(v.Retiro_Equipos)}</span>` : ''}${v.Reinstalacion_Equipo ? `<span class="badge" style="background:#d1fae5;color:#047857">🔁 ${esc(v.Reinstalacion_Equipo)}</span>` : ''}${v.USB_Monitor === 'SI' ? '<span class="badge" style="background:#e0e7ff;color:#4338ca">💾 USB</span>' : ''}${v.Mantenimiento === 'SI' ? '<span class="badge" style="background:#e2e8f0;color:#334155">🛠️</span>' : ''}</div><div class="text-xs text-slate-500">${esc(nameOf(v.Usuario_Asignado))}</div>${v.Observacion ? `<div class="text-sm text-slate-700 mt-0.5">${esc(v.Observacion)}</div>` : ''}</div>`).join('')}</div>${h.total > h.visitas.length ? `<div class="text-xs text-slate-400 pt-2">Mostrando las últimas ${h.visitas.length} de ${h.total} visitas.</div>` : ''}`; };
+  if (H[id]) return paint();
+  try { H[id] = await api('tiendaHistorial', { idCliente: id, limite: 10 }); paint(); }
+  catch (e) { const box = $('#tHist'); if (box) box.innerHTML = '<span class="text-red-600">No se pudo cargar el historial.</span>'; }
+}
+
 /* =====================================================================
- *  HISTORIAL DE LOGINS (Supervisor)
+ *  IMPORTAR LA BASE ANTERIOR (.xlsx o .csv) — se lee en el navegador, sin librerías externas
+ *  Reconoce tus columnas (ID, Cliente, Componente, Estado, Fecha Visita, Fecha Reubic, Fecha Retiro, Ubicación, Distrito,
+ *  Contacto, AppRadar, Observación, Mantenimiento). Primero SIMULA y muestra el resumen; solo escribe al confirmar.
  * ===================================================================== */
-async function openLogs() {
-  openModal(`${modalHeader('Historial de inicios de sesión')}<div class="p-4"><div class="text-center text-slate-500 py-8">Cargando…</div></div>`);
+const IMP_ALIAS = {
+  id: 'ID_Cliente', idcliente: 'ID_Cliente', codigo: 'ID_Cliente', codigocliente: 'ID_Cliente',
+  cliente: 'Nombre', nombre: 'Nombre', nombrecliente: 'Nombre', tienda: 'Nombre',
+  componente: 'Componente', equipo: 'Componente', estado: 'Estado',
+  fechavisita: 'Fecha_Visita', ultimavisita: 'Fecha_Visita', fechareubic: 'Fecha_Reubicacion', fechareubicacion: 'Fecha_Reubicacion',
+  fecharetiro: 'Fecha_Retiro', ubicacion: 'Ubicacion', coordenadas: 'Ubicacion', latitud: 'Latitud', longitud: 'Longitud',
+  distrito: 'Distrito', direccion: 'Direccion', contacto: 'Contacto', telefono: 'Contacto', celular: 'Contacto', contacto1: 'Contacto_1', contacto2: 'Contacto_2',
+  appradar: 'AppRadar', observacion: 'Observacion', observaciones: 'Observacion', mantenimiento: 'Mantenimiento', fechamantenimiento: 'Mantenimiento'
+};
+const IMP_CAMPOS = { ID_Cliente: 'ID', Nombre: 'Cliente', Componente: 'Componente', Estado: 'Estado', Fecha_Visita: 'Fecha Visita', Fecha_Reubicacion: 'Fecha Reubic', Fecha_Retiro: 'Fecha Retiro', Ubicacion: 'Ubicación', Latitud: 'Latitud', Longitud: 'Longitud',
+  Distrito: 'Distrito', Direccion: 'Dirección', Contacto: 'Contacto', Contacto_1: 'Contacto 1', Contacto_2: 'Contacto 2', AppRadar: 'AppRadar', Observacion: 'Observación', Mantenimiento: 'Mantenimiento' };
+let IMP = null;
+
+function extraerTelefonos(raw) {
+  const s = String(raw ?? '').trim(); if (!s) return { c1: '', c2: '', orig: '' };
+  const nums = [], re = /(^|\D)((?:\+?51[\s-]?)?9(?:[\s-]?\d){8})(?!\d)/g; let m;
+  while ((m = re.exec(s))) { let d = m[2].replace(/\D/g, ''); if (d.length === 11 && d.startsWith('51')) d = d.slice(2); if (!nums.includes(d)) nums.push(d); }
+  if (!nums.length) { const d = s.replace(/\D/g, ''); if (d.length >= 6 && d.length <= 9) nums.push(d); }
+  return { c1: nums[0] || '', c2: nums[1] || '', orig: (nums.length > 2 || nums.length === 0 || /[A-Za-zÁ-ú]/.test(s)) ? s : '' };
+}
+function parseCSV(text) {
+  text = text.replace(/^﻿/, '');
+  const first = text.split(/\r?\n/, 1)[0], delim = [';', '\t', ','].map(d => [d, first.split(d).length]).sort((a, b) => b[1] - a[1])[0][0];
+  const rows = []; let row = [], cell = '', q = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (q) { if (ch === '"') { if (text[i + 1] === '"') { cell += '"'; i++; } else q = false; } else cell += ch; }
+    else if (ch === '"') q = true;
+    else if (ch === delim) { row.push(cell); cell = ''; }
+    else if (ch === '\n' || ch === '\r') { if (ch === '\r' && text[i + 1] === '\n') i++; row.push(cell); cell = ''; if (row.some(x => x !== '')) rows.push(row); row = []; }
+    else cell += ch;
+  }
+  row.push(cell); if (row.some(x => x !== '')) rows.push(row);
+  return rows;
+}
+/* .xlsx: ZIP (deflate-raw con DecompressionStream) + hoja XML. Las fechas se reconocen por el formato de la celda. */
+async function readXlsx(buf) {
+  const u8 = new Uint8Array(buf), dv = new DataView(buf), td = new TextDecoder();
+  let e = u8.length - 22; while (e >= 0 && dv.getUint32(e, true) !== 0x06054b50) e--;
+  if (e < 0) throw new Error('El archivo no es un .xlsx válido.');
+  const n = dv.getUint16(e + 10, true); let p = dv.getUint32(e + 16, true); const files = {};
+  for (let i = 0; i < n && dv.getUint32(p, true) === 0x02014b50; i++) {
+    const nl = dv.getUint16(p + 28, true), el = dv.getUint16(p + 30, true), cl = dv.getUint16(p + 32, true);
+    files[td.decode(u8.subarray(p + 46, p + 46 + nl))] = { m: dv.getUint16(p + 10, true), cs: dv.getUint32(p + 20, true), lho: dv.getUint32(p + 42, true) };
+    p += 46 + nl + el + cl;
+  }
+  const get = async name => {
+    const f = files[name]; if (!f) return null;
+    const st = f.lho + 30 + dv.getUint16(f.lho + 26, true) + dv.getUint16(f.lho + 28, true), data = u8.subarray(st, st + f.cs);
+    if (f.m === 0) return td.decode(data);
+    if (f.m !== 8) throw new Error('Compresión de .xlsx no soportada.');
+    if (typeof DecompressionStream === 'undefined') throw new Error('Tu navegador no puede leer .xlsx directamente: guarda el archivo como CSV e inténtalo de nuevo.');
+    const ds = new DecompressionStream('deflate-raw'), w = ds.writable.getWriter(); w.write(data); w.close();
+    return await new Response(ds.readable).text();
+  };
+  const xml = t => new DOMParser().parseFromString(t, 'application/xml');
+  const wb = xml(await get('xl/workbook.xml') || ''), rels = xml(await get('xl/_rels/workbook.xml.rels') || '');
+  const sh1 = wb.getElementsByTagName('sheet')[0]; let target = 'worksheets/sheet1.xml';
+  if (sh1) { const rid = sh1.getAttribute('r:id'); const r = [...rels.getElementsByTagName('Relationship')].find(x => x.getAttribute('Id') === rid); if (r) target = r.getAttribute('Target').replace(/^\/?(xl\/)?/, ''); }
+  const sheetTxt = await get('xl/' + target); if (!sheetTxt) throw new Error('No se encontró la primera hoja del archivo.');
+  const ss = []; const sst = await get('xl/sharedStrings.xml');
+  if (sst) [...xml(sst).getElementsByTagName('si')].forEach(si => ss.push([...si.getElementsByTagName('t')].map(t => t.textContent).join('')));
+  const stylesTxt = await get('xl/styles.xml'), isDateFmt = [];
+  if (stylesTxt) {
+    const sx = xml(stylesTxt), custom = {};
+    [...sx.getElementsByTagName('numFmt')].forEach(nf => { custom[nf.getAttribute('numFmtId')] = nf.getAttribute('formatCode'); });
+    const xfs = sx.getElementsByTagName('cellXfs')[0];
+    if (xfs) [...xfs.getElementsByTagName('xf')].forEach(xf => {
+      const id = +xf.getAttribute('numFmtId'), code = custom[id];
+      isDateFmt.push(code ? /[dmyhs]/i.test(code.replace(/"[^"]*"|\[[^\]]*\]|\\./g, '')) : (id >= 14 && id <= 22) || (id >= 27 && id <= 36) || (id >= 45 && id <= 47) || (id >= 50 && id <= 58));
+    });
+  }
+  const iso = serial => { const d = new Date(Math.round((serial - 25569) * 86400) * 1000), z = x => String(x).padStart(2, '0'); return `${d.getUTCFullYear()}-${z(d.getUTCMonth() + 1)}-${z(d.getUTCDate())} ${z(d.getUTCHours())}:${z(d.getUTCMinutes())}:${z(d.getUTCSeconds())}`; };
+  const colIdx = ref => { let c = 0; for (const ch of ref.replace(/\d/g, '')) c = c * 26 + ch.charCodeAt(0) - 64; return c - 1; };
+  const rows = [];
+  [...xml(sheetTxt).getElementsByTagName('row')].forEach(r => {
+    const arr = [];
+    [...r.getElementsByTagName('c')].forEach(c => {
+      const i = colIdx(c.getAttribute('r') || 'A1'), t = c.getAttribute('t'), vEl = c.getElementsByTagName('v')[0], v = vEl ? vEl.textContent : '';
+      let val = '';
+      if (t === 's') val = ss[+v] ?? '';
+      else if (t === 'inlineStr') val = [...c.getElementsByTagName('t')].map(x => x.textContent).join('');
+      else if (t === 'b') val = v === '1';
+      else if (t === 'str' || t === 'e') val = v;
+      else if (v !== '') { const num = parseFloat(v); val = isDateFmt[+(c.getAttribute('s') || 0)] ? iso(num) : num; }
+      arr[i] = val;
+    });
+    for (let k = 0; k < arr.length; k++) if (arr[k] === undefined) arr[k] = '';
+    rows.push(arr);
+  });
+  return rows;
+}
+// Tabla (filas de celdas) → filas con los nombres de campo del servidor
+function mapearBase(tabla) {
+  const hi = tabla.findIndex(r => r.some(h => IMP_ALIAS[normHeadImp(h)] === 'ID_Cliente'));
+  if (hi < 0) throw new Error('No encontré la columna del ID de la tienda (se llama “ID” o “ID_Cliente”).');
+  const map = []; const reconocidas = [], ignoradas = [];
+  tabla[hi].forEach((h, i) => { const k = IMP_ALIAS[normHeadImp(h)]; if (k && !map.some(m => m && m.k === k)) { map[i] = { k, h: String(h) }; reconocidas.push(String(h)); } else if (String(h).trim()) ignoradas.push(String(h)); });
+  let reparadas = 0, sinId = 0, conComplejo = 0, unificados = 0; const filas = [];
+  tabla.slice(hi + 1).forEach(r => {
+    const f = {}; r.forEach((cell, i) => { if (map[i]) f[map[i].k] = cell; });
+    let id = f.ID_Cliente; if (typeof id === 'number') id = String(Math.round(id)); id = String(id ?? '').trim();
+    if (!id) { if (r.some(x => String(x ?? '').trim())) sinId++; return; }
+    f.ID_Cliente = id;
+    if (f.Nombre !== undefined) f.Nombre = String(f.Nombre).replace(/\s+/g, ' ').trim();
+    if (f.Distrito !== undefined) { const raw = String(f.Distrito).replace(/\s+/g, ' ').trim(), cn = distritoCanon(raw); if (cn !== raw) unificados++; f.Distrito = cn; }
+    if (f.Ubicacion !== undefined && f.Ubicacion !== '' && f.Latitud === undefined) { const u = parseUbic(f.Ubicacion); if (u) { f.Latitud = u.lat; f.Longitud = u.lng; if (u.rep) reparadas++; } else f.UbicacionTexto = String(f.Ubicacion); }
+    delete f.Ubicacion;
+    if (f.Contacto !== undefined && f.Contacto !== '') { const t = extraerTelefonos(f.Contacto); if (t.c1 && !f.Contacto_1) f.Contacto_1 = t.c1; if (t.c2 && !f.Contacto_2) f.Contacto_2 = t.c2; if (t.orig) { f.Contacto_Original = t.orig; conComplejo++; } }
+    delete f.Contacto;
+    if (typeof f.Componente === 'string') f.Componente = f.Componente.trim();
+    if (typeof f.AppRadar === 'string') f.AppRadar = /^(true|verdadero|si|sí|1)$/i.test(f.AppRadar.trim());
+    ['Fecha_Visita', 'Fecha_Reubicacion', 'Fecha_Retiro', 'Mantenimiento'].forEach(k => { if (f[k] !== undefined && typeof f[k] !== 'string') f[k] = ''; });
+    Object.keys(f).forEach(k => { if (f[k] === '' || f[k] === undefined) delete f[k]; });
+    f.ID_Cliente = id; filas.push(f);
+  });
+  return { filas, reconocidas, ignoradas, reparadas, sinId, conComplejo, unificados };
+}
+const normHeadImp = h => norm(h).replace(/[^a-z0-9]/g, '');
+/* Distritos de Lima Metropolitana y Callao: unifica "Surco"/"Santiago de Surco", tildes y mayúsculas */
+const DISTRITOS = ['Ancón', 'Ate', 'Barranco', 'Bellavista', 'Breña', 'Callao', 'Carabayllo', 'Carmen de la Legua Reynoso', 'Cercado de Lima', 'Chaclacayo', 'Chorrillos', 'Cieneguilla', 'Comas', 'El Agustino', 'Independencia', 'Jesús María',
+  'La Molina', 'La Perla', 'La Punta', 'La Victoria', 'Lince', 'Los Olivos', 'Lurigancho-Chosica', 'Lurín', 'Magdalena del Mar', 'Mi Perú', 'Miraflores', 'Pachacámac', 'Pucusana', 'Pueblo Libre', 'Puente Piedra', 'Punta Hermosa', 'Punta Negra',
+  'Rímac', 'San Bartolo', 'San Borja', 'San Isidro', 'San Juan de Lurigancho', 'San Juan de Miraflores', 'San Luis', 'San Martín de Porres', 'San Miguel', 'Santa Anita', 'Santa María del Mar', 'Santa Rosa', 'Santiago de Surco', 'Surquillo',
+  'Ventanilla', 'Villa El Salvador', 'Villa María del Triunfo'];
+const DIST_KEY = (() => {
+  const m = {}; DISTRITOS.forEach(d => { m[normHeadImp(d)] = d; });
+  Object.assign(m, { surco: 'Santiago de Surco', lima: 'Cercado de Lima', cercado: 'Cercado de Lima', limacercado: 'Cercado de Lima', chosica: 'Lurigancho-Chosica', sjl: 'San Juan de Lurigancho', sjm: 'San Juan de Miraflores', smp: 'San Martín de Porres', ves: 'Villa El Salvador', vmt: 'Villa María del Triunfo' });
+  return m;
+})();
+const distritoCanon = x => { x = String(x ?? '').replace(/\s+/g, ' ').trim(); return x ? (DIST_KEY[normHeadImp(x)] || x) : ''; };
+
+function openImportTiendas() {
+  IMP = null;
+  openModal(`<div class="p-5 space-y-3">
+    <div class="flex items-start gap-2"><div class="flex-1"><div class="text-lg font-bold leading-tight">Importar base anterior</div><div class="text-sm text-slate-500">Sube tu Excel (.xlsx) o CSV con el equipo de cada tienda, estado, distrito y contactos.</div></div><button data-close class="btn btn-ghost !py-1 !px-3">✕</button></div>
+    <input id="impFile" type="file" accept=".xlsx,.csv,.txt" class="inp">
+    <div class="space-y-1.5 text-sm">
+      <label class="flex items-start gap-2"><input id="impCrear" type="checkbox" class="mt-1"> <span>Crear las tiendas que no existan <span class="text-slate-400">(necesitan nombre y coordenadas válidas)</span></span></label>
+      <label class="flex items-start gap-2"><input id="impCoords" type="checkbox" class="mt-1"> <span>Actualizar coordenadas desde el archivo <span class="text-slate-400">(por defecto solo se completan las que faltan)</span></span></label>
+      <label class="flex items-start gap-2"><input id="impSobre" type="checkbox" class="mt-1"> <span>Sobrescribir distrito y contactos ya cargados <span class="text-slate-400">(por defecto no se pisa lo que ya editaste)</span></span></label>
+    </div>
+    <div id="impMsg" class="text-sm text-slate-500">Elige un archivo para empezar. Nada se guarda hasta que confirmes.</div>
+    <div class="grid grid-cols-2 gap-3"><button data-close class="btn btn-ghost">Cancelar</button><button id="btnImpGo" class="btn btn-primary" disabled>Analizar archivo</button></div>
+  </div>`);
+  $('#impFile').addEventListener('change', async e => {
+    const f = e.target.files[0], msg = $('#impMsg'), go = $('#btnImpGo'); IMP = null; go.disabled = true; go.textContent = 'Analizar archivo'; if (!f) return;
+    msg.className = 'text-sm text-slate-500'; msg.textContent = 'Leyendo archivo…';
+    try {
+      const tabla = /\.xlsx$/i.test(f.name) ? await readXlsx(await f.arrayBuffer()) : parseCSV(await f.text());
+      const r = mapearBase(tabla); if (!r.filas.length) throw new Error('El archivo no tiene filas con ID de tienda.');
+      IMP = { ...r, nombre: f.name, simulado: false };
+      msg.className = 'text-sm text-slate-700';
+      msg.innerHTML = `<b>${esc(f.name)}</b>: ${n0(r.filas.length)} tiendas leídas.<div class="text-xs text-slate-500 mt-1">Columnas reconocidas: ${esc(r.reconocidas.join(', '))}.${r.ignoradas.length ? ` No se usan: ${esc(r.ignoradas.join(', '))}.` : ''}${r.reparadas ? ` <b>${r.reparadas}</b> coordenada(s) con el punto decimal perdido se repararon.` : ''}${r.unificados ? ` <b>${r.unificados}</b> distrito(s) con otra escritura se unificaron (p. ej. “Surco” → “Santiago de Surco”, tildes).` : ''}${r.conComplejo ? ` <b>${r.conComplejo}</b> contacto(s) con más texto o números: se toman los 2 primeros y el texto original queda guardado.` : ''}${r.sinId ? ` ${r.sinId} fila(s) sin ID se omiten.` : ''}</div>`;
+      go.disabled = false;
+    } catch (err) { msg.className = 'text-sm text-red-700 bg-red-50 rounded-xl p-2'; msg.textContent = err.message || 'No se pudo leer el archivo.'; }
+  });
+  $('#btnImpGo').addEventListener('click', impEjecutar);
+}
+async function impEjecutar() {
+  if (!IMP) return;
+  const go = $('#btnImpGo'), msg = $('#impMsg'), simular = !IMP.simulado;
+  const opciones = { crearNuevas: $('#impCrear').checked, actualizarCoordenadas: $('#impCoords').checked, sobrescribir: $('#impSobre').checked };
+  go.disabled = true; const txt = go.textContent; go.textContent = simular ? 'Analizando…' : 'Importando…';
   try {
-    const logs = await api('getLogs');
-    const draw = filtro => {
-      const rows = logs.filter(l => !filtro || l.Usuario === filtro);
-      $('#logsList').innerHTML = rows.length ? rows.map(l => `
-        <div class="py-2 border-b border-slate-100 last:border-0 text-sm">
-          <div class="flex justify-between"><b>${esc(techName(l.Usuario))}</b><span class="text-xs text-slate-500">${fmt(l.Timestamp)}</span></div>
-          <div class="text-xs text-slate-500">@${esc(l.Usuario)} · ${esc(l.Rol)} · ${esc(l.Dispositivo_UserAgent)}</div>
-        </div>`).join('') : '<div class="text-sm text-slate-500 py-4 text-center">Sin registros</div>';
-    };
-    $('#modalBody').innerHTML = `${modalHeader('Historial de inicios de sesión')}
-      <div class="p-4 space-y-3">
-        <select id="logFiltro" class="inp"><option value="">Todos los usuarios</option>${S.usuarios.map(u => `<option value="${esc(u.Usuario)}">${esc(u.Nombre_Apellido)} (${esc(u.Usuario)})</option>`).join('')}</select>
-        <div class="card" id="logsList"></div>
-        <p class="text-xs text-slate-400 text-center">Mostrando los últimos ${logs.length} accesos.</p>
-      </div>`;
-    draw('');
-    $('#logFiltro').addEventListener('change', e => draw(e.target.value));
-  } catch (e) { toast(e.message, 'error'); closeModal(); }
+    const r = await api('importTiendas', { filas: IMP.filas, opciones, simular });
+    const li = (a, n = 12) => a.length ? `<div class="text-xs text-slate-500 mt-0.5">${esc(a.slice(0, n).join(', '))}${a.length > n ? ` … y ${a.length - n} más` : ''}</div>` : '';
+    const row = (l, v, cls = '') => `<div class="flex justify-between py-0.5 ${cls}"><span>${l}</span><b>${v}</b></div>`;
+    msg.className = 'text-sm text-slate-700 bg-slate-50 rounded-xl p-3 space-y-0.5';
+    msg.innerHTML = `<div class="font-semibold mb-1">${r.simulado ? 'Simulación (todavía no se guardó nada)' : '✅ Importación terminada'}</div>
+      ${row('Tiendas que coinciden', n0(r.coinciden))}${r.creadas ? row('Tiendas nuevas creadas', n0(r.creadas)) : ''}
+      ${row('Equipo: NUC / RB / Ninguno / Sin dato', `${r.equipos.NUC} / ${r.equipos.RB} / ${r.equipos.Ninguno} / ${r.equipos.SinDato}`)}
+      ${row('Estado: En Línea / Avería / Pendiente / Sin dato', `${r.estados['En Línea']} / ${r.estados['Avería']} / ${r.estados['Pendiente']} / ${r.estados['Sin dato']}`)}
+      ${row('Distritos cargados', n0(r.distritos))}${row('Contactos cargados', n0(r.contactos))}
+      ${row('Coordenadas completadas / actualizadas', `${r.coordsCompletadas} / ${r.coordsActualizadas}`)}
+      ${row('Con fecha de retiro (solo informativo)', n0(r.retiros))}
+      ${r.noEncontradas.length ? `<div class="text-amber-700 mt-1">⚠ ${r.noEncontradas.length} ID no existen en tus clientes y no se importan:${li(r.noEncontradas)}</div>` : ''}
+      ${r.duplicadas.length ? `<div class="text-amber-700 mt-1">⚠ ${r.duplicadas.length} ID repetidos (se usa la primera fila):${li(r.duplicadas)}</div>` : ''}
+      ${r.coordsInvalidas.length ? `<div class="text-amber-700 mt-1">⚠ ${r.coordsInvalidas.length} con coordenadas fuera de Perú (se ignoran):${li(r.coordsInvalidas)}</div>` : ''}`;
+    if (r.simulado) { IMP.simulado = true; go.textContent = 'Importar ahora'; go.disabled = false; }
+    else { go.textContent = 'Listo'; go.disabled = false; go.onclick = () => { closeModal(); loadTiendas(true); }; IMP = null; loadTiendas(true); toast('Base importada correctamente', 'ok'); }
+  } catch (e) { msg.className = 'text-sm text-red-700 bg-red-50 rounded-xl p-2'; msg.textContent = e.message; go.disabled = false; go.textContent = txt; }
+}
+
+/* ---------- Exportación: CSV y Excel (.xlsx generado en el navegador, sin librerías externas) ---------- */
+function tiendaExport(list) {
+  const f = s => s ? String(s).slice(0, 19) : '';
+  const head = ['ID Cliente', 'Nombre', 'Distrito', 'Dirección', 'Contacto 1', 'Contacto 2', 'Latitud', 'Longitud', 'Google Maps',
+    'Estado', 'Fecha del estado', 'Origen del estado', 'Total visitas', 'Última visita', 'Días desde la última visita', 'Técnico última visita', 'Tipo última visita', 'Status última visita', 'Última observación',
+    'Última visita física', 'Componente actual', 'Equipo verificado', 'Origen del equipo', 'Estado del equipo', 'Equipo pendiente de reinstalar', 'Tiene USB', 'USB por retirar', 'Último retiro de USB', 'USB retirado por',
+    'Último mantenimiento', 'Técnico mantenimiento', 'Total mantenimientos',
+    'Último retiro', 'Equipo retirado', 'Última reinstalación', 'Equipo reinstalado', 'Total averías', 'Última avería', 'Status última avería',
+    'Última reubicación', 'AppRadar', 'Registro base anterior', 'Foto fachada', 'Foto monitor', 'Actualizado'];
+  const rows = list.map(t => [t.ID_Cliente, t.Nombre_Cliente, t.Distrito || '', t.Direccion || '', t.Contacto_1 || '', t.Contacto_2 || '', isNum(t.Latitud) ? t.Latitud : '', isNum(t.Longitud) ? t.Longitud : '',
+    isNum(t.Latitud) && isNum(t.Longitud) ? `https://www.google.com/maps?q=${t.Latitud},${t.Longitud}` : '',
+    t.Estado_Tienda || 'Sin dato', f(t.Fecha_Estado), origenTxt(t.Origen_Estado),
+    t.Total_Visitas || 0, f(t.Ultima_Visita), diasDesde(t.Ultima_Visita) ?? '', t.Ultimo_Tecnico ? nameOf(t.Ultimo_Tecnico) : '', t.Ultimo_Tipo_Visita || '', t.Ultimo_Status || '', t.Ultima_Observacion || '',
+    f(t.Ultima_Visita_Fisica), compTxt(t), f(t.Equipo_Verificado), origenTxt(t.Origen_Equipo), t.Estado_Equipo || '', t.Equipo_Pendiente_Reinstalar || '', t.Tiene_USB === 'SI' ? 'Sí' : 'No', t.USB_Por_Retirar === 'SI' ? 'Sí' : 'No', f(t.Ultimo_Retiro_USB), t.Retiro_USB_Por ? nameOf(t.Retiro_USB_Por) : '',
+    f(t.Ultimo_Mantenimiento), t.Tecnico_Mantenimiento ? nameOf(t.Tecnico_Mantenimiento) : '', t.Total_Mantenimientos || 0,
+    f(t.Ultimo_Retiro), t.Equipo_Retirado || '', f(t.Ultima_Reinstalacion), t.Equipo_Reinstalado || '', t.Total_Averias || 0, f(t.Ultima_Averia), t.Ultima_Averia_Status || '',
+    f(t.Ultima_Reubicacion), t.AppRadar === 'SI' ? 'Sí' : t.AppRadar === 'NO' ? 'No' : '', t.Registro_Base_Anterior || '', t.URL_Foto_Fachada || '', t.URL_Foto_Monitor || '', f(t.Actualizado)]);
+  return { head, rows };
+}
+function exportTiendas(kind) {
+  const list = tiendaFiltrada(); if (!list.length) return toast('No hay tiendas para exportar', 'warn');
+  const { head, rows } = tiendaExport(list), name = `tiendas_${ymd(new Date())}`;
+  if (kind === 'csv') csvDownload(head, rows, name + '.csv'); else saveBlob(xlsxBlob(head, rows, 'Tiendas'), name + '.xlsx');
+  toast(`${n0(list.length)} tiendas exportadas`, 'ok');
+}
+function saveBlob(blob, name) {
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+}
+function csvDownload(head, rows, name) {
+  const q = v => { if (v === null || v === undefined) return '""'; let s = String(v); if (typeof v !== 'number' && /^[=+\-@\t\r]/.test(s)) s = "'" + s; return '"' + s.replace(/"/g, '""') + '"'; };
+  const csv = [head.map(q).join(',')].concat(rows.map(r => r.map(q).join(','))).join('\r\n');
+  saveBlob(new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' }), name);
+}
+
+/* .xlsx mínimo: ZIP sin compresión + hoja con texto en línea. Cabecera fija, filtros y anchos de columna. */
+const CRC_T = (() => { const t = []; for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+const crc32 = b => { let c = 0xFFFFFFFF; for (let i = 0; i < b.length; i++) c = CRC_T[(c ^ b[i]) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; };
+function zipStore(files) {
+  const enc = new TextEncoder(), parts = [], cen = []; let off = 0;
+  const w16 = n => [n & 255, (n >> 8) & 255], w32 = n => [n & 255, (n >> 8) & 255, (n >> 16) & 255, (n >>> 24) & 255];
+  files.forEach(f => {
+    const nm = enc.encode(f.name), data = enc.encode(f.text), crc = crc32(data);
+    const common = [...w16(20), ...w16(0x0800), ...w16(0), ...w16(0), ...w16(33), ...w32(crc), ...w32(data.length), ...w32(data.length), ...w16(nm.length), ...w16(0)];
+    parts.push(new Uint8Array([0x50, 0x4b, 3, 4, ...common]), nm, data);
+    cen.push(new Uint8Array([0x50, 0x4b, 1, 2, ...w16(20), ...common, ...w16(0), ...w16(0), ...w16(0), ...w32(0), ...w32(off)]), nm);
+    off += 30 + nm.length + data.length;
+  });
+  const cdSize = cen.reduce((a, b) => a + b.length, 0);
+  const end = new Uint8Array([0x50, 0x4b, 5, 6, 0, 0, 0, 0, ...w16(files.length), ...w16(files.length), ...w32(cdSize), ...w32(off), 0, 0]);
+  return new Blob([...parts, ...cen, end], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+}
+function xlsxBlob(head, rows, sheetName) {
+  const xe = s => String(s).replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  const L = i => { let s = '', n = i + 1; while (n > 0) { const m = (n - 1) % 26; s = String.fromCharCode(65 + m) + s; n = Math.floor((n - 1) / 26); } return s; };
+  const cell = (v, r, c, st) => {
+    const ref = L(c) + (r + 1), s = st ? ` s="${st}"` : '';
+    if (v === '' || v === null || v === undefined) return '';
+    if (typeof v === 'number' && isFinite(v)) return `<c r="${ref}"${s}><v>${v}</v></c>`;
+    return `<c r="${ref}"${s} t="inlineStr"><is><t xml:space="preserve">${xe(v)}</t></is></c>`;
+  };
+  const widths = head.map((h, i) => Math.min(60, Math.max(10, String(h).length + 2, ...rows.slice(0, 200).map(r => String(r[i] ?? '').length + 1))));
+  const sheetData = [head.map((h, c) => cell(h, 0, c, 1)).join('')].concat(rows.map((r, i) => r.map((v, c) => cell(v, i + 1, c, 0)).join(''))).map((x, i) => `<row r="${i + 1}">${x}</row>`).join('');
+  const X = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n';
+  const NS = 'xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"';
+  return zipStore([
+    { name: '[Content_Types].xml', text: X + '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>' },
+    { name: '_rels/.rels', text: X + '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>' },
+    { name: 'xl/workbook.xml', text: X + `<workbook ${NS} xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="${xe(sheetName)}" sheetId="1" r:id="rId1"/></sheets></workbook>` },
+    { name: 'xl/_rels/workbook.xml.rels', text: X + '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>' },
+    { name: 'xl/styles.xml', text: X + `<styleSheet ${NS}><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font></fonts><fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF1D4ED8"/><bgColor indexed="64"/></patternFill></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>` },
+    { name: 'xl/worksheets/sheet1.xml', text: X + `<worksheet ${NS}><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><cols>${widths.map((w, i) => `<col min="${i + 1}" max="${i + 1}" width="${w}" customWidth="1"/>`).join('')}</cols><sheetData>${sheetData}</sheetData><autoFilter ref="A1:${L(head.length - 1)}${rows.length + 1}"/></worksheet>` }
+  ]);
 }
 
 /* =====================================================================
  *  EVENTOS
  * ===================================================================== */
 function bindEvents() {
-  $('#loginForm').addEventListener('submit', doLogin);
-  $('#lgToggle').addEventListener('click', () => { const i = $('#lgPass'); const show = i.type === 'password'; i.type = show ? 'text' : 'password'; $('#lgToggle').textContent = show ? 'Ocultar' : 'Ver'; });
-
-  $$('.nav-btn').forEach(b => b.addEventListener('click', () => setView(b.dataset.nav)));
-  $('#btnSync').addEventListener('click', () => refreshData(false));
-  $('#fab').addEventListener('click', openFueraRuta);
-  $('#btnFuera').addEventListener('click', openFueraRuta);
-  $('#btnAsignar').addEventListener('click', openAsignar);
-
-  $('#qPend').addEventListener('input', renderPendientes);
-  $('#qRes').addEventListener('input', () => { S.limiteRes = 50; renderResueltas(); });
-  $('#selPerRes').addEventListener('change', e => { S.periodoRes = e.target.value; S.limiteRes = 50; renderResueltas(); });
-  ['#selTecPend', '#selTecRes', '#selTecMapa'].forEach(id => $(id).addEventListener('change', e => setFiltro(e.target.value)));
-  $('#chkRes').addEventListener('change', e => { S.mostrarResMapa = e.target.checked; renderMapa(true); });
-  $('#btnLocate').addEventListener('click', () => { initMap(); locateMe(); });
-
-  $('#listPend').addEventListener('click', e => {
-    const re = e.target.closest('[data-reasignar]');
-    if (re) { e.stopPropagation(); return openReasignar(re.dataset.reasignar); }
-    const c = e.target.closest('[data-vid]'); if (c) openVisita(c.dataset.vid);
+  $('#loginForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    const er = $('#lgErr'); er.classList.add('hidden');
+    const b = $('#lgBtn'); b.disabled = true; b.textContent = 'Ingresando…';
+    try {
+      const d = await api('login', { usuario: $('#lgUser').value.trim(), password: $('#lgPass').value, dispositivo: await getDevice(), soloSupervisor: true });
+      if (!d.user || d.user.Rol !== 'Supervisor') throw new Error('Este panel es solo para Supervisores.');
+      S.token = d.token; S.user = d.user; saveSession(); $('#lgPass').value = ''; S.view = 'dash'; enterApp();
+    } catch (err) { er.textContent = err.message; er.classList.remove('hidden'); }
+    finally { b.disabled = false; b.textContent = 'Ingresar'; }
   });
-  $('#cargaChips').addEventListener('click', e => { const c = e.target.closest('[data-chip]'); if (c) setFiltro(S.filtroTec === c.dataset.chip ? '' : c.dataset.chip); });
-  $('#listRes').addEventListener('click', e => { if (e.target.closest('#btnMasRes')) { S.limiteRes += 50; renderResueltas(); } });
-
-  $('#inicioBody').addEventListener('click', async e => {
-    const t = e.target.closest('[data-tec]');
-    if (t) { setFiltro(t.dataset.tec); return setView('pend'); }
-    if (e.target.closest('#btnPass')) return openPass();
-    if (e.target.closest('#btnUsers')) return openUsers();
-    if (e.target.closest('#btnLogs')) return openLogs();
-    if (e.target.closest('#btnLogout')) { if (confirm('¿Cerrar sesión?')) logout(); return; }
-    if (e.target.closest('#btnInstall') && deferredPrompt) { deferredPrompt.prompt(); await deferredPrompt.userChoice; deferredPrompt = null; renderInicio(); }
+  $('#btnMenu').addEventListener('click', () => openDrawer(true));
+  $('#backdrop').addEventListener('click', () => openDrawer(false));
+  $('#btnRefresh').addEventListener('click', () => loadData(false));
+  $('#btnLogout').addEventListener('click', () => { if (confirm('¿Cerrar sesión?')) logout(); });
+  $('#nav').addEventListener('click', e => { const b = e.target.closest('[data-nav]'); if (b) go(b.dataset.nav); });
+  $('#modal').addEventListener('click', e => {
+    const ed = e.target.closest('[data-tedit]'); if (ed) return openEditTienda(ed.dataset.tedit);   // “Editar” dentro del detalle abierto como ventana (celular)
+    if (e.target.closest('[data-close]') || e.target === $('#modal')) closeModal();
   });
 
-  $('#modal').addEventListener('click', e => { if (e.target.closest('[data-close]')) closeModal(); });
+  const root = $('#content');
+  root.addEventListener('click', async e => {
+    const t = e.target;
+    let el;
+    if ((el = t.closest('[data-preset]'))) {
+      const k = el.dataset.preset;
+      if (k === 'custom') { S.rango.preset = 'custom'; renderCurrent(false); return; }
+      setPreset(k); S.drill = null; return loadData(false);
+    }
+    if ((el = t.closest('.rg-apply'))) {
+      const bar = el.closest('.fbar'), d = $('.rg-desde', bar).value, h = $('.rg-hasta', bar).value;
+      if (!d || !h || d > h) return toast('Revisa el rango de fechas', 'warn');
+      S.rango = { preset: 'custom', desde: d, hasta: h }; S.drill = null; return loadData(false);
+    }
+    if ((el = t.closest('[data-di]'))) { const d = DR[+el.dataset.di]; if (d) setDrill(d); return; }
+    if ((el = t.closest('[data-go]'))) { if (el.dataset.go === 'pend') S.pend.tec = S.filtroTec; return go(el.dataset.go); }
+    if (t.closest('[data-drillclear]')) { S.drill = null; renderDrill(false); return; }
+    if ((el = t.closest('[data-csv]'))) {
+      const k = el.dataset.csv, list = k === 'drill' ? S.drillList : S.histList;
+      if (!list || !list.length) return toast('No hay datos para exportar', 'warn');
+      return exportCSV(list, `visitas_${S.rango.desde}_${S.rango.hasta}.csv`);
+    }
+    if ((el = t.closest('[data-more]'))) {
+      const k = el.dataset.more;
+      if (k === 'drill') { S.drillPage++; renderDrill(false); } else if (k === 'hist') { S.hist.page++; updateHist(); }
+      else if (k === 'tienda') { S.tienda.page++; updateTiendas(true); }
+      else if (k === 'pend') { S.pend.page++; updatePend(); } else if (k === 'asig') { S.asig.page++; updateAsigList(); }
+      return;
+    }
+    if ((el = t.closest('[data-tsel]'))) return selTienda(el.dataset.tsel);
+    if ((el = t.closest('[data-tchip]'))) { S.tienda.filtro = el.dataset.tchip; S.tienda.page = 1; const f = $('#tFiltro'); if (f) f.value = S.tienda.filtro; return updateTiendas(); }
+    if ((el = t.closest('[data-texp]'))) return exportTiendas(el.dataset.texp);
+    if ((el = t.closest('[data-tedit]'))) return openEditTienda(el.dataset.tedit);
+    if (t.closest('[data-timp]')) return openImportTiendas();
+    if ((el = t.closest('[data-pchip]'))) { S.pend.tec = S.pend.tec === el.dataset.pchip ? '' : el.dataset.pchip; S.pend.page = 1; buildPend(); return; }
+    if ((el = t.closest('[data-pact]'))) return pendAction(el.dataset.pact);
+    if ((el = t.closest('[data-teamgo]'))) { const u = el.dataset.u; S.filtroTec = u; S.pend.tec = u; return go(el.dataset.teamgo); }
+    if ((el = t.closest('[data-aact]'))) {
+      const k = el.dataset.aact, a = S.asig;
+      if (k === 'todos') { (S.asigFiltered || []).forEach(c => a.sel.add(c.ID_Cliente)); updateAsigList(); updateAsigPlan(); }
+      else if (k === 'limpiar') { a.sel.clear(); updateAsigList(); updateAsigPlan(); }
+      else if (k === 'pegar') $('#aPasteBox').classList.toggle('hidden');
+      else if (k === 'aplicarids') aplicarIds();
+      else if (k === 'tec-todos') { S.usuarios.forEach(u => a.tecs.add(u.Usuario)); updateAsigPlan(); }
+      else if (k === 'tec-ninguno') { a.tecs.clear(); updateAsigPlan(); }
+      else if (k === 'ejecutar') ejecutarAsig();
+      else if (k === 'irplan') $('#aPlan').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  });
 
-  window.addEventListener('online', () => { $('#offBanner').classList.add('hidden'); if (S.token) refreshData(true); });
-  window.addEventListener('offline', () => { if (S.token) $('#offBanner').classList.remove('hidden'); });
-  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && S.token && !F) refreshData(true); });
+  root.addEventListener('input', e => {
+    const id = e.target.id;
+    if (id === 'hQ') { S.hist.q = e.target.value; S.hist.page = 1; updateHist(); }
+    else if (id === 'pQ') { S.pend.q = e.target.value; S.pend.page = 1; updatePend(); }
+    else if (id === 'tQ') { S.tienda.q = e.target.value; S.tienda.page = 1; updateTiendas(true); }
+    else if (id === 'aQ') { S.asig.q = e.target.value; S.asig.page = 1; updateAsigList(); }
+  });
+
+  root.addEventListener('change', e => {
+    const t = e.target, id = t.id;
+    if (t.classList.contains('f-tec')) { S.filtroTec = t.value; S.drill = null; S.hist.page = 1; renderCurrent(false); return; }
+    if (id === 'hTipo') { S.hist.tipo = t.value; S.hist.page = 1; updateHist(); }
+    else if (id === 'hStatus') { S.hist.status = t.value; S.hist.page = 1; updateHist(); }
+    else if (id === 'tFiltro') { S.tienda.filtro = t.value; S.tienda.page = 1; updateTiendas(true); }
+    else if (id === 'tDist') { S.tienda.distrito = t.value; S.tienda.page = 1; updateTiendas(true); }
+    else if (id === 'hFuera') { S.hist.fuera = t.checked; S.hist.page = 1; updateHist(); }
+    else if (id === 'pTec') { S.pend.tec = t.value; S.pend.page = 1; updatePend(); }
+    else if (id === 'pAtr') { S.pend.soloAtras = t.checked; S.pend.page = 1; updatePend(); }
+    else if (id === 'pAll') { const l = S.pendList || []; if (t.checked) l.forEach(v => S.pend.sel.add(v.ID_Visita)); else l.forEach(v => S.pend.sel.delete(v.ID_Visita)); updatePend(); }
+    else if (t.dataset.pid) { t.checked ? S.pend.sel.add(t.dataset.pid) : S.pend.sel.delete(t.dataset.pid); updatePendBar(); }
+    else if (id === 'aOcultar') { S.asig.ocultarPend = t.checked; S.asig.page = 1; updateAsigList(); updateAsigPlan(); }
+    else if (t.dataset.cid) { t.checked ? S.asig.sel.add(t.dataset.cid) : S.asig.sel.delete(t.dataset.cid); updateAsigCount(); updateAsigPlan(); }
+    else if (t.name === 'amodo') { S.asig.modo = t.value; updateAsigPlan(); }
+    else if (id === 'aDestino') { S.asig.destino = t.value; updateAsigPlan(); }
+    else if (id === 'aOmitir') { S.asig.omitir = t.checked; updateAsigPlan(); }
+    else if (t.dataset.atec) { t.checked ? S.asig.tecs.add(t.dataset.atec) : S.asig.tecs.delete(t.dataset.atec); updateAsigPlan(); }
+    else if (id === 'lgFiltro') { S.logsFiltro = t.value; renderLogs(); }
+  });
+
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && S.token) loadData(true); });
 }
 
-/* =====================================================================
- *  INICIO DE LA APP
- * ===================================================================== */
-/* Pide el permiso de GPS una sola vez, al iniciar sesión (gesto del usuario), para que no
-   aparezca en medio del formulario. Si el permiso ya está concedido, solo "calienta" el GPS. */
-async function primeGps(force) {
-  if (!navigator.geolocation) return;
-  let state = 'prompt';
-  try { if (navigator.permissions && navigator.permissions.query) state = (await navigator.permissions.query({ name: 'geolocation' })).state; } catch (_) {}
-  if (state === 'denied') return;
-  if (state === 'prompt' && !force) return;
-  navigator.geolocation.getCurrentPosition(() => {}, () => {}, { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 });
+/* ---------- Instalación como app (PWA) ---------- */
+let deferredPrompt = null;
+const isStandalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+const isIOS = () => /iPhone|iPad|iPod/i.test(navigator.userAgent) || (/Macintosh/i.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
+function refreshInstallUI() { $$('.js-install').forEach(b => b.classList.toggle('hidden', isStandalone())); }
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredPrompt = e; refreshInstallUI(); });
+window.addEventListener('appinstalled', () => { deferredPrompt = null; refreshInstallUI(); toast('App instalada', 'ok'); });
+async function installApp() {
+  if (deferredPrompt) {
+    deferredPrompt.prompt();
+    try { await deferredPrompt.userChoice; } catch (_) {}
+    deferredPrompt = null; refreshInstallUI(); return;
+  }
+  const pasos = isIOS()
+    ? ['Abre esta página en <b>Safari</b>.', 'Toca el botón <b>Compartir</b> (cuadrado con flecha).', 'Elige <b>“Agregar a pantalla de inicio”</b> y confirma con <b>Agregar</b>.']
+    : ['Abre el menú del navegador <b>⋮</b> (Chrome o Brave).', 'Elige <b>“Instalar app”</b> o <b>“Agregar a la pantalla de inicio”</b>.', 'Confirma con <b>Instalar</b>.'];
+  openModal(`<div class="p-5 space-y-3"><div class="text-lg font-bold">Instalar el Panel de Supervisión</div>
+    <ol class="list-decimal pl-5 space-y-2 text-sm text-slate-700">${pasos.map(x => `<li>${x}</li>`).join('')}</ol>
+    <p class="text-xs text-slate-500">Se instala como una app aparte, con su propio ícono (azul marino con gráfico), distinta de la app de técnicos.</p>
+    <button class="btn btn-primary w-full" data-close>Entendido</button></div>`);
 }
 
 function init() {
   bindEvents();
+  document.addEventListener('click', e => { if (e.target.closest('.js-install')) installApp(); });
+  refreshInstallUI();
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+  if (typeof Chart !== 'undefined') { Chart.defaults.font.family = 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif'; Chart.defaults.color = '#475569'; }
   const ses = loadSession();
-  if (ses && ses.token && ses.user) {
-    Object.assign(S, { token: ses.token, user: ses.user, loginAt: ses.loginAt, device: ses.device || '' });
-    const c = loadCache();
-    if (c) Object.assign(S, { clientes: c.clientes || [], visitas: c.visitas || [], usuarios: c.usuarios || [], equipos: c.equipos || {} });
-    showApp();
-    refreshData(true);
-    primeGps(false);
-    if (!S.device) getDevice().then(d => { S.device = d; saveSession(); renderInicio(); });
-  } else {
-    showLogin();
-  }
+  if (ses && ses.token && ses.user && ses.user.Rol === 'Supervisor') { S.token = ses.token; S.user = ses.user; enterApp(); }
+  else showLogin();
 }
 init();
 })();
