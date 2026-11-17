@@ -163,7 +163,7 @@
  *  CONFIGURACIÓN — edita solo esta sección
  * ===================================================================== */
 const CONFIG = {
-  API_URL: 'https://script.google.com/macros/s/AKfycby2D_6i04OhwWADWreNoD2vrkyiKHR24qkVCiQ0icUT3UTZ1gqBoKMN_ijuuDqPtWV-uw/exec',   // URL terminada en /exec
+  API_URL: 'https://script.google.com/macros/s/AKfycbyxXyopm-75R4CK7iISmdWroa8OO70j3rNzLAkfRCiYhSs7_dn4Hmj4-sykwb5K-AerLQ/exec',   // URL terminada en /exec
   GEOCERCA_METROS: 100,
   FOTO_MAX_ANCHO: 1200,
   FOTO_CALIDAD: 0.7,
@@ -264,14 +264,14 @@ async function getDevice() {
  * ===================================================================== */
 const S = {
   token: null, user: null, loginAt: null, device: '',
-  clientes: [], visitas: [], usuarios: [],
+  clientes: [], visitas: [], usuarios: [], equipos: {},
   view: 'inicio', filtroTec: '', limiteRes: 50, mostrarResMapa: false, periodoRes: 'hoy'
 };
 const isSup = () => S.user && S.user.Rol === 'Supervisor';
 const techName = u => { const x = S.usuarios.find(y => y.Usuario === u); return x ? x.Nombre_Apellido : (S.user && S.user.Usuario === u ? S.user.Nombre_Apellido : u); };
 
 function saveSession() { try { localStorage.setItem(CONFIG.SESION_KEY, JSON.stringify({ token: S.token, user: S.user, loginAt: S.loginAt, device: S.device })); } catch (_) {} }
-function saveCache() { try { localStorage.setItem(CONFIG.CACHE_KEY, JSON.stringify({ clientes: S.clientes, visitas: S.visitas, usuarios: S.usuarios })); } catch (_) {} }
+function saveCache() { try { localStorage.setItem(CONFIG.CACHE_KEY, JSON.stringify({ clientes: S.clientes, visitas: S.visitas, usuarios: S.usuarios, equipos: S.equipos })); } catch (_) {} }
 function loadSession() { try { return JSON.parse(localStorage.getItem(CONFIG.SESION_KEY)); } catch (_) { return null; } }
 function loadCache() { try { return JSON.parse(localStorage.getItem(CONFIG.CACHE_KEY)); } catch (_) { return null; } }
 
@@ -311,6 +311,7 @@ async function refreshData(silent) {
     S.clientes = d.clientes || [];
     S.visitas = d.visitas || [];
     S.usuarios = d.usuarios || [];
+    S.equipos = d.equipos || {};
     if (d.user) { S.user = d.user; saveSession(); }
     saveCache();
     $('#offBanner').classList.add('hidden');
@@ -342,7 +343,7 @@ function logout(msg) {
   stopGps();
   closeModal();
   try { localStorage.removeItem(CONFIG.SESION_KEY); localStorage.removeItem(CONFIG.CACHE_KEY); } catch (_) {}
-  Object.assign(S, { token: null, user: null, loginAt: null, clientes: [], visitas: [], usuarios: [], view: 'inicio', filtroTec: '' });
+  Object.assign(S, { token: null, user: null, loginAt: null, clientes: [], visitas: [], usuarios: [], equipos: {}, view: 'inicio', filtroTec: '' });
   showLogin(typeof msg === 'string' ? msg : '');
 }
 
@@ -525,6 +526,9 @@ function renderResueltas() {
         ${isNum(v.Distancia_Metros) ? `<span class="badge bg-slate-100 text-slate-700">${Math.round(v.Distancia_Metros)} m</span>` : ''}
         ${v.Es_Fuera_De_Ruta === 'SI' ? `<span class="badge bg-amber-100 text-amber-700">Fuera de ruta</span>` : ''}
         ${v.Retiro_Equipos ? `<span class="badge bg-orange-100 text-orange-700">📦 Retiro: ${esc(v.Retiro_Equipos)}</span>` : ''}
+        ${v.Reinstalacion_Equipo ? `<span class="badge bg-emerald-100 text-emerald-700">🔁 Reinstalado: ${esc(v.Reinstalacion_Equipo)}</span>` : ''}
+        ${v.USB_Monitor === 'SI' ? `<span class="badge bg-indigo-100 text-indigo-700">💾 USB en monitor</span>` : ''}
+        ${v.Mantenimiento === 'SI' ? `<span class="badge bg-slate-200 text-slate-700">🛠️ Mantenimiento</span>` : ''}
         ${isSup() ? `<span class="badge bg-purple-50 text-purple-700">👤 ${esc(techName(v.Usuario_Asignado))}</span>` : ''}
       </div>
       ${v.Observacion ? `<div class="mt-2 text-sm text-slate-600">${esc(v.Observacion)}</div>` : ''}
@@ -735,6 +739,7 @@ function openVisita(arg) {
       </div>
     </div>
 
+    ${avisoEquipos(v)}
     <div class="card space-y-2">
       <div id="miniMap" class="w-full h-48 rounded-xl overflow-hidden"></div>
       <div id="distBox" class="rounded-xl p-2 text-sm bg-slate-100 text-slate-700">Obteniendo ubicación GPS…</div>
@@ -776,6 +781,20 @@ function openVisita(arg) {
       <label class="flex items-center gap-3 text-sm font-medium text-slate-800"><input id="fRetRb" type="checkbox" class="w-5 h-5 accent-orange-600"> Se recoge RB</label>
       <p class="text-xs text-orange-700">Solo se puede recoger uno: NUC o RB. Si no se recoge ninguno, deja ambas casillas vacías y explica el motivo en Observación.</p>
     </div>
+    <div id="fReinstBox" class="hidden rounded-xl border border-emerald-200 bg-emerald-50 p-3 space-y-2.5">
+      <div class="text-sm font-semibold text-emerald-800">Equipo que se reinstala</div>
+      ${((S.equipos || {})[v.ID_Cliente] || {}).pend ? `<div class="text-xs font-semibold text-amber-700">⚠️ Pendiente de reinstalar en esta tienda: ${esc(S.equipos[v.ID_Cliente].pend)}</div>` : ''}
+      <label class="flex items-center gap-3 text-sm font-medium text-slate-800"><input id="fReNuc" type="checkbox" class="w-5 h-5 accent-emerald-600"> Se reinstala NUC</label>
+      <label class="flex items-center gap-3 text-sm font-medium text-slate-800"><input id="fReRb" type="checkbox" class="w-5 h-5 accent-emerald-600"> Se reinstala RB</label>
+      <p class="text-xs text-emerald-700">Solo se puede reinstalar uno: NUC o RB (puede ser distinto al que se retiró). Si no se reinstala ninguno, deja ambas vacías.</p>
+    </div>
+    <div id="fUsbBox" class="hidden rounded-xl border border-indigo-200 bg-indigo-50 p-3 space-y-1.5">
+      <label class="flex items-center gap-3 text-sm font-medium text-slate-800"><input id="fUsb" type="checkbox" class="w-5 h-5 accent-indigo-600"> Instalado USB en Monitor</label>
+      <p class="text-xs text-indigo-700">Marca esta casilla si dejaste un USB en el monitor como salvaguarda.</p>
+    </div>
+    <div id="fMantBox" class="hidden rounded-xl border border-slate-200 bg-slate-50 p-3">
+      <label class="flex items-center gap-3 text-sm font-medium text-slate-800"><input id="fMant" type="checkbox" class="w-5 h-5 accent-slate-700"> Mantenimiento realizado a los equipos</label>
+    </div>
     <div><label class="lbl">Observación *</label><textarea id="fObs" rows="3" class="inp" placeholder="Comentarios adicionales…"></textarea></div>
 
     <div id="fErr" class="hidden text-sm text-red-700 bg-red-50 border border-red-200 rounded-xl p-2"></div>
@@ -815,6 +834,8 @@ function openVisita(arg) {
   // NUC y RB son excluyentes: al marcar una se desmarca la otra
   $('#fRetNuc').addEventListener('change', e => { if (e.target.checked) $('#fRetRb').checked = false; });
   $('#fRetRb').addEventListener('change', e => { if (e.target.checked) $('#fRetNuc').checked = false; });
+  $('#fReNuc').addEventListener('change', e => { if (e.target.checked) $('#fReRb').checked = false; });
+  $('#fReRb').addEventListener('change', e => { if (e.target.checked) $('#fReNuc').checked = false; });
   $('#fTipo').addEventListener('change', syncExtras);
   $('#fStatus').addEventListener('change', syncExtras);
   $('#fFachada').addEventListener('change', e => onFoto('fachada', e.target, 'prevFachada', false));
@@ -826,11 +847,27 @@ function openVisita(arg) {
 }
 
 /* Campos que dependen del tipo y del status: checklist de retiro (Física + Avería NUC/RB) y observación obligatoria */
-function retiroAplica() { return $('#fTipo').value === 'Visita Física' && $('#fStatus').value === 'Avería NUC/RB'; }
+function esFisica() { return $('#fTipo').value === 'Visita Física'; }
+function retiroAplica() { return esFisica() && $('#fStatus').value === 'Avería NUC/RB'; }
+function reinstAplica() { const st = $('#fStatus').value; return esFisica() && (st === 'Activa Validada' || st === 'Activa Sin Validación'); }
+function usbAplica() { return esFisica() && $('#fStatus').value === 'Activa Sin Validación'; }
+function mantAplica() { const st = $('#fStatus').value; return esFisica() && !!st && st !== 'Tienda Cerrada'; }
 function syncExtras() {
-  const ap = retiroAplica();
-  $('#fRetiroBox').classList.toggle('hidden', !ap);
-  if (!ap) { $('#fRetNuc').checked = false; $('#fRetRb').checked = false; }
+  [['#fRetiroBox', retiroAplica(), ['#fRetNuc', '#fRetRb']], ['#fReinstBox', reinstAplica(), ['#fReNuc', '#fReRb']],
+   ['#fUsbBox', usbAplica(), ['#fUsb']], ['#fMantBox', mantAplica(), ['#fMant']]].forEach(([box, on, checks]) => {
+    $(box).classList.toggle('hidden', !on);
+    if (!on) checks.forEach(c => { $(c).checked = false; });   // al ocultarse se descartan las marcas
+  });
+}
+/* Aviso con el estado de equipos de la tienda (pendiente de reinstalar, USB, instalado sin validar) */
+function avisoEquipos(v) {
+  const eq = (S.equipos || {})[v.ID_Cliente]; if (!eq) return '';
+  const f = d => d ? ` (retirado el ${d.slice(8, 10)}/${d.slice(5, 7)})` : '';
+  const l = [];
+  if (eq.pend) l.push(`⚠️ <b>Equipo pendiente de reinstalar:</b> ${esc(eq.pend)}${f(eq.retiro)}`);
+  if (eq.estado === 'Instalado sin validar') l.push(`🔧 ${esc(eq.comp || 'Equipo')} instalado en la visita anterior, <b>sin validar</b>`);
+  if (eq.usb) l.push('💾 Esta tienda tiene un <b>USB dejado en el monitor</b>');
+  return l.length ? `<div class="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 space-y-1">${l.map(x => `<div>${x}</div>`).join('')}</div>` : '';
 }
 
 function cleanupVisita() {
@@ -963,7 +1000,11 @@ async function guardarVisita() {
       fotoMonitor: F.monitor,
       fotoGaleria: !!(F.galF || F.galM),
       retiroNuc: retiroAplica() && $('#fRetNuc').checked,
-      retiroRb: retiroAplica() && $('#fRetRb').checked
+      retiroRb: retiroAplica() && $('#fRetRb').checked,
+      reinstalaNuc: reinstAplica() && $('#fReNuc').checked,
+      reinstalaRb: reinstAplica() && $('#fReRb').checked,
+      usbMonitor: usbAplica() && $('#fUsb').checked,
+      mantenimiento: mantAplica() && $('#fMant').checked
     });
     toast('Visita guardada correctamente', 'ok');
     closeModal();
@@ -1137,7 +1178,7 @@ function init() {
   if (ses && ses.token && ses.user) {
     Object.assign(S, { token: ses.token, user: ses.user, loginAt: ses.loginAt, device: ses.device || '' });
     const c = loadCache();
-    if (c) Object.assign(S, { clientes: c.clientes || [], visitas: c.visitas || [], usuarios: c.usuarios || [] });
+    if (c) Object.assign(S, { clientes: c.clientes || [], visitas: c.visitas || [], usuarios: c.usuarios || [], equipos: c.equipos || {} });
     showApp();
     refreshData(true);
     primeGps(false);
