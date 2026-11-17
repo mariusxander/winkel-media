@@ -163,7 +163,7 @@
  *  CONFIGURACIÓN — edita solo esta sección
  * ===================================================================== */
 const CONFIG = {
-  API_URL: 'https://script.google.com/macros/s/AKfycbwsjAMk4TAeR7onPRRZlR_zbdf95cfY4ek0BIlZ8iDkWCxGqGwcWx4OJyszXPsPz9tCWQ/exec',   // URL terminada en /exec
+  API_URL: 'https://script.google.com/macros/s/AKfycby2D_6i04OhwWADWreNoD2vrkyiKHR24qkVCiQ0icUT3UTZ1gqBoKMN_ijuuDqPtWV-uw/exec',   // URL terminada en /exec
   GEOCERCA_METROS: 100,
   FOTO_MAX_ANCHO: 1200,
   FOTO_CALIDAD: 0.7,
@@ -524,6 +524,7 @@ function renderResueltas() {
         <span class="badge bg-slate-100 text-slate-700">${esc(v.Tipo_Visita)}</span>
         ${isNum(v.Distancia_Metros) ? `<span class="badge bg-slate-100 text-slate-700">${Math.round(v.Distancia_Metros)} m</span>` : ''}
         ${v.Es_Fuera_De_Ruta === 'SI' ? `<span class="badge bg-amber-100 text-amber-700">Fuera de ruta</span>` : ''}
+        ${v.Retiro_Equipos ? `<span class="badge bg-orange-100 text-orange-700">📦 Retiro: ${esc(v.Retiro_Equipos)}</span>` : ''}
         ${isSup() ? `<span class="badge bg-purple-50 text-purple-700">👤 ${esc(techName(v.Usuario_Asignado))}</span>` : ''}
       </div>
       ${v.Observacion ? `<div class="mt-2 text-sm text-slate-600">${esc(v.Observacion)}</div>` : ''}
@@ -769,7 +770,13 @@ function openVisita(arg) {
       <label class="lbl">Status *</label>
       <select id="fStatus" class="inp"><option value="">Selecciona…</option>${STATUS.map(t => `<option>${t}</option>`).join('')}</select>
     </div>
-    <div><label class="lbl">Observación <span id="obsReq" class="font-normal text-red-600 hidden">(obligatoria en “No Visitado”)</span></label><textarea id="fObs" rows="3" class="inp" placeholder="Comentarios adicionales…"></textarea></div>
+    <div id="fRetiroBox" class="hidden rounded-xl border border-orange-200 bg-orange-50 p-3 space-y-2.5">
+      <div class="text-sm font-semibold text-orange-800">Equipo que se retira de la tienda</div>
+      <label class="flex items-center gap-3 text-sm font-medium text-slate-800"><input id="fRetNuc" type="checkbox" class="w-5 h-5 accent-orange-600"> Se recoge NUC</label>
+      <label class="flex items-center gap-3 text-sm font-medium text-slate-800"><input id="fRetRb" type="checkbox" class="w-5 h-5 accent-orange-600"> Se recoge RB</label>
+      <p class="text-xs text-orange-700">Solo se puede recoger uno: NUC o RB. Si no se recoge ninguno, deja ambas casillas vacías y explica el motivo en Observación.</p>
+    </div>
+    <div><label class="lbl">Observación *</label><textarea id="fObs" rows="3" class="inp" placeholder="Comentarios adicionales…"></textarea></div>
 
     <div id="fErr" class="hidden text-sm text-red-700 bg-red-50 border border-red-200 rounded-xl p-2"></div>
     <div class="grid grid-cols-2 gap-3">
@@ -795,7 +802,6 @@ function openVisita(arg) {
     const nv = e.target.value === 'No Visitado';
     $('#fStatusBox').classList.toggle('hidden', nv);
     if (nv) $('#fStatus').value = '';
-    $('#obsReq').classList.toggle('hidden', !nv);
     // La galería solo se habilita en Visita Remota; al cambiar de tipo se descartan las fotos elegidas de galería
     const rem = e.target.value === 'Visita Remota';
     document.querySelectorAll('.gal-btn').forEach(b => b.classList.toggle('hidden', !rem));
@@ -806,12 +812,25 @@ function openVisita(arg) {
       if (quitadas) toast('Se quitaron las fotos de galería: solo se permiten en Visita Remota.', 'error');
     }
   });
+  // NUC y RB son excluyentes: al marcar una se desmarca la otra
+  $('#fRetNuc').addEventListener('change', e => { if (e.target.checked) $('#fRetRb').checked = false; });
+  $('#fRetRb').addEventListener('change', e => { if (e.target.checked) $('#fRetNuc').checked = false; });
+  $('#fTipo').addEventListener('change', syncExtras);
+  $('#fStatus').addEventListener('change', syncExtras);
   $('#fFachada').addEventListener('change', e => onFoto('fachada', e.target, 'prevFachada', false));
   $('#fMonitor').addEventListener('change', e => onFoto('monitor', e.target, 'prevMonitor', false));
   $('#fFachadaG').addEventListener('change', e => onFoto('fachada', e.target, 'prevFachada', true));
   $('#fMonitorG').addEventListener('change', e => onFoto('monitor', e.target, 'prevMonitor', true));
   $('#btnGuardar').addEventListener('click', guardarVisita);
   startGps();
+}
+
+/* Campos que dependen del tipo y del status: checklist de retiro (Física + Avería NUC/RB) y observación obligatoria */
+function retiroAplica() { return $('#fTipo').value === 'Visita Física' && $('#fStatus').value === 'Avería NUC/RB'; }
+function syncExtras() {
+  const ap = retiroAplica();
+  $('#fRetiroBox').classList.toggle('hidden', !ap);
+  if (!ap) { $('#fRetNuc').checked = false; $('#fRetRb').checked = false; }
 }
 
 function cleanupVisita() {
@@ -920,7 +939,7 @@ async function guardarVisita() {
   const tipo = $('#fTipo').value, status = $('#fStatus').value, obs = $('#fObs').value.trim();
   if (!tipo) return fErr('Selecciona el tipo de visita.');
   if (tipo !== 'No Visitado' && !status) return fErr('Selecciona el Status de la tienda.');
-  if (tipo === 'No Visitado' && !obs) return fErr('Para “No Visitado” escribe en Observación el motivo.');
+  if (!obs) return fErr('La Observación es obligatoria. Escribe el detalle de la visita.');
   if (tipo !== 'Visita Remota' && (F.galF || F.galM)) return fErr('Las fotos de galería solo se permiten en Visita Remota.');
   if (tipo === 'Visita Física') {
     const g = geofenceError();
@@ -942,7 +961,9 @@ async function guardarVisita() {
       lngReal: F.pos ? F.pos.lng : null,
       fotoFachada: F.fachada,
       fotoMonitor: F.monitor,
-      fotoGaleria: !!(F.galF || F.galM)
+      fotoGaleria: !!(F.galF || F.galM),
+      retiroNuc: retiroAplica() && $('#fRetNuc').checked,
+      retiroRb: retiroAplica() && $('#fRetRb').checked
     });
     toast('Visita guardada correctamente', 'ok');
     closeModal();
