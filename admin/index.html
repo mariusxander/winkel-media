@@ -133,7 +133,7 @@
  *  CONFIGURACIÓN — usa la MISMA URL /exec que en index.html
  * ===================================================================== */
 const CONFIG = {
-  API_URL: 'https://script.google.com/macros/s/AKfycbyPzXczExzqxKJ31Of5LsyqTEz2JI1zUG39YokcpDCDbCJnUBLDSyDCS8bHR1GfgqTSpA/exec',
+  API_URL: 'https://script.google.com/macros/s/AKfycby2D_6i04OhwWADWreNoD2vrkyiKHR24qkVCiQ0icUT3UTZ1gqBoKMN_ijuuDqPtWV-uw/exec',
   SESION_KEY: 'vta_sesion',
   AUTO_REFRESH_MS: 60000,
   LOTE_ASIGNAR: 300,
@@ -152,7 +152,11 @@ const COLOR = {
   'Avería ISP': '#dc2626', 'Avería NUC/RB': '#ea580c', 'Avería CAM': '#f59e0b', 'Avería Otros': '#be185d',
   'Tienda Cerrada': '#475569', 'Solicitud de Retiro': '#7c3aed'
 };
-const VCOLS = ['ID_Visita', 'Fecha_Asignacion', 'Usuario_Asignado', 'ID_Cliente', 'Nombre_Cliente', 'Latitud_Tienda', 'Longitud_Tienda', 'Estado_Tarea', 'Tipo_Visita', 'Status_Tienda', 'URL_Foto_Fachada', 'URL_Foto_Monitor', 'Observacion', 'Fecha_Resolucion', 'Lat_Real_Tecnico', 'Lng_Real_Tecnico', 'Distancia_Metros', 'Es_Fuera_De_Ruta'];
+const VCOLS = ['ID_Visita', 'Fecha_Asignacion', 'Usuario_Asignado', 'ID_Cliente', 'Nombre_Cliente', 'Latitud_Tienda', 'Longitud_Tienda', 'Estado_Tarea', 'Tipo_Visita', 'Status_Tienda', 'URL_Foto_Fachada', 'URL_Foto_Monitor', 'Observacion', 'Fecha_Resolucion', 'Lat_Real_Tecnico', 'Lng_Real_Tecnico', 'Distancia_Metros', 'Es_Fuera_De_Ruta', 'Retiro_Equipos'];
+
+// Retiro de equipos (solo Visita Física + Avería NUC/RB). '' = sin retiro
+const RET = { nuc: 'NUC', rb: 'RB' };   // solo se recoge uno por visita
+const RET_COLOR = { 'NUC': '#0ea5e9', 'RB': '#8b5cf6', '': '#94a3b8' };
 
 const ICONS = {
   dash: '<path d="M3 3h7v9H3zM14 3h7v5h-7zM14 12h7v9h-7zM3 16h7v5H3z"/>',
@@ -436,7 +440,7 @@ function bucketLabels(res) {
 }
 
 function applyDrill(list, d) {
-  return list.filter(v => (!d.tec || v.Usuario_Asignado === d.tec) && (!d.tipo || v.Tipo_Visita === d.tipo) && (!d.status || d.status.includes(v.Status_Tienda)) && (!d.bucket || bucketKey(v) === d.bucket) && (!d.fuera || v.Es_Fuera_De_Ruta === 'SI'));
+  return list.filter(v => (!d.tec || v.Usuario_Asignado === d.tec) && (!d.tipo || v.Tipo_Visita === d.tipo) && (!d.status || d.status.includes(v.Status_Tienda)) && (!d.bucket || bucketKey(v) === d.bucket) && (!d.fuera || v.Es_Fuera_De_Ruta === 'SI') && (!d.retiro || d.retiro.includes(v.Retiro_Equipos || '')));
 }
 
 function renderDash() {
@@ -446,6 +450,10 @@ function renderDash() {
   const fis = c(v => v.Tipo_Visita === 'Visita Física'), rem = c(v => v.Tipo_Visita === 'Visita Remota'), nov = c(v => v.Tipo_Visita === 'No Visitado');
   const st = {}; INC.forEach(s => { st[s] = c(v => v.Status_Tienda === s); });
   const act = ACT.reduce((a, s) => a + st[s], 0), ave = AV.reduce((a, s) => a + st[s], 0), cer = st['Tienda Cerrada'], ret = st['Solicitud de Retiro'];
+  // Avería NUC/RB: detalle de retiro de equipos
+  const nr = res.filter(v => v.Status_Tienda === 'Avería NUC/RB');
+  const rc = k => nr.filter(v => (v.Retiro_Equipos || '') === k).length;
+  const rNuc = rc(RET.nuc), rRb = rc(RET.rb), rSin = nr.length - rNuc - rRb, rCon = rNuc + rRb;
   const hoy = ymd(new Date()), atras = pend.filter(v => dOf(v.Fecha_Asignacion) < hoy).length;
   const fuera = c(v => v.Es_Fuera_De_Ruta === 'SI');
   const dists = res.filter(v => v.Tipo_Visita === 'Visita Física' && isNum(v.Distancia_Metros)).map(v => v.Distancia_Metros);
@@ -490,6 +498,14 @@ function renderDash() {
     ${kpi('Solicitud de retiro', n0(ret), { color: 'text-violet-600', dot: COLOR['Solicitud de Retiro'], d: { status: ['Solicitud de Retiro'], label: 'Solicitudes de retiro' }, sub: `${pct(ret, total)}% · otra incidencia` })}
   </div>
 
+  <div class="sec">Avería NUC/RB · retiro de equipos <span class="normal-case font-normal text-slate-400">· ${n0(rNuc)} NUC y ${n0(rRb)} RB recogidas</span></div>
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+    ${kpi('Averías NUC/RB', n0(nr.length), { color: 'text-orange-600', dot: COLOR['Avería NUC/RB'], d: { status: ['Avería NUC/RB'], label: 'Averías NUC/RB' }, sub: `${n0(rCon)} con retiro · ${pct(rCon, nr.length)}%` })}
+    ${kpi('Se recogió NUC', n0(rNuc), { color: 'text-sky-600', dot: RET_COLOR['NUC'], d: { status: ['Avería NUC/RB'], retiro: [RET.nuc], label: 'Avería NUC/RB · se recogió NUC' }, sub: `${pct(rNuc, nr.length)}% de las averías NUC/RB` })}
+    ${kpi('Se recogió RB', n0(rRb), { color: 'text-violet-600', dot: RET_COLOR['RB'], d: { status: ['Avería NUC/RB'], retiro: [RET.rb], label: 'Avería NUC/RB · se recogió RB' }, sub: `${pct(rRb, nr.length)}% de las averías NUC/RB` })}
+    ${kpi('Sin retiro', n0(rSin), { color: 'text-slate-600', dot: RET_COLOR[''], d: { status: ['Avería NUC/RB'], retiro: [''], label: 'Avería NUC/RB · sin retiro de equipos' }, sub: `${pct(rSin, nr.length)}% · incluye remotas` })}
+  </div>
+
   <div class="sec">Distribución y tendencia</div>
   <div class="grid grid-cols-1 lg:grid-cols-3 gap-3">
     <div class="card p-3"><div class="text-sm font-semibold mb-2">Tipo de visita</div><div class="chartbox" style="height:260px"><canvas id="ch-tipo"></canvas></div></div>
@@ -502,6 +518,7 @@ function renderDash() {
     ${techCard('ch-t1', 'Visitas por técnico', techs, res, TIPOS.map(t => ({ label: t, color: COLOR[t], match: v => v.Tipo_Visita === t, drill: { tipo: t } })))}
     ${techCard('ch-t2', 'Visitas activas por técnico', techs, res, ACT.map(s => ({ label: s, color: COLOR[s], match: v => v.Status_Tienda === s, drill: { status: [s] } })))}
     ${techCard('ch-t3', 'Averías por técnico', techs, res, AV.map(s => ({ label: s, color: COLOR[s], match: v => v.Status_Tienda === s, drill: { status: [s] } })))}
+    ${techCard('ch-t5', 'Retiro de equipos por técnico (Avería NUC/RB)', techs, res, [RET.nuc, RET.rb].map(k => ({ label: 'Se recogió ' + k, color: RET_COLOR[k], match: v => v.Status_Tienda === 'Avería NUC/RB' && v.Retiro_Equipos === k, drill: { status: ['Avería NUC/RB'], retiro: [k] } })))}
     ${techCard('ch-t4', 'Tiendas cerradas y no visitados por técnico', techs, res, [
       { label: 'Tienda Cerrada', color: COLOR['Tienda Cerrada'], match: v => v.Status_Tienda === 'Tienda Cerrada', drill: { status: ['Tienda Cerrada'] } },
       { label: 'No Visitado', color: COLOR['No Visitado'], match: v => v.Tipo_Visita === 'No Visitado', drill: { tipo: 'No Visitado' } }], false)}
@@ -599,7 +616,7 @@ function tableHTML(list, page, key) {
       <td>${esc(nameOf(v.Usuario_Asignado))}${v.Es_Fuera_De_Ruta === 'SI' ? ' <span class="badge bg-amber-100 text-amber-700">Fuera de ruta</span>' : ''}</td>
       <td><b>${esc(v.Nombre_Cliente)}</b><div class="text-xs text-slate-400">${esc(v.ID_Cliente)}</div></td>
       <td>${tipoBadge(v.Tipo_Visita)}</td>
-      <td><span class="badge" style="background:${col(v.Status_Tienda)}1a;color:${col(v.Status_Tienda)}">${esc(v.Status_Tienda || '—')}</span></td>
+      <td><span class="badge" style="background:${col(v.Status_Tienda)}1a;color:${col(v.Status_Tienda)}">${esc(v.Status_Tienda || '—')}</span>${v.Retiro_Equipos ? `<div class="mt-1"><span class="badge" style="background:#ffedd5;color:#c2410c">📦 ${esc(v.Retiro_Equipos)}</span></div>` : ''}</td>
       <td class="whitespace-nowrap">${isNum(v.Distancia_Metros) ? Math.round(v.Distancia_Metros) + ' m' : '—'}</td>
       <td class="whitespace-nowrap">${v.URL_Foto_Fachada ? `<a class="text-blue-600" target="_blank" rel="noopener" href="${esc(v.URL_Foto_Fachada)}">Fachada</a>` : ''} ${v.URL_Foto_Monitor ? `<a class="text-blue-600" target="_blank" rel="noopener" href="${esc(v.URL_Foto_Monitor)}">Monitor</a>` : ''}${!v.URL_Foto_Fachada && !v.URL_Foto_Monitor ? '—' : ''}</td>
       <td class="min-w-[160px] max-w-[320px] text-slate-600">${esc(v.Observacion)}</td></tr>`).join('')}</tbody></table></div>
