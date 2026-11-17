@@ -1,5 +1,5 @@
 /* Service Worker — Panel de Supervisión (alcance: esta carpeta /admin/) */
-const VERSION = 'vta-v1';
+const VERSION = 'vta-v2';
 const SHELL_CACHE = 'vta-shell-' + VERSION;
 
 const SHELL = ['./', 'index.html', 'manifest.json', '../icons/admin-192.png', '../icons/admin-512.png', '../icons/admin-apple-touch.png'];
