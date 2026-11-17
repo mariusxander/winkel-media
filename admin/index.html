@@ -153,7 +153,7 @@ const COLOR = {
   'Avería ISP': '#dc2626', 'Avería NUC/RB': '#ea580c', 'Avería CAM': '#f59e0b', 'Avería Otros': '#be185d',
   'Tienda Cerrada': '#475569', 'Solicitud de Retiro': '#7c3aed'
 };
-const VCOLS = ['ID_Visita', 'Fecha_Asignacion', 'Usuario_Asignado', 'ID_Cliente', 'Nombre_Cliente', 'Latitud_Tienda', 'Longitud_Tienda', 'Estado_Tarea', 'Tipo_Visita', 'Status_Tienda', 'URL_Foto_Fachada', 'URL_Foto_Monitor', 'Observacion', 'Fecha_Resolucion', 'Lat_Real_Tecnico', 'Lng_Real_Tecnico', 'Distancia_Metros', 'Es_Fuera_De_Ruta', 'Retiro_Equipos', 'Reinstalacion_Equipo', 'USB_Monitor', 'Mantenimiento'];
+const VCOLS = ['ID_Visita', 'Fecha_Asignacion', 'Usuario_Asignado', 'ID_Cliente', 'Nombre_Cliente', 'Latitud_Tienda', 'Longitud_Tienda', 'Estado_Tarea', 'Tipo_Visita', 'Status_Tienda', 'URL_Foto_Fachada', 'URL_Foto_Monitor', 'Observacion', 'Fecha_Resolucion', 'Lat_Real_Tecnico', 'Lng_Real_Tecnico', 'Distancia_Metros', 'Es_Fuera_De_Ruta', 'Retiro_Equipos', 'Reinstalacion_Equipo', 'USB_Monitor', 'Mantenimiento', 'Confirma_Equipo', 'Confirma_USB', 'Retiro_USB'];
 
 // Retiro de equipos (solo Visita Física + Avería NUC/RB). '' = sin retiro
 const RET = { nuc: 'NUC', rb: 'RB' };   // solo se recoge uno por visita
@@ -243,7 +243,7 @@ const S = {
   asig: { q: '', ocultarPend: true, sel: new Set(), modo: 'zonas', destino: '', tecs: new Set(), tecsInit: false, omitir: true, page: 1 },
   pend: { q: '', tec: '', soloAtras: false, sel: new Set(), page: 1 },
   hist: { q: '', tipo: '', status: '', fuera: false, page: 1 },
-  tienda: { q: '', filtro: '', sel: '', page: 1, data: null, hoja: true, hist: {} },
+  tienda: { q: '', filtro: '', distrito: '', sel: '', page: 1, data: null, hoja: true, setup: false, hist: {} },
   logs: [], logsFiltro: '', timer: null
 };
 const U = u => S.usuarios.find(x => x.Usuario === u);
@@ -282,7 +282,7 @@ function logout(msg) {
   clearInterval(S.timer); closeModal(); destroyCharts();
   try { localStorage.removeItem(CONFIG.SESION_KEY); } catch (_) {}
   Object.assign(S, { token: null, user: null, usuarios: [], clientes: [], visitas: [], drill: null });
-  S.tienda = { q: '', filtro: '', sel: '', page: 1, data: null, hoja: true, hist: {} };
+  S.tienda = { q: '', filtro: '', distrito: '', sel: '', page: 1, data: null, hoja: true, setup: false, hist: {} };
   S.asig.sel.clear(); S.pend.sel.clear();
   showLogin(typeof msg === 'string' ? msg : '');
 }
@@ -447,7 +447,7 @@ function bucketLabels(res) {
 }
 
 function applyDrill(list, d) {
-  return list.filter(v => (!d.tec || v.Usuario_Asignado === d.tec) && (!d.tipo || v.Tipo_Visita === d.tipo) && (!d.status || d.status.includes(v.Status_Tienda)) && (!d.bucket || bucketKey(v) === d.bucket) && (!d.fuera || v.Es_Fuera_De_Ruta === 'SI') && (!d.retiro || d.retiro.includes(v.Retiro_Equipos || '')) && (!d.reinst || d.reinst.includes(v.Reinstalacion_Equipo || '')) && (!d.usb || v.USB_Monitor === 'SI') && (!d.mant || v.Mantenimiento === 'SI'));
+  return list.filter(v => (!d.tec || v.Usuario_Asignado === d.tec) && (!d.tipo || v.Tipo_Visita === d.tipo) && (!d.status || d.status.includes(v.Status_Tienda)) && (!d.bucket || bucketKey(v) === d.bucket) && (!d.fuera || v.Es_Fuera_De_Ruta === 'SI') && (!d.retiro || d.retiro.includes(v.Retiro_Equipos || '')) && (!d.reinst || d.reinst.includes(v.Reinstalacion_Equipo || '')) && (!d.usb || v.USB_Monitor === 'SI') && (!d.usbret || !!v.Retiro_USB) && (!d.mant || v.Mantenimiento === 'SI'));
 }
 
 function renderDash() {
@@ -464,7 +464,7 @@ function renderDash() {
   // Reinstalación de equipos, USB y mantenimiento (solo visitas físicas)
   const rein = res.filter(v => v.Reinstalacion_Equipo), reN = rein.filter(v => v.Reinstalacion_Equipo === 'NUC'), reR = rein.filter(v => v.Reinstalacion_Equipo === 'RB');
   const okv = a => a.filter(v => v.Status_Tienda === 'Activa Validada').length;
-  const usbN = c(v => v.USB_Monitor === 'SI'), mantN = c(v => v.Mantenimiento === 'SI');
+  const usbN = c(v => v.USB_Monitor === 'SI'), usbRetN = c(v => !!v.Retiro_USB), mantN = c(v => v.Mantenimiento === 'SI');
   const hoy = ymd(new Date()), atras = pend.filter(v => dOf(v.Fecha_Asignacion) < hoy).length;
   const fuera = c(v => v.Es_Fuera_De_Ruta === 'SI');
   const dists = res.filter(v => v.Tipo_Visita === 'Visita Física' && isNum(v.Distancia_Metros)).map(v => v.Distancia_Metros);
@@ -518,11 +518,12 @@ function renderDash() {
   </div>
 
   <div class="sec">Reinstalación de equipos, USB y mantenimiento <span class="normal-case font-normal text-slate-400">· solo visitas físicas</span></div>
-  <div class="grid grid-cols-2 lg:grid-cols-5 gap-3">
+  <div class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
     ${kpi('Equipos reinstalados', n0(rein.length), { color: 'text-emerald-600', dot: REI_COLOR['NUC'], d: { reinst: ['NUC', 'RB'], label: 'Equipos reinstalados (NUC + RB)' }, sub: `${n0(okv(rein))} validados · ${n0(rein.length - okv(rein))} sin validar` })}
     ${kpi('Se reinstaló NUC', n0(reN.length), { color: 'text-emerald-700', dot: REI_COLOR['NUC'], d: { reinst: ['NUC'], label: 'Se reinstaló NUC' }, sub: `${n0(okv(reN))} validados · ${n0(reN.length - okv(reN))} sin validar` })}
     ${kpi('Se reinstaló RB', n0(reR.length), { color: 'text-emerald-500', dot: REI_COLOR['RB'], d: { reinst: ['RB'], label: 'Se reinstaló RB' }, sub: `${n0(okv(reR))} validados · ${n0(reR.length - okv(reR))} sin validar` })}
     ${kpi('USB en monitor', n0(usbN), { color: 'text-indigo-600', dot: REI_COLOR.usb, d: { usb: true, label: 'Visitas con USB dejado en el monitor' }, sub: 'solo en Activa Sin Validación' })}
+    ${kpi('USB retirados', n0(usbRetN), { color: 'text-red-600', dot: '#dc2626', d: { usbret: true, label: 'Visitas en que un Supervisor retiró el USB del monitor' }, sub: 'solo lo retira un Supervisor' })}
     ${kpi('Mantenimientos', n0(mantN), { color: 'text-slate-700', dot: REI_COLOR.mant, d: { mant: true, label: 'Visitas con mantenimiento' }, sub: `${pct(mantN, fis)}% de las visitas físicas` })}
   </div>
 
@@ -543,6 +544,7 @@ function renderDash() {
       { label: 'Reinstaló NUC', color: REI_COLOR['NUC'], match: v => v.Reinstalacion_Equipo === 'NUC', drill: { reinst: ['NUC'] } },
       { label: 'Reinstaló RB', color: REI_COLOR['RB'], match: v => v.Reinstalacion_Equipo === 'RB', drill: { reinst: ['RB'] } },
       { label: 'USB en monitor', color: REI_COLOR.usb, match: v => v.USB_Monitor === 'SI', drill: { usb: true } },
+      { label: 'USB retirado', color: '#dc2626', match: v => !!v.Retiro_USB, drill: { usbret: true } },
       { label: 'Mantenimiento', color: REI_COLOR.mant, match: v => v.Mantenimiento === 'SI', drill: { mant: true } }], false)}
     ${techCard('ch-t4', 'Tiendas cerradas y no visitados por técnico', techs, res, [
       { label: 'Tienda Cerrada', color: COLOR['Tienda Cerrada'], match: v => v.Status_Tienda === 'Tienda Cerrada', drill: { status: ['Tienda Cerrada'] } },
@@ -943,32 +945,51 @@ function renderLogs() {
  *  INFORMACIÓN DE TIENDA (matriz con la última incidencia de cada tienda)
  * ===================================================================== */
 const diasDesde = s => { const d = dOf(s); if (!d) return null; return Math.round((new Date(ymd(new Date()) + 'T00:00:00') - new Date(d + 'T00:00:00')) / 86400000); };
-const TFILTROS = [['', 'Todas las tiendas'], ['pend', 'Equipo pendiente de reinstalar'], ['sinval', 'Instalado sin validar'], ['usb', 'Con USB en monitor'], ['nuc', 'Tiene NUC'], ['rb', 'Tiene RB'],
-  ['sinvisita', 'Sin visitas'], ['atras', 'Sin visita hace más de 30 días'], ['sinmant', 'Sin mantenimiento registrado']];
+const ESTADO_COL = { 'En Línea': ['#dcfce7', '#15803d'], 'Pendiente': ['#fef3c7', '#b45309'], 'Avería': ['#fee2e2', '#b91c1c'], 'Tienda Cerrada': ['#e2e8f0', '#475569'], 'Solicitud de Retiro': ['#ede9fe', '#6d28d9'] };
+const estadoBadge = (t, big) => t.Estado_Tienda
+  ? `<span class="badge ${big ? '!text-sm !px-3 !py-1' : ''}" style="background:${(ESTADO_COL[t.Estado_Tienda] || ['#f1f5f9', '#475569'])[0]};color:${(ESTADO_COL[t.Estado_Tienda] || ['#f1f5f9', '#475569'])[1]}">${esc(t.Estado_Tienda)}</span>`
+  : '<span class="text-xs text-slate-400">Sin dato</span>';
+const origenTxt = o => o === 'Importado' ? 'base anterior' : o === 'Visita' ? 'visita' : '';
+const TFILTROS = [['', 'Todas las tiendas'],
+  ['enlinea', 'Estado: En Línea'], ['pendiente', 'Estado: Pendiente'], ['averia', 'Estado: Avería'], ['cerrada', 'Estado: Tienda Cerrada'], ['solret', 'Estado: Solicitud de Retiro'], ['sinestado', 'Estado: sin dato'],
+  ['pend', 'Equipo pendiente de reinstalar'], ['sinval', 'Instalado sin validar'], ['usb', 'Con USB en monitor'], ['usbret', 'USB por retirar (Supervisor)'], ['nuc', 'Tiene NUC'], ['rb', 'Tiene RB'], ['sineq', 'Equipo sin dato'],
+  ['sinvisita', 'Sin visitas'], ['atras', 'Sin visita hace más de 30 días'], ['sinmant', 'Sin mantenimiento registrado'], ['sincontacto', 'Sin contacto'], ['sindistrito', 'Sin distrito']];
 const TPRED = {
   '': () => true,
+  enlinea: t => t.Estado_Tienda === 'En Línea',
+  pendiente: t => t.Estado_Tienda === 'Pendiente',
+  averia: t => t.Estado_Tienda === 'Avería',
+  cerrada: t => t.Estado_Tienda === 'Tienda Cerrada',
+  solret: t => t.Estado_Tienda === 'Solicitud de Retiro',
+  sinestado: t => !t.Estado_Tienda,
   pend: t => !!t.Equipo_Pendiente_Reinstalar,
   sinval: t => t.Estado_Equipo === 'Instalado sin validar',
   usb: t => t.Tiene_USB === 'SI',
+  usbret: t => t.USB_Por_Retirar === 'SI',
   nuc: t => t.Componente_Actual === 'NUC',
   rb: t => t.Componente_Actual === 'RB',
+  sineq: t => !t.Componente_Actual && !t.Equipo_Pendiente_Reinstalar && !t.Origen_Equipo,
   sinvisita: t => !t.Total_Visitas,
   atras: t => { const d = diasDesde(t.Ultima_Visita); return d === null || d > 30; },
-  sinmant: t => !t.Ultimo_Mantenimiento
+  sinmant: t => !t.Ultimo_Mantenimiento,
+  sincontacto: t => !t.Contacto_1,
+  sindistrito: t => !t.Distrito
 };
-const compTxt = t => t.Componente_Actual || (t.Equipo_Pendiente_Reinstalar ? 'Sin equipo (retirado)' : 'Sin dato');
+const compTxt = t => t.Componente_Actual || (t.Equipo_Pendiente_Reinstalar ? 'Sin equipo (retirado)' : t.Origen_Equipo ? 'Ninguno' : 'Sin dato');
 const diasCol = d => d === null ? 'text-slate-400' : d > 30 ? 'text-red-600' : d > 14 ? 'text-amber-600' : 'text-green-600';
 const diasTxt = d => d === null ? 'sin visitas' : d === 0 ? 'hoy' : d === 1 ? 'ayer' : `hace ${d} días`;
+const fmtTel = s => { s = String(s || ''); return s.length === 9 ? s.replace(/(\d{3})(\d{3})(\d{3})/, '$1 $2 $3') : s; };
+const telLink = s => !s ? '' : `<a class="text-blue-600" href="tel:+51${esc(s)}">${esc(fmtTel(s))}</a>${/^9\d{8}$/.test(s) ? ` <a class="text-green-600 text-xs font-semibold" target="_blank" rel="noopener" href="https://wa.me/51${esc(s)}">WhatsApp</a>` : ''}`;
 const tBadges = t => [
   t.Equipo_Pendiente_Reinstalar ? `<span class="badge bg-amber-100 text-amber-800">⚠ Reinstalar ${esc(t.Equipo_Pendiente_Reinstalar)}</span>` : '',
   t.Estado_Equipo === 'Instalado sin validar' ? '<span class="badge bg-orange-100 text-orange-700">🔧 Sin validar</span>' : '',
-  t.Tiene_USB === 'SI' ? '<span class="badge bg-indigo-100 text-indigo-700">💾 USB</span>' : ''
+  t.USB_Por_Retirar === 'SI' ? '<span class="badge bg-red-100 text-red-700">💾 USB por retirar</span>' : (t.Tiene_USB === 'SI' ? '<span class="badge bg-indigo-100 text-indigo-700">💾 USB</span>' : '')
 ].join(' ');
 
 async function loadTiendas(silent) {
   try {
     const d = await api('getTiendas');
-    S.tienda.data = d.tiendas || []; S.tienda.hoja = d.hojaTiendas !== false;
+    S.tienda.data = d.tiendas || []; S.tienda.hoja = d.hojaTiendas !== false; S.tienda.setup = !!d.faltaSetup;
     if (S.view === 'tiendas' && $('#tList') && $('#modal').classList.contains('hidden')) updateTiendas();
     else if (S.view === 'tiendas' && $('#tList')) updateTiendas(true);
   } catch (e) { if (!silent && e.code !== 'AUTH') toast(e.message, 'error'); }
@@ -978,10 +999,12 @@ function buildTiendas() {
   const T = S.tienda;
   $('#v-tiendas').innerHTML = `
     <div id="tWarn"></div>
-    <div id="tChips" class="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-8 gap-2"></div>
+    <div id="tChips" class="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-7 gap-2"></div>
     <div class="card p-3 mt-3 flex flex-wrap gap-2 items-center">
-      <input id="tQ" type="search" class="inp flex-1 min-w-[200px]" placeholder="Buscar tienda, ID, técnico u observación" value="${esc(T.q)}">
+      <input id="tQ" type="search" class="inp flex-1 min-w-[200px]" placeholder="Buscar tienda, ID, distrito, contacto…" value="${esc(T.q)}">
       <select id="tFiltro" class="inp !w-auto max-w-full">${TFILTROS.map(([k, l]) => `<option value="${k}" ${T.filtro === k ? 'selected' : ''}>${l}</option>`).join('')}</select>
+      <select id="tDist" class="inp !w-auto max-w-full"><option value="">Todos los distritos</option></select>
+      <button class="btn btn-outline" data-timp="1">⬆ Importar base</button>
       <button class="btn btn-outline" data-texp="csv">⬇ CSV</button>
       <button class="btn btn-outline" data-texp="xlsx">⬇ Excel</button>
     </div>
@@ -994,28 +1017,40 @@ function buildTiendas() {
 }
 
 function tiendaFiltrada() {
-  const T = S.tienda, q = norm(T.q.trim());
-  return (T.data || []).filter(t => TPRED[T.filtro](t) && (!q || norm(t.Nombre_Cliente).includes(q) || norm(t.ID_Cliente).includes(q) || norm(nameOf(t.Ultimo_Tecnico)).includes(q) || norm(t.Ultima_Observacion).includes(q)))
+  const T = S.tienda, q = norm(T.q.trim()), qd = T.q.replace(/\D/g, '');
+  return (T.data || []).filter(t => TPRED[T.filtro](t) && (!T.distrito || t.Distrito === T.distrito)
+      && (!q || norm(t.Nombre_Cliente).includes(q) || norm(t.ID_Cliente).includes(q) || norm(nameOf(t.Ultimo_Tecnico)).includes(q) || norm(t.Ultima_Observacion).includes(q)
+        || norm(t.Distrito).includes(q) || norm(t.Direccion).includes(q) || (qd.length >= 4 && ((t.Contacto_1 || '').includes(qd) || (t.Contacto_2 || '').includes(qd)))))
     .sort((a, b) => String(a.Nombre_Cliente).localeCompare(String(b.Nombre_Cliente), 'es'));
+}
+function refreshDistritos() {
+  const sel = $('#tDist'); if (!sel) return;
+  const cnt = {}; (S.tienda.data || []).forEach(t => { if (t.Distrito) cnt[t.Distrito] = (cnt[t.Distrito] || 0) + 1; });
+  const ks = Object.keys(cnt).sort((a, b) => a.localeCompare(b, 'es'));
+  sel.innerHTML = '<option value="">Todos los distritos</option>' + ks.map(k => `<option value="${esc(k)}" ${S.tienda.distrito === k ? 'selected' : ''}>${esc(k)} (${cnt[k]})</option>`).join('');
 }
 
 function updateTiendas(soloLista) {
   const T = S.tienda; if (!$('#tList')) return;
   const data = T.data || [];
-  $('#tWarn').innerHTML = T.hoja ? '' : '<div class="card p-3 mb-3 text-sm bg-amber-50 border-amber-200 text-amber-900">La hoja <b>Tiendas</b> todavía no existe en tu Google Sheet. Ejecuta <b>setupSheet</b> en Apps Script una vez; mientras tanto solo se muestra la lista de clientes sin datos de visitas.</div>';
-  const chips = [['', 'Total tiendas'], ['pend', 'Pend. reinstalar'], ['sinval', 'Sin validar'], ['usb', 'Con USB'], ['nuc', 'Con NUC'], ['rb', 'Con RB'], ['sinvisita', 'Sin visitas'], ['atras', '+30 días sin visita']];
-  $('#tChips').innerHTML = chips.map(([k, l]) => `<button data-tchip="${k}" class="card kpi !p-2.5 ${T.filtro === k ? 'ring-2 ring-blue-500' : ''}"><div class="text-[11px] font-semibold text-slate-500 leading-tight">${l}</div><div class="text-2xl font-bold ${k === 'pend' ? 'text-amber-600' : k === 'usb' ? 'text-indigo-600' : 'text-slate-800'}">${n0(data.filter(TPRED[k]).length)}</div></button>`).join('');
+  $('#tWarn').innerHTML = !T.hoja ? '<div class="card p-3 mb-3 text-sm bg-amber-50 border-amber-200 text-amber-900">La hoja <b>Tiendas</b> todavía no existe en tu Google Sheet. Ejecuta <b>setupSheet</b> en Apps Script una vez; mientras tanto solo se muestra la lista de clientes sin datos de visitas.</div>'
+    : T.setup ? '<div class="card p-3 mb-3 text-sm bg-amber-50 border-amber-200 text-amber-900">Faltan columnas nuevas en tu Google Sheet (estado, distrito, contactos, USB). Ejecuta <b>setupSheet</b> en Apps Script una vez para activarlas: no se pierde ningún dato.</div>' : '';
+  refreshDistritos();
+  const chips = [['', 'Total tiendas'], ['enlinea', 'En Línea'], ['pendiente', 'Pendiente'], ['averia', 'Avería'], ['cerrada', 'Tienda Cerrada'], ['sinvisita', 'Sin visitas'], ['atras', '+30 días sin visita'],
+    ['nuc', 'Con NUC'], ['rb', 'Con RB'], ['sineq', 'Equipo sin dato'], ['pend', 'Pend. reinstalar'], ['sinval', 'Sin validar'], ['usb', 'Con USB'], ['usbret', 'USB por retirar']];
+  const chipCol = { enlinea: 'text-green-600', pendiente: 'text-amber-600', averia: 'text-red-600', cerrada: 'text-slate-600', pend: 'text-amber-600', usb: 'text-indigo-600', usbret: 'text-red-600' };
+  $('#tChips').innerHTML = chips.map(([k, l]) => `<button data-tchip="${k}" class="card kpi !p-2.5 ${T.filtro === k ? 'ring-2 ring-blue-500' : ''}"><div class="text-[11px] font-semibold text-slate-500 leading-tight">${l}</div><div class="text-2xl font-bold ${chipCol[k] || 'text-slate-800'}">${n0(data.filter(TPRED[k]).length)}</div></button>`).join('');
   const list = tiendaFiltrada();
   S.tiendaList = list;
   $('#tCount').textContent = `${n0(list.length)} de ${n0(data.length)} tiendas`;
   const rows = list.slice(0, T.page * CONFIG.PAGE);
   $('#tList').innerHTML = !list.length ? '<div class="p-8 text-center text-sm text-slate-500">No hay tiendas para mostrar.</div>' :
-    `<div class="overflow-x-auto"><table class="t"><thead><tr><th>Tienda</th><th>Última visita</th><th>Técnico</th><th>Status</th><th>Equipo</th></tr></thead><tbody>
+    `<div class="overflow-x-auto"><table class="t"><thead><tr><th>Tienda</th><th>Última visita</th><th>Técnico</th><th>Estado</th><th>Equipo</th></tr></thead><tbody>
     ${rows.map(t => { const d = diasDesde(t.Ultima_Visita); return `<tr class="clk ${T.sel === t.ID_Cliente ? 'bg-blue-50' : ''}" data-tsel="${esc(t.ID_Cliente)}">
-      <td><b>${esc(t.Nombre_Cliente)}</b><div class="text-xs text-slate-400">${esc(t.ID_Cliente)}</div></td>
+      <td><b>${esc(t.Nombre_Cliente)}</b><div class="text-xs text-slate-400">${esc(t.ID_Cliente)}${t.Distrito ? ' · ' + esc(t.Distrito) : ''}</div></td>
       <td class="whitespace-nowrap">${t.Ultima_Visita ? fmtD(t.Ultima_Visita) : '—'}<div class="text-xs ${diasCol(d)}">${diasTxt(d)}</div></td>
       <td>${t.Ultimo_Tecnico ? esc(nameOf(t.Ultimo_Tecnico)) : '—'}</td>
-      <td>${t.Ultimo_Status ? `<span class="badge" style="background:${col(t.Ultimo_Status)}1a;color:${col(t.Ultimo_Status)}">${esc(t.Ultimo_Status)}</span>` : (t.Ultimo_Tipo_Visita ? tipoBadge(t.Ultimo_Tipo_Visita) : '—')}</td>
+      <td>${estadoBadge(t)}${t.Estado_Tienda === 'Avería' && /^Avería/.test(t.Ultimo_Status || '') ? `<div class="text-[11px] text-slate-500 mt-0.5">${esc(t.Ultimo_Status)}</div>` : ''}${t.Estado_Tienda && t.Origen_Estado === 'Importado' ? '<div class="text-[10px] text-slate-400 mt-0.5">base anterior</div>' : ''}</td>
       <td><b>${esc(compTxt(t))}</b><div class="flex flex-wrap gap-1 mt-0.5">${tBadges(t)}</div></td></tr>`; }).join('')}</tbody></table></div>
     ${list.length > rows.length ? `<div class="p-3 text-center"><button class="btn btn-ghost" data-more="tienda">Mostrar más (${n0(list.length - rows.length)})</button></div>` : ''}`;
   if (!soloLista) renderTiendaDetail();
@@ -1041,14 +1076,22 @@ function tiendaDetailHTML(t, modal) {
   const dt = s => s ? fmtDT(s) : '';
   const eq = (f, e) => f ? `${fmtD(f)}${e ? ' · ' + esc(e) : ''}` : '';
   const sub = x => `<div class="sec !mt-4 !mb-1">${x}</div>`;
+  const desde = t.Fecha_Estado ? ` <span class="text-xs text-slate-500 font-normal">desde ${fmtD(t.Fecha_Estado)}${origenTxt(t.Origen_Estado) ? ' · ' + origenTxt(t.Origen_Estado) : ''}</span>` : (t.Origen_Estado ? ` <span class="text-xs text-slate-500 font-normal">${origenTxt(t.Origen_Estado)}</span>` : '');
+  const base = t.Registro_Base_Anterior || t.Ultima_Reubicacion || t.AppRadar === 'SI';
   return `<div class="card ${modal ? '!shadow-none !border-0 !p-0' : 'p-4'}">
     <div class="flex items-start gap-2">
-      <div class="min-w-0 flex-1"><div class="text-lg font-bold leading-tight" id="tdName">${esc(t.Nombre_Cliente)}</div><div class="text-xs text-slate-400">${esc(t.ID_Cliente)}</div></div>
+      <div class="min-w-0 flex-1"><div class="text-lg font-bold leading-tight" id="tdName">${esc(t.Nombre_Cliente)}</div><div class="text-xs text-slate-400">${esc(t.ID_Cliente)}${t.Distrito ? ' · ' + esc(t.Distrito) : ''}</div></div>
+      <button class="btn btn-outline !py-1 !px-3 text-sm" data-tedit="${esc(t.ID_Cliente)}">✏️ Editar</button>
       ${modal ? '<button data-close class="btn btn-ghost !py-1 !px-3">✕</button>' : ''}
     </div>
+    <div class="mt-2 flex flex-wrap items-center gap-2" id="tdEstado"><span class="text-xs font-semibold text-slate-500 uppercase tracking-wide">Estado</span> ${estadoBadge(t, true)}${desde}</div>
     <div class="flex flex-wrap gap-1 mt-2">${tBadges(t) || '<span class="text-xs text-slate-400">Sin alertas de equipos</span>'}</div>
 
-    ${sub('Ubicación')}
+    ${sub('Datos de la tienda')}
+    ${kv('Distrito', esc(t.Distrito))}
+    ${kv('Dirección', esc(t.Direccion))}
+    ${kv('Contacto 1', telLink(t.Contacto_1))}
+    ${kv('Contacto 2', telLink(t.Contacto_2))}
     ${kv('Coordenadas', isNum(t.Latitud) && isNum(t.Longitud) ? `${t.Latitud.toFixed(6)}, ${t.Longitud.toFixed(6)}` : '')}
     ${maps ? `<a class="text-blue-600 text-sm font-medium inline-block mt-1" target="_blank" rel="noopener" href="${maps}">📍 Abrir en Google Maps</a>` : ''}
 
@@ -1062,24 +1105,83 @@ function tiendaDetailHTML(t, modal) {
 
     ${sub('Equipos')}
     ${kv('Componente actual', `<b>${esc(compTxt(t))}</b>`)}
+    ${kv('Equipo verificado', t.Equipo_Verificado ? `${fmtD(t.Equipo_Verificado)}${origenTxt(t.Origen_Equipo) ? ' · ' + origenTxt(t.Origen_Equipo) : ''}` : (t.Origen_Equipo ? origenTxt(t.Origen_Equipo) : ''))}
     ${kv('Estado del equipo', esc(t.Estado_Equipo || 'Sin dato'))}
     ${kv('Pendiente de reinstalar', t.Equipo_Pendiente_Reinstalar ? `<span class="text-amber-700 font-bold">${esc(t.Equipo_Pendiente_Reinstalar)}</span>` : 'No')}
-    ${kv('USB en el monitor', t.Tiene_USB === 'SI' ? '<span class="text-indigo-700 font-bold">Sí</span>' : 'No')}
+    ${kv('USB en el monitor', t.USB_Por_Retirar === 'SI' ? '<span class="text-red-700 font-bold">Sí · por retirar (Supervisor)</span>' : t.Tiene_USB === 'SI' ? '<span class="text-indigo-700 font-bold">Sí</span>' : 'No')}
+    ${kv('Último retiro de USB', t.Ultimo_Retiro_USB ? `${fmtD(t.Ultimo_Retiro_USB)}${t.Retiro_USB_Por ? ' · ' + esc(nameOf(t.Retiro_USB_Por)) : ''}` : '')}
     ${kv('Último retiro', eq(t.Ultimo_Retiro, t.Equipo_Retirado))}
     ${kv('Última reinstalación', eq(t.Ultima_Reinstalacion, t.Equipo_Reinstalado))}
 
     ${sub('Mantenimiento y averías')}
-    ${kv('Último mantenimiento', t.Ultimo_Mantenimiento ? `${fmtD(t.Ultimo_Mantenimiento)} · ${esc(nameOf(t.Tecnico_Mantenimiento))}` : '')}
+    ${kv('Último mantenimiento', t.Ultimo_Mantenimiento ? `${fmtD(t.Ultimo_Mantenimiento)}${t.Tecnico_Mantenimiento ? ' · ' + esc(nameOf(t.Tecnico_Mantenimiento)) : ''}` : '')}
     ${kv('Mantenimientos registrados', n0(t.Total_Mantenimientos))}
     ${kv('Última avería', t.Ultima_Averia ? `${fmtD(t.Ultima_Averia)} · ${esc(t.Ultima_Averia_Status)}` : '')}
     ${kv('Averías registradas', n0(t.Total_Averias))}
     ${kv('Visitas registradas', n0(t.Total_Visitas))}
+
+    ${base ? `${sub('Base anterior')}${t.Registro_Base_Anterior ? `<div class="text-sm bg-slate-50 rounded-lg p-2.5 text-slate-700 whitespace-pre-wrap">${esc(t.Registro_Base_Anterior)}</div>` : ''}${kv('Última reubicación', t.Ultima_Reubicacion ? fmtD(t.Ultima_Reubicacion) : '')}${kv('AppRadar', t.AppRadar === 'SI' ? 'Sí' : t.AppRadar === 'NO' ? 'No' : '')}` : ''}
 
     ${(t.URL_Foto_Fachada || t.URL_Foto_Monitor) ? `${sub('Últimas fotos')}<div class="flex gap-4 text-sm font-medium">${t.URL_Foto_Fachada ? `<a class="text-blue-600" target="_blank" rel="noopener" href="${esc(t.URL_Foto_Fachada)}">📷 Fachada</a>` : ''}${t.URL_Foto_Monitor ? `<a class="text-blue-600" target="_blank" rel="noopener" href="${esc(t.URL_Foto_Monitor)}">🖥️ Monitor</a>` : ''}</div>` : ''}
 
     ${sub('Historial reciente')}
     <div id="tHist" class="text-sm text-slate-400">Cargando historial…</div>
   </div>`;
+}
+
+/* ---------- Editar datos de la tienda (distrito, dirección, contactos, coordenadas) ---------- */
+// "-12.04, -77.09" → { lat, lng }. Repara el punto decimal perdido ("-11994298" → -11.994298). null si no hay dos números.
+function fixCoord(x) {
+  x = String(x).replace(',', '.').trim();
+  if (/^-?\d+\.\d+$/.test(x)) return { v: parseFloat(x), rep: false };
+  const m = /^(-?)(\d{2})(\d{3,})$/.exec(x);
+  return m ? { v: parseFloat(`${m[1]}${m[2]}.${m[3]}`), rep: true } : (/^-?\d{1,2}$/.test(x) ? { v: parseFloat(x), rep: false } : null);
+}
+function parseUbic(s) {
+  const m = String(s ?? '').match(/-?\d+(?:[.,]\d+)?/g);
+  if (!m || m.length < 2) return null;
+  const a = fixCoord(m[0]), b = fixCoord(m[1]);
+  return a && b ? { lat: a.v, lng: b.v, rep: a.rep || b.rep } : null;
+}
+function openEditTienda(id) {
+  const t = (S.tienda.data || []).find(x => x.ID_Cliente === id); if (!t) return;
+  const ds = [...new Set([...DISTRITOS, ...(S.tienda.data || []).map(x => distritoCanon(x.Distrito)).filter(Boolean)])].sort((a, b) => a.localeCompare(b, 'es'));
+  const f = (l, inner, hint) => `<div><label class="lbl">${l}</label>${inner}${hint ? `<div class="text-xs text-slate-400 mt-0.5">${hint}</div>` : ''}</div>`;
+  openModal(`<div class="p-5 space-y-3">
+    <div class="flex items-start gap-2"><div class="flex-1 min-w-0"><div class="text-lg font-bold leading-tight">Editar datos de la tienda</div><div class="text-sm text-slate-500">${esc(t.Nombre_Cliente)} · ${esc(t.ID_Cliente)}</div></div><button data-close class="btn btn-ghost !py-1 !px-3">✕</button></div>
+    ${f('Distrito', `<input id="eDist" class="inp" list="eDistList" maxlength="60" value="${esc(t.Distrito)}" autocomplete="off"><datalist id="eDistList">${ds.map(d => `<option value="${esc(d)}">`).join('')}</datalist>`)}
+    ${f('Dirección', `<input id="eDir" class="inp" maxlength="200" value="${esc(t.Direccion)}">`)}
+    <div class="grid grid-cols-2 gap-3">
+      ${f('Contacto 1', `<input id="eC1" class="inp" type="tel" inputmode="tel" maxlength="20" placeholder="999 999 999" value="${esc(t.Contacto_1)}">`)}
+      ${f('Contacto 2', `<input id="eC2" class="inp" type="tel" inputmode="tel" maxlength="20" placeholder="opcional" value="${esc(t.Contacto_2)}">`)}
+    </div>
+    ${f('Pegar coordenadas', '<input id="ePega" class="inp" placeholder="-12.046400, -77.042800" autocomplete="off">', 'Pega “latitud, longitud” desde Google Maps y se llenan los dos campos de abajo.')}
+    <div class="grid grid-cols-2 gap-3">
+      ${f('Latitud', `<input id="eLat" class="inp" inputmode="decimal" value="${isNum(t.Latitud) ? +t.Latitud.toFixed(7) : ''}">`)}
+      ${f('Longitud', `<input id="eLng" class="inp" inputmode="decimal" value="${isNum(t.Longitud) ? +t.Longitud.toFixed(7) : ''}">`)}
+    </div>
+    <div class="text-xs text-slate-500 bg-slate-50 rounded-lg p-2">Si cambias las coordenadas, las <b>visitas pendientes</b> de esta tienda usarán las nuevas (la geocerca de 100 m). Las visitas ya resueltas conservan las suyas. Cada cambio queda registrado.</div>
+    <div id="eErr" class="hidden text-sm text-red-700 bg-red-50 rounded-xl p-2"></div>
+    <div class="grid grid-cols-2 gap-3"><button data-close class="btn btn-ghost">Cancelar</button><button id="btnTSave" class="btn btn-primary">Guardar cambios</button></div>
+  </div>`);
+  $('#ePega').addEventListener('input', e => { const u = parseUbic(e.target.value); if (u) { $('#eLat').value = u.lat; $('#eLng').value = u.lng; } });
+  $('#btnTSave').addEventListener('click', async () => {
+    const er = $('#eErr'); er.classList.add('hidden');
+    const bad = m => { er.textContent = m; er.classList.remove('hidden'); };
+    const lat = $('#eLat').value.trim().replace(',', '.'), lng = $('#eLng').value.trim().replace(',', '.');
+    if (!lat || !lng || isNaN(+lat) || isNaN(+lng)) return bad('Latitud y longitud deben ser números (por ejemplo -12.0464 y -77.0428).');
+    const body = { idCliente: id, distrito: distritoCanon($('#eDist').value), direccion: $('#eDir').value, contacto1: $('#eC1').value, contacto2: $('#eC2').value };
+    if (!isNum(t.Latitud) || (+lat).toFixed(7) !== t.Latitud.toFixed(7)) body.latitud = +lat;
+    if (!isNum(t.Longitud) || (+lng).toFixed(7) !== t.Longitud.toFixed(7)) body.longitud = +lng;
+    const btn = $('#btnTSave'); btn.disabled = true; btn.textContent = 'Guardando…';
+    try {
+      const r = await api('updateTienda', body);
+      const i = (S.tienda.data || []).findIndex(x => x.ID_Cliente === id); if (i >= 0) S.tienda.data[i] = r.tienda;
+      closeModal(); updateTiendas();
+      if (!TWIDE()) selTienda(id);
+      toast(r.cambios ? `Datos guardados (${r.cambios} cambio${r.cambios > 1 ? 's' : ''})${r.visitasPendientesActualizadas ? ` · ${r.visitasPendientesActualizadas} visita(s) pendiente(s) con coordenadas nuevas` : ''}` : 'No había cambios que guardar', r.cambios ? 'ok' : 'info');
+    } catch (e) { bad(e.message); btn.disabled = false; btn.textContent = 'Guardar cambios'; }
+  });
 }
 
 async function ensureHist(id) {
@@ -1092,17 +1194,211 @@ async function ensureHist(id) {
   catch (e) { const box = $('#tHist'); if (box) box.innerHTML = '<span class="text-red-600">No se pudo cargar el historial.</span>'; }
 }
 
+/* =====================================================================
+ *  IMPORTAR LA BASE ANTERIOR (.xlsx o .csv) — se lee en el navegador, sin librerías externas
+ *  Reconoce tus columnas (ID, Cliente, Componente, Estado, Fecha Visita, Fecha Reubic, Fecha Retiro, Ubicación, Distrito,
+ *  Contacto, AppRadar, Observación, Mantenimiento). Primero SIMULA y muestra el resumen; solo escribe al confirmar.
+ * ===================================================================== */
+const IMP_ALIAS = {
+  id: 'ID_Cliente', idcliente: 'ID_Cliente', codigo: 'ID_Cliente', codigocliente: 'ID_Cliente',
+  cliente: 'Nombre', nombre: 'Nombre', nombrecliente: 'Nombre', tienda: 'Nombre',
+  componente: 'Componente', equipo: 'Componente', estado: 'Estado',
+  fechavisita: 'Fecha_Visita', ultimavisita: 'Fecha_Visita', fechareubic: 'Fecha_Reubicacion', fechareubicacion: 'Fecha_Reubicacion',
+  fecharetiro: 'Fecha_Retiro', ubicacion: 'Ubicacion', coordenadas: 'Ubicacion', latitud: 'Latitud', longitud: 'Longitud',
+  distrito: 'Distrito', direccion: 'Direccion', contacto: 'Contacto', telefono: 'Contacto', celular: 'Contacto', contacto1: 'Contacto_1', contacto2: 'Contacto_2',
+  appradar: 'AppRadar', observacion: 'Observacion', observaciones: 'Observacion', mantenimiento: 'Mantenimiento', fechamantenimiento: 'Mantenimiento'
+};
+const IMP_CAMPOS = { ID_Cliente: 'ID', Nombre: 'Cliente', Componente: 'Componente', Estado: 'Estado', Fecha_Visita: 'Fecha Visita', Fecha_Reubicacion: 'Fecha Reubic', Fecha_Retiro: 'Fecha Retiro', Ubicacion: 'Ubicación', Latitud: 'Latitud', Longitud: 'Longitud',
+  Distrito: 'Distrito', Direccion: 'Dirección', Contacto: 'Contacto', Contacto_1: 'Contacto 1', Contacto_2: 'Contacto 2', AppRadar: 'AppRadar', Observacion: 'Observación', Mantenimiento: 'Mantenimiento' };
+let IMP = null;
+
+function extraerTelefonos(raw) {
+  const s = String(raw ?? '').trim(); if (!s) return { c1: '', c2: '', orig: '' };
+  const nums = [], re = /(^|\D)((?:\+?51[\s-]?)?9(?:[\s-]?\d){8})(?!\d)/g; let m;
+  while ((m = re.exec(s))) { let d = m[2].replace(/\D/g, ''); if (d.length === 11 && d.startsWith('51')) d = d.slice(2); if (!nums.includes(d)) nums.push(d); }
+  if (!nums.length) { const d = s.replace(/\D/g, ''); if (d.length >= 6 && d.length <= 9) nums.push(d); }
+  return { c1: nums[0] || '', c2: nums[1] || '', orig: (nums.length > 2 || nums.length === 0 || /[A-Za-zÁ-ú]/.test(s)) ? s : '' };
+}
+function parseCSV(text) {
+  text = text.replace(/^﻿/, '');
+  const first = text.split(/\r?\n/, 1)[0], delim = [';', '\t', ','].map(d => [d, first.split(d).length]).sort((a, b) => b[1] - a[1])[0][0];
+  const rows = []; let row = [], cell = '', q = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (q) { if (ch === '"') { if (text[i + 1] === '"') { cell += '"'; i++; } else q = false; } else cell += ch; }
+    else if (ch === '"') q = true;
+    else if (ch === delim) { row.push(cell); cell = ''; }
+    else if (ch === '\n' || ch === '\r') { if (ch === '\r' && text[i + 1] === '\n') i++; row.push(cell); cell = ''; if (row.some(x => x !== '')) rows.push(row); row = []; }
+    else cell += ch;
+  }
+  row.push(cell); if (row.some(x => x !== '')) rows.push(row);
+  return rows;
+}
+/* .xlsx: ZIP (deflate-raw con DecompressionStream) + hoja XML. Las fechas se reconocen por el formato de la celda. */
+async function readXlsx(buf) {
+  const u8 = new Uint8Array(buf), dv = new DataView(buf), td = new TextDecoder();
+  let e = u8.length - 22; while (e >= 0 && dv.getUint32(e, true) !== 0x06054b50) e--;
+  if (e < 0) throw new Error('El archivo no es un .xlsx válido.');
+  const n = dv.getUint16(e + 10, true); let p = dv.getUint32(e + 16, true); const files = {};
+  for (let i = 0; i < n && dv.getUint32(p, true) === 0x02014b50; i++) {
+    const nl = dv.getUint16(p + 28, true), el = dv.getUint16(p + 30, true), cl = dv.getUint16(p + 32, true);
+    files[td.decode(u8.subarray(p + 46, p + 46 + nl))] = { m: dv.getUint16(p + 10, true), cs: dv.getUint32(p + 20, true), lho: dv.getUint32(p + 42, true) };
+    p += 46 + nl + el + cl;
+  }
+  const get = async name => {
+    const f = files[name]; if (!f) return null;
+    const st = f.lho + 30 + dv.getUint16(f.lho + 26, true) + dv.getUint16(f.lho + 28, true), data = u8.subarray(st, st + f.cs);
+    if (f.m === 0) return td.decode(data);
+    if (f.m !== 8) throw new Error('Compresión de .xlsx no soportada.');
+    if (typeof DecompressionStream === 'undefined') throw new Error('Tu navegador no puede leer .xlsx directamente: guarda el archivo como CSV e inténtalo de nuevo.');
+    const ds = new DecompressionStream('deflate-raw'), w = ds.writable.getWriter(); w.write(data); w.close();
+    return await new Response(ds.readable).text();
+  };
+  const xml = t => new DOMParser().parseFromString(t, 'application/xml');
+  const wb = xml(await get('xl/workbook.xml') || ''), rels = xml(await get('xl/_rels/workbook.xml.rels') || '');
+  const sh1 = wb.getElementsByTagName('sheet')[0]; let target = 'worksheets/sheet1.xml';
+  if (sh1) { const rid = sh1.getAttribute('r:id'); const r = [...rels.getElementsByTagName('Relationship')].find(x => x.getAttribute('Id') === rid); if (r) target = r.getAttribute('Target').replace(/^\/?(xl\/)?/, ''); }
+  const sheetTxt = await get('xl/' + target); if (!sheetTxt) throw new Error('No se encontró la primera hoja del archivo.');
+  const ss = []; const sst = await get('xl/sharedStrings.xml');
+  if (sst) [...xml(sst).getElementsByTagName('si')].forEach(si => ss.push([...si.getElementsByTagName('t')].map(t => t.textContent).join('')));
+  const stylesTxt = await get('xl/styles.xml'), isDateFmt = [];
+  if (stylesTxt) {
+    const sx = xml(stylesTxt), custom = {};
+    [...sx.getElementsByTagName('numFmt')].forEach(nf => { custom[nf.getAttribute('numFmtId')] = nf.getAttribute('formatCode'); });
+    const xfs = sx.getElementsByTagName('cellXfs')[0];
+    if (xfs) [...xfs.getElementsByTagName('xf')].forEach(xf => {
+      const id = +xf.getAttribute('numFmtId'), code = custom[id];
+      isDateFmt.push(code ? /[dmyhs]/i.test(code.replace(/"[^"]*"|\[[^\]]*\]|\\./g, '')) : (id >= 14 && id <= 22) || (id >= 27 && id <= 36) || (id >= 45 && id <= 47) || (id >= 50 && id <= 58));
+    });
+  }
+  const iso = serial => { const d = new Date(Math.round((serial - 25569) * 86400) * 1000), z = x => String(x).padStart(2, '0'); return `${d.getUTCFullYear()}-${z(d.getUTCMonth() + 1)}-${z(d.getUTCDate())} ${z(d.getUTCHours())}:${z(d.getUTCMinutes())}:${z(d.getUTCSeconds())}`; };
+  const colIdx = ref => { let c = 0; for (const ch of ref.replace(/\d/g, '')) c = c * 26 + ch.charCodeAt(0) - 64; return c - 1; };
+  const rows = [];
+  [...xml(sheetTxt).getElementsByTagName('row')].forEach(r => {
+    const arr = [];
+    [...r.getElementsByTagName('c')].forEach(c => {
+      const i = colIdx(c.getAttribute('r') || 'A1'), t = c.getAttribute('t'), vEl = c.getElementsByTagName('v')[0], v = vEl ? vEl.textContent : '';
+      let val = '';
+      if (t === 's') val = ss[+v] ?? '';
+      else if (t === 'inlineStr') val = [...c.getElementsByTagName('t')].map(x => x.textContent).join('');
+      else if (t === 'b') val = v === '1';
+      else if (t === 'str' || t === 'e') val = v;
+      else if (v !== '') { const num = parseFloat(v); val = isDateFmt[+(c.getAttribute('s') || 0)] ? iso(num) : num; }
+      arr[i] = val;
+    });
+    for (let k = 0; k < arr.length; k++) if (arr[k] === undefined) arr[k] = '';
+    rows.push(arr);
+  });
+  return rows;
+}
+// Tabla (filas de celdas) → filas con los nombres de campo del servidor
+function mapearBase(tabla) {
+  const hi = tabla.findIndex(r => r.some(h => IMP_ALIAS[normHeadImp(h)] === 'ID_Cliente'));
+  if (hi < 0) throw new Error('No encontré la columna del ID de la tienda (se llama “ID” o “ID_Cliente”).');
+  const map = []; const reconocidas = [], ignoradas = [];
+  tabla[hi].forEach((h, i) => { const k = IMP_ALIAS[normHeadImp(h)]; if (k && !map.some(m => m && m.k === k)) { map[i] = { k, h: String(h) }; reconocidas.push(String(h)); } else if (String(h).trim()) ignoradas.push(String(h)); });
+  let reparadas = 0, sinId = 0, conComplejo = 0, unificados = 0; const filas = [];
+  tabla.slice(hi + 1).forEach(r => {
+    const f = {}; r.forEach((cell, i) => { if (map[i]) f[map[i].k] = cell; });
+    let id = f.ID_Cliente; if (typeof id === 'number') id = String(Math.round(id)); id = String(id ?? '').trim();
+    if (!id) { if (r.some(x => String(x ?? '').trim())) sinId++; return; }
+    f.ID_Cliente = id;
+    if (f.Nombre !== undefined) f.Nombre = String(f.Nombre).replace(/\s+/g, ' ').trim();
+    if (f.Distrito !== undefined) { const raw = String(f.Distrito).replace(/\s+/g, ' ').trim(), cn = distritoCanon(raw); if (cn !== raw) unificados++; f.Distrito = cn; }
+    if (f.Ubicacion !== undefined && f.Ubicacion !== '' && f.Latitud === undefined) { const u = parseUbic(f.Ubicacion); if (u) { f.Latitud = u.lat; f.Longitud = u.lng; if (u.rep) reparadas++; } else f.UbicacionTexto = String(f.Ubicacion); }
+    delete f.Ubicacion;
+    if (f.Contacto !== undefined && f.Contacto !== '') { const t = extraerTelefonos(f.Contacto); if (t.c1 && !f.Contacto_1) f.Contacto_1 = t.c1; if (t.c2 && !f.Contacto_2) f.Contacto_2 = t.c2; if (t.orig) { f.Contacto_Original = t.orig; conComplejo++; } }
+    delete f.Contacto;
+    if (typeof f.Componente === 'string') f.Componente = f.Componente.trim();
+    if (typeof f.AppRadar === 'string') f.AppRadar = /^(true|verdadero|si|sí|1)$/i.test(f.AppRadar.trim());
+    ['Fecha_Visita', 'Fecha_Reubicacion', 'Fecha_Retiro', 'Mantenimiento'].forEach(k => { if (f[k] !== undefined && typeof f[k] !== 'string') f[k] = ''; });
+    Object.keys(f).forEach(k => { if (f[k] === '' || f[k] === undefined) delete f[k]; });
+    f.ID_Cliente = id; filas.push(f);
+  });
+  return { filas, reconocidas, ignoradas, reparadas, sinId, conComplejo, unificados };
+}
+const normHeadImp = h => norm(h).replace(/[^a-z0-9]/g, '');
+/* Distritos de Lima Metropolitana y Callao: unifica "Surco"/"Santiago de Surco", tildes y mayúsculas */
+const DISTRITOS = ['Ancón', 'Ate', 'Barranco', 'Bellavista', 'Breña', 'Callao', 'Carabayllo', 'Carmen de la Legua Reynoso', 'Cercado de Lima', 'Chaclacayo', 'Chorrillos', 'Cieneguilla', 'Comas', 'El Agustino', 'Independencia', 'Jesús María',
+  'La Molina', 'La Perla', 'La Punta', 'La Victoria', 'Lince', 'Los Olivos', 'Lurigancho-Chosica', 'Lurín', 'Magdalena del Mar', 'Mi Perú', 'Miraflores', 'Pachacámac', 'Pucusana', 'Pueblo Libre', 'Puente Piedra', 'Punta Hermosa', 'Punta Negra',
+  'Rímac', 'San Bartolo', 'San Borja', 'San Isidro', 'San Juan de Lurigancho', 'San Juan de Miraflores', 'San Luis', 'San Martín de Porres', 'San Miguel', 'Santa Anita', 'Santa María del Mar', 'Santa Rosa', 'Santiago de Surco', 'Surquillo',
+  'Ventanilla', 'Villa El Salvador', 'Villa María del Triunfo'];
+const DIST_KEY = (() => {
+  const m = {}; DISTRITOS.forEach(d => { m[normHeadImp(d)] = d; });
+  Object.assign(m, { surco: 'Santiago de Surco', lima: 'Cercado de Lima', cercado: 'Cercado de Lima', limacercado: 'Cercado de Lima', chosica: 'Lurigancho-Chosica', sjl: 'San Juan de Lurigancho', sjm: 'San Juan de Miraflores', smp: 'San Martín de Porres', ves: 'Villa El Salvador', vmt: 'Villa María del Triunfo' });
+  return m;
+})();
+const distritoCanon = x => { x = String(x ?? '').replace(/\s+/g, ' ').trim(); return x ? (DIST_KEY[normHeadImp(x)] || x) : ''; };
+
+function openImportTiendas() {
+  IMP = null;
+  openModal(`<div class="p-5 space-y-3">
+    <div class="flex items-start gap-2"><div class="flex-1"><div class="text-lg font-bold leading-tight">Importar base anterior</div><div class="text-sm text-slate-500">Sube tu Excel (.xlsx) o CSV con el equipo de cada tienda, estado, distrito y contactos.</div></div><button data-close class="btn btn-ghost !py-1 !px-3">✕</button></div>
+    <input id="impFile" type="file" accept=".xlsx,.csv,.txt" class="inp">
+    <div class="space-y-1.5 text-sm">
+      <label class="flex items-start gap-2"><input id="impCrear" type="checkbox" class="mt-1"> <span>Crear las tiendas que no existan <span class="text-slate-400">(necesitan nombre y coordenadas válidas)</span></span></label>
+      <label class="flex items-start gap-2"><input id="impCoords" type="checkbox" class="mt-1"> <span>Actualizar coordenadas desde el archivo <span class="text-slate-400">(por defecto solo se completan las que faltan)</span></span></label>
+      <label class="flex items-start gap-2"><input id="impSobre" type="checkbox" class="mt-1"> <span>Sobrescribir distrito y contactos ya cargados <span class="text-slate-400">(por defecto no se pisa lo que ya editaste)</span></span></label>
+    </div>
+    <div id="impMsg" class="text-sm text-slate-500">Elige un archivo para empezar. Nada se guarda hasta que confirmes.</div>
+    <div class="grid grid-cols-2 gap-3"><button data-close class="btn btn-ghost">Cancelar</button><button id="btnImpGo" class="btn btn-primary" disabled>Analizar archivo</button></div>
+  </div>`);
+  $('#impFile').addEventListener('change', async e => {
+    const f = e.target.files[0], msg = $('#impMsg'), go = $('#btnImpGo'); IMP = null; go.disabled = true; go.textContent = 'Analizar archivo'; if (!f) return;
+    msg.className = 'text-sm text-slate-500'; msg.textContent = 'Leyendo archivo…';
+    try {
+      const tabla = /\.xlsx$/i.test(f.name) ? await readXlsx(await f.arrayBuffer()) : parseCSV(await f.text());
+      const r = mapearBase(tabla); if (!r.filas.length) throw new Error('El archivo no tiene filas con ID de tienda.');
+      IMP = { ...r, nombre: f.name, simulado: false };
+      msg.className = 'text-sm text-slate-700';
+      msg.innerHTML = `<b>${esc(f.name)}</b>: ${n0(r.filas.length)} tiendas leídas.<div class="text-xs text-slate-500 mt-1">Columnas reconocidas: ${esc(r.reconocidas.join(', '))}.${r.ignoradas.length ? ` No se usan: ${esc(r.ignoradas.join(', '))}.` : ''}${r.reparadas ? ` <b>${r.reparadas}</b> coordenada(s) con el punto decimal perdido se repararon.` : ''}${r.unificados ? ` <b>${r.unificados}</b> distrito(s) con otra escritura se unificaron (p. ej. “Surco” → “Santiago de Surco”, tildes).` : ''}${r.conComplejo ? ` <b>${r.conComplejo}</b> contacto(s) con más texto o números: se toman los 2 primeros y el texto original queda guardado.` : ''}${r.sinId ? ` ${r.sinId} fila(s) sin ID se omiten.` : ''}</div>`;
+      go.disabled = false;
+    } catch (err) { msg.className = 'text-sm text-red-700 bg-red-50 rounded-xl p-2'; msg.textContent = err.message || 'No se pudo leer el archivo.'; }
+  });
+  $('#btnImpGo').addEventListener('click', impEjecutar);
+}
+async function impEjecutar() {
+  if (!IMP) return;
+  const go = $('#btnImpGo'), msg = $('#impMsg'), simular = !IMP.simulado;
+  const opciones = { crearNuevas: $('#impCrear').checked, actualizarCoordenadas: $('#impCoords').checked, sobrescribir: $('#impSobre').checked };
+  go.disabled = true; const txt = go.textContent; go.textContent = simular ? 'Analizando…' : 'Importando…';
+  try {
+    const r = await api('importTiendas', { filas: IMP.filas, opciones, simular });
+    const li = (a, n = 12) => a.length ? `<div class="text-xs text-slate-500 mt-0.5">${esc(a.slice(0, n).join(', '))}${a.length > n ? ` … y ${a.length - n} más` : ''}</div>` : '';
+    const row = (l, v, cls = '') => `<div class="flex justify-between py-0.5 ${cls}"><span>${l}</span><b>${v}</b></div>`;
+    msg.className = 'text-sm text-slate-700 bg-slate-50 rounded-xl p-3 space-y-0.5';
+    msg.innerHTML = `<div class="font-semibold mb-1">${r.simulado ? 'Simulación (todavía no se guardó nada)' : '✅ Importación terminada'}</div>
+      ${row('Tiendas que coinciden', n0(r.coinciden))}${r.creadas ? row('Tiendas nuevas creadas', n0(r.creadas)) : ''}
+      ${row('Equipo: NUC / RB / Ninguno / Sin dato', `${r.equipos.NUC} / ${r.equipos.RB} / ${r.equipos.Ninguno} / ${r.equipos.SinDato}`)}
+      ${row('Estado: En Línea / Avería / Pendiente / Sin dato', `${r.estados['En Línea']} / ${r.estados['Avería']} / ${r.estados['Pendiente']} / ${r.estados['Sin dato']}`)}
+      ${row('Distritos cargados', n0(r.distritos))}${row('Contactos cargados', n0(r.contactos))}
+      ${row('Coordenadas completadas / actualizadas', `${r.coordsCompletadas} / ${r.coordsActualizadas}`)}
+      ${row('Con fecha de retiro (solo informativo)', n0(r.retiros))}
+      ${r.noEncontradas.length ? `<div class="text-amber-700 mt-1">⚠ ${r.noEncontradas.length} ID no existen en tus clientes y no se importan:${li(r.noEncontradas)}</div>` : ''}
+      ${r.duplicadas.length ? `<div class="text-amber-700 mt-1">⚠ ${r.duplicadas.length} ID repetidos (se usa la primera fila):${li(r.duplicadas)}</div>` : ''}
+      ${r.coordsInvalidas.length ? `<div class="text-amber-700 mt-1">⚠ ${r.coordsInvalidas.length} con coordenadas fuera de Perú (se ignoran):${li(r.coordsInvalidas)}</div>` : ''}`;
+    if (r.simulado) { IMP.simulado = true; go.textContent = 'Importar ahora'; go.disabled = false; }
+    else { go.textContent = 'Listo'; go.disabled = false; go.onclick = () => { closeModal(); loadTiendas(true); }; IMP = null; loadTiendas(true); toast('Base importada correctamente', 'ok'); }
+  } catch (e) { msg.className = 'text-sm text-red-700 bg-red-50 rounded-xl p-2'; msg.textContent = e.message; go.disabled = false; go.textContent = txt; }
+}
+
 /* ---------- Exportación: CSV y Excel (.xlsx generado en el navegador, sin librerías externas) ---------- */
 function tiendaExport(list) {
   const f = s => s ? String(s).slice(0, 19) : '';
-  const head = ['ID Cliente', 'Nombre', 'Latitud', 'Longitud', 'Google Maps', 'Total visitas', 'Última visita', 'Días desde la última visita', 'Técnico última visita', 'Tipo última visita', 'Status última visita', 'Última observación',
-    'Última visita física', 'Componente actual', 'Estado del equipo', 'Equipo pendiente de reinstalar', 'Tiene USB', 'Último mantenimiento', 'Técnico mantenimiento', 'Total mantenimientos',
-    'Último retiro', 'Equipo retirado', 'Última reinstalación', 'Equipo reinstalado', 'Total averías', 'Última avería', 'Status última avería', 'Foto fachada', 'Foto monitor', 'Actualizado'];
-  const rows = list.map(t => [t.ID_Cliente, t.Nombre_Cliente, isNum(t.Latitud) ? t.Latitud : '', isNum(t.Longitud) ? t.Longitud : '',
+  const head = ['ID Cliente', 'Nombre', 'Distrito', 'Dirección', 'Contacto 1', 'Contacto 2', 'Latitud', 'Longitud', 'Google Maps',
+    'Estado', 'Fecha del estado', 'Origen del estado', 'Total visitas', 'Última visita', 'Días desde la última visita', 'Técnico última visita', 'Tipo última visita', 'Status última visita', 'Última observación',
+    'Última visita física', 'Componente actual', 'Equipo verificado', 'Origen del equipo', 'Estado del equipo', 'Equipo pendiente de reinstalar', 'Tiene USB', 'USB por retirar', 'Último retiro de USB', 'USB retirado por',
+    'Último mantenimiento', 'Técnico mantenimiento', 'Total mantenimientos',
+    'Último retiro', 'Equipo retirado', 'Última reinstalación', 'Equipo reinstalado', 'Total averías', 'Última avería', 'Status última avería',
+    'Última reubicación', 'AppRadar', 'Registro base anterior', 'Foto fachada', 'Foto monitor', 'Actualizado'];
+  const rows = list.map(t => [t.ID_Cliente, t.Nombre_Cliente, t.Distrito || '', t.Direccion || '', t.Contacto_1 || '', t.Contacto_2 || '', isNum(t.Latitud) ? t.Latitud : '', isNum(t.Longitud) ? t.Longitud : '',
     isNum(t.Latitud) && isNum(t.Longitud) ? `https://www.google.com/maps?q=${t.Latitud},${t.Longitud}` : '',
+    t.Estado_Tienda || 'Sin dato', f(t.Fecha_Estado), origenTxt(t.Origen_Estado),
     t.Total_Visitas || 0, f(t.Ultima_Visita), diasDesde(t.Ultima_Visita) ?? '', t.Ultimo_Tecnico ? nameOf(t.Ultimo_Tecnico) : '', t.Ultimo_Tipo_Visita || '', t.Ultimo_Status || '', t.Ultima_Observacion || '',
-    f(t.Ultima_Visita_Fisica), compTxt(t), t.Estado_Equipo || '', t.Equipo_Pendiente_Reinstalar || '', t.Tiene_USB === 'SI' ? 'Sí' : 'No', f(t.Ultimo_Mantenimiento), t.Tecnico_Mantenimiento ? nameOf(t.Tecnico_Mantenimiento) : '', t.Total_Mantenimientos || 0,
-    f(t.Ultimo_Retiro), t.Equipo_Retirado || '', f(t.Ultima_Reinstalacion), t.Equipo_Reinstalado || '', t.Total_Averias || 0, f(t.Ultima_Averia), t.Ultima_Averia_Status || '', t.URL_Foto_Fachada || '', t.URL_Foto_Monitor || '', f(t.Actualizado)]);
+    f(t.Ultima_Visita_Fisica), compTxt(t), f(t.Equipo_Verificado), origenTxt(t.Origen_Equipo), t.Estado_Equipo || '', t.Equipo_Pendiente_Reinstalar || '', t.Tiene_USB === 'SI' ? 'Sí' : 'No', t.USB_Por_Retirar === 'SI' ? 'Sí' : 'No', f(t.Ultimo_Retiro_USB), t.Retiro_USB_Por ? nameOf(t.Retiro_USB_Por) : '',
+    f(t.Ultimo_Mantenimiento), t.Tecnico_Mantenimiento ? nameOf(t.Tecnico_Mantenimiento) : '', t.Total_Mantenimientos || 0,
+    f(t.Ultimo_Retiro), t.Equipo_Retirado || '', f(t.Ultima_Reinstalacion), t.Equipo_Reinstalado || '', t.Total_Averias || 0, f(t.Ultima_Averia), t.Ultima_Averia_Status || '',
+    f(t.Ultima_Reubicacion), t.AppRadar === 'SI' ? 'Sí' : t.AppRadar === 'NO' ? 'No' : '', t.Registro_Base_Anterior || '', t.URL_Foto_Fachada || '', t.URL_Foto_Monitor || '', f(t.Actualizado)]);
   return { head, rows };
 }
 function exportTiendas(kind) {
@@ -1181,7 +1477,10 @@ function bindEvents() {
   $('#btnRefresh').addEventListener('click', () => loadData(false));
   $('#btnLogout').addEventListener('click', () => { if (confirm('¿Cerrar sesión?')) logout(); });
   $('#nav').addEventListener('click', e => { const b = e.target.closest('[data-nav]'); if (b) go(b.dataset.nav); });
-  $('#modal').addEventListener('click', e => { if (e.target.closest('[data-close]') || e.target === $('#modal')) closeModal(); });
+  $('#modal').addEventListener('click', e => {
+    const ed = e.target.closest('[data-tedit]'); if (ed) return openEditTienda(ed.dataset.tedit);   // “Editar” dentro del detalle abierto como ventana (celular)
+    if (e.target.closest('[data-close]') || e.target === $('#modal')) closeModal();
+  });
 
   const root = $('#content');
   root.addEventListener('click', async e => {
@@ -1215,6 +1514,8 @@ function bindEvents() {
     if ((el = t.closest('[data-tsel]'))) return selTienda(el.dataset.tsel);
     if ((el = t.closest('[data-tchip]'))) { S.tienda.filtro = el.dataset.tchip; S.tienda.page = 1; const f = $('#tFiltro'); if (f) f.value = S.tienda.filtro; return updateTiendas(); }
     if ((el = t.closest('[data-texp]'))) return exportTiendas(el.dataset.texp);
+    if ((el = t.closest('[data-tedit]'))) return openEditTienda(el.dataset.tedit);
+    if (t.closest('[data-timp]')) return openImportTiendas();
     if ((el = t.closest('[data-pchip]'))) { S.pend.tec = S.pend.tec === el.dataset.pchip ? '' : el.dataset.pchip; S.pend.page = 1; buildPend(); return; }
     if ((el = t.closest('[data-pact]'))) return pendAction(el.dataset.pact);
     if ((el = t.closest('[data-teamgo]'))) { const u = el.dataset.u; S.filtroTec = u; S.pend.tec = u; return go(el.dataset.teamgo); }
@@ -1245,6 +1546,7 @@ function bindEvents() {
     if (id === 'hTipo') { S.hist.tipo = t.value; S.hist.page = 1; updateHist(); }
     else if (id === 'hStatus') { S.hist.status = t.value; S.hist.page = 1; updateHist(); }
     else if (id === 'tFiltro') { S.tienda.filtro = t.value; S.tienda.page = 1; updateTiendas(true); }
+    else if (id === 'tDist') { S.tienda.distrito = t.value; S.tienda.page = 1; updateTiendas(true); }
     else if (id === 'hFuera') { S.hist.fuera = t.checked; S.hist.page = 1; updateHist(); }
     else if (id === 'pTec') { S.pend.tec = t.value; S.pend.page = 1; updatePend(); }
     else if (id === 'pAtr') { S.pend.soloAtras = t.checked; S.pend.page = 1; updatePend(); }
