@@ -115,6 +115,7 @@
       <section id="v-asig" class="view hidden"></section>
       <section id="v-pend" class="view hidden"></section>
       <section id="v-hist" class="view hidden"></section>
+      <section id="v-tiendas" class="view hidden"></section>
       <section id="v-equipo" class="view hidden"></section>
       <section id="v-logs" class="view hidden"></section>
     </main>
@@ -133,7 +134,7 @@
  *  CONFIGURACIÓN — usa la MISMA URL /exec que en index.html
  * ===================================================================== */
 const CONFIG = {
-  API_URL: 'https://script.google.com/macros/s/AKfycby2D_6i04OhwWADWreNoD2vrkyiKHR24qkVCiQ0icUT3UTZ1gqBoKMN_ijuuDqPtWV-uw/exec',
+  API_URL: 'https://script.google.com/macros/s/AKfycbyxXyopm-75R4CK7iISmdWroa8OO70j3rNzLAkfRCiYhSs7_dn4Hmj4-sykwb5K-AerLQ/exec',
   SESION_KEY: 'vta_sesion',
   AUTO_REFRESH_MS: 60000,
   LOTE_ASIGNAR: 300,
@@ -152,10 +153,11 @@ const COLOR = {
   'Avería ISP': '#dc2626', 'Avería NUC/RB': '#ea580c', 'Avería CAM': '#f59e0b', 'Avería Otros': '#be185d',
   'Tienda Cerrada': '#475569', 'Solicitud de Retiro': '#7c3aed'
 };
-const VCOLS = ['ID_Visita', 'Fecha_Asignacion', 'Usuario_Asignado', 'ID_Cliente', 'Nombre_Cliente', 'Latitud_Tienda', 'Longitud_Tienda', 'Estado_Tarea', 'Tipo_Visita', 'Status_Tienda', 'URL_Foto_Fachada', 'URL_Foto_Monitor', 'Observacion', 'Fecha_Resolucion', 'Lat_Real_Tecnico', 'Lng_Real_Tecnico', 'Distancia_Metros', 'Es_Fuera_De_Ruta', 'Retiro_Equipos'];
+const VCOLS = ['ID_Visita', 'Fecha_Asignacion', 'Usuario_Asignado', 'ID_Cliente', 'Nombre_Cliente', 'Latitud_Tienda', 'Longitud_Tienda', 'Estado_Tarea', 'Tipo_Visita', 'Status_Tienda', 'URL_Foto_Fachada', 'URL_Foto_Monitor', 'Observacion', 'Fecha_Resolucion', 'Lat_Real_Tecnico', 'Lng_Real_Tecnico', 'Distancia_Metros', 'Es_Fuera_De_Ruta', 'Retiro_Equipos', 'Reinstalacion_Equipo', 'USB_Monitor', 'Mantenimiento'];
 
 // Retiro de equipos (solo Visita Física + Avería NUC/RB). '' = sin retiro
 const RET = { nuc: 'NUC', rb: 'RB' };   // solo se recoge uno por visita
+const REI_COLOR = { 'NUC': '#059669', 'RB': '#34d399', usb: '#6366f1', mant: '#64748b' };
 const RET_COLOR = { 'NUC': '#0ea5e9', 'RB': '#8b5cf6', '': '#94a3b8' };
 
 const ICONS = {
@@ -163,14 +165,15 @@ const ICONS = {
   assign: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/>',
   pend: '<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 3h6v3H9zM9 12h6M9 16h4"/>',
   hist: '<circle cx="12" cy="12" r="9"/><path d="M8 12.5l3 3 5-6"/>',
+  store: '<path d="M3 9l1.5-5h15L21 9"/><path d="M4 9v11h16V9"/><path d="M3 9a3 3 0 0 0 6 0 3 3 0 0 0 6 0 3 3 0 0 0 6 0"/><path d="M10 20v-6h4v6"/>',
   team: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>',
   logs: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'
 };
 const NAV = [
   ['dash', 'Dashboard', 'dash'], ['asig', 'Asignación masiva', 'assign'], ['pend', 'Visitas pendientes', 'pend'],
-  ['hist', 'Historial de visitas', 'hist'], ['equipo', 'Equipo', 'team'], ['logs', 'Accesos', 'logs']
+  ['hist', 'Historial de visitas', 'hist'], ['tiendas', 'Información de Tienda', 'store'], ['equipo', 'Equipo', 'team'], ['logs', 'Accesos', 'logs']
 ];
-const TITLES = { dash: 'Dashboard', asig: 'Asignación masiva', pend: 'Visitas pendientes', hist: 'Historial de visitas', equipo: 'Equipo', logs: 'Accesos al sistema' };
+const TITLES = { dash: 'Dashboard', asig: 'Asignación masiva', pend: 'Visitas pendientes', hist: 'Historial de visitas', tiendas: 'Información de Tienda', equipo: 'Equipo', logs: 'Accesos al sistema' };
 
 /* =====================================================================
  *  UTILIDADES
@@ -240,6 +243,7 @@ const S = {
   asig: { q: '', ocultarPend: true, sel: new Set(), modo: 'zonas', destino: '', tecs: new Set(), tecsInit: false, omitir: true, page: 1 },
   pend: { q: '', tec: '', soloAtras: false, sel: new Set(), page: 1 },
   hist: { q: '', tipo: '', status: '', fuera: false, page: 1 },
+  tienda: { q: '', filtro: '', sel: '', page: 1, data: null, hoja: true, hist: {} },
   logs: [], logsFiltro: '', timer: null
 };
 const U = u => S.usuarios.find(x => x.Usuario === u);
@@ -278,6 +282,7 @@ function logout(msg) {
   clearInterval(S.timer); closeModal(); destroyCharts();
   try { localStorage.removeItem(CONFIG.SESION_KEY); } catch (_) {}
   Object.assign(S, { token: null, user: null, usuarios: [], clientes: [], visitas: [], drill: null });
+  S.tienda = { q: '', filtro: '', sel: '', page: 1, data: null, hoja: true, hist: {} };
   S.asig.sel.clear(); S.pend.sel.clear();
   showLogin(typeof msg === 'string' ? msg : '');
 }
@@ -348,6 +353,7 @@ function go(v) {
   else if (v === 'asig') buildAsig();
   else if (v === 'pend') buildPend();
   else if (v === 'hist') buildHist();
+  else if (v === 'tiendas') buildTiendas();
   else if (v === 'equipo') renderEquipo();
   else if (v === 'logs') loadLogs();
   window.scrollTo(0, 0);
@@ -361,6 +367,7 @@ function renderCurrent(silent) {
     case 'asig': if (silent) { updateAsigList(); updateAsigPlan(); } else buildAsig(); break;
     case 'pend': if (silent) updatePend(); else buildPend(); break;
     case 'hist': if (silent) updateHist(); else buildHist(); break;
+    case 'tiendas': if (silent) loadTiendas(true); else buildTiendas(); break;
     case 'equipo': renderEquipo(); break;
   }
 }
@@ -440,7 +447,7 @@ function bucketLabels(res) {
 }
 
 function applyDrill(list, d) {
-  return list.filter(v => (!d.tec || v.Usuario_Asignado === d.tec) && (!d.tipo || v.Tipo_Visita === d.tipo) && (!d.status || d.status.includes(v.Status_Tienda)) && (!d.bucket || bucketKey(v) === d.bucket) && (!d.fuera || v.Es_Fuera_De_Ruta === 'SI') && (!d.retiro || d.retiro.includes(v.Retiro_Equipos || '')));
+  return list.filter(v => (!d.tec || v.Usuario_Asignado === d.tec) && (!d.tipo || v.Tipo_Visita === d.tipo) && (!d.status || d.status.includes(v.Status_Tienda)) && (!d.bucket || bucketKey(v) === d.bucket) && (!d.fuera || v.Es_Fuera_De_Ruta === 'SI') && (!d.retiro || d.retiro.includes(v.Retiro_Equipos || '')) && (!d.reinst || d.reinst.includes(v.Reinstalacion_Equipo || '')) && (!d.usb || v.USB_Monitor === 'SI') && (!d.mant || v.Mantenimiento === 'SI'));
 }
 
 function renderDash() {
@@ -454,6 +461,10 @@ function renderDash() {
   const nr = res.filter(v => v.Status_Tienda === 'Avería NUC/RB');
   const rc = k => nr.filter(v => (v.Retiro_Equipos || '') === k).length;
   const rNuc = rc(RET.nuc), rRb = rc(RET.rb), rSin = nr.length - rNuc - rRb, rCon = rNuc + rRb;
+  // Reinstalación de equipos, USB y mantenimiento (solo visitas físicas)
+  const rein = res.filter(v => v.Reinstalacion_Equipo), reN = rein.filter(v => v.Reinstalacion_Equipo === 'NUC'), reR = rein.filter(v => v.Reinstalacion_Equipo === 'RB');
+  const okv = a => a.filter(v => v.Status_Tienda === 'Activa Validada').length;
+  const usbN = c(v => v.USB_Monitor === 'SI'), mantN = c(v => v.Mantenimiento === 'SI');
   const hoy = ymd(new Date()), atras = pend.filter(v => dOf(v.Fecha_Asignacion) < hoy).length;
   const fuera = c(v => v.Es_Fuera_De_Ruta === 'SI');
   const dists = res.filter(v => v.Tipo_Visita === 'Visita Física' && isNum(v.Distancia_Metros)).map(v => v.Distancia_Metros);
@@ -506,6 +517,15 @@ function renderDash() {
     ${kpi('Sin retiro', n0(rSin), { color: 'text-slate-600', dot: RET_COLOR[''], d: { status: ['Avería NUC/RB'], retiro: [''], label: 'Avería NUC/RB · sin retiro de equipos' }, sub: `${pct(rSin, nr.length)}% · incluye remotas` })}
   </div>
 
+  <div class="sec">Reinstalación de equipos, USB y mantenimiento <span class="normal-case font-normal text-slate-400">· solo visitas físicas</span></div>
+  <div class="grid grid-cols-2 lg:grid-cols-5 gap-3">
+    ${kpi('Equipos reinstalados', n0(rein.length), { color: 'text-emerald-600', dot: REI_COLOR['NUC'], d: { reinst: ['NUC', 'RB'], label: 'Equipos reinstalados (NUC + RB)' }, sub: `${n0(okv(rein))} validados · ${n0(rein.length - okv(rein))} sin validar` })}
+    ${kpi('Se reinstaló NUC', n0(reN.length), { color: 'text-emerald-700', dot: REI_COLOR['NUC'], d: { reinst: ['NUC'], label: 'Se reinstaló NUC' }, sub: `${n0(okv(reN))} validados · ${n0(reN.length - okv(reN))} sin validar` })}
+    ${kpi('Se reinstaló RB', n0(reR.length), { color: 'text-emerald-500', dot: REI_COLOR['RB'], d: { reinst: ['RB'], label: 'Se reinstaló RB' }, sub: `${n0(okv(reR))} validados · ${n0(reR.length - okv(reR))} sin validar` })}
+    ${kpi('USB en monitor', n0(usbN), { color: 'text-indigo-600', dot: REI_COLOR.usb, d: { usb: true, label: 'Visitas con USB dejado en el monitor' }, sub: 'solo en Activa Sin Validación' })}
+    ${kpi('Mantenimientos', n0(mantN), { color: 'text-slate-700', dot: REI_COLOR.mant, d: { mant: true, label: 'Visitas con mantenimiento' }, sub: `${pct(mantN, fis)}% de las visitas físicas` })}
+  </div>
+
   <div class="sec">Distribución y tendencia</div>
   <div class="grid grid-cols-1 lg:grid-cols-3 gap-3">
     <div class="card p-3"><div class="text-sm font-semibold mb-2">Tipo de visita</div><div class="chartbox" style="height:260px"><canvas id="ch-tipo"></canvas></div></div>
@@ -519,6 +539,11 @@ function renderDash() {
     ${techCard('ch-t2', 'Visitas activas por técnico', techs, res, ACT.map(s => ({ label: s, color: COLOR[s], match: v => v.Status_Tienda === s, drill: { status: [s] } })))}
     ${techCard('ch-t3', 'Averías por técnico', techs, res, AV.map(s => ({ label: s, color: COLOR[s], match: v => v.Status_Tienda === s, drill: { status: [s] } })))}
     ${techCard('ch-t5', 'Retiro de equipos por técnico (Avería NUC/RB)', techs, res, [RET.nuc, RET.rb].map(k => ({ label: 'Se recogió ' + k, color: RET_COLOR[k], match: v => v.Status_Tienda === 'Avería NUC/RB' && v.Retiro_Equipos === k, drill: { status: ['Avería NUC/RB'], retiro: [k] } })))}
+    ${techCard('ch-t6', 'Reinstalación, USB y mantenimiento por técnico', techs, res, [
+      { label: 'Reinstaló NUC', color: REI_COLOR['NUC'], match: v => v.Reinstalacion_Equipo === 'NUC', drill: { reinst: ['NUC'] } },
+      { label: 'Reinstaló RB', color: REI_COLOR['RB'], match: v => v.Reinstalacion_Equipo === 'RB', drill: { reinst: ['RB'] } },
+      { label: 'USB en monitor', color: REI_COLOR.usb, match: v => v.USB_Monitor === 'SI', drill: { usb: true } },
+      { label: 'Mantenimiento', color: REI_COLOR.mant, match: v => v.Mantenimiento === 'SI', drill: { mant: true } }], false)}
     ${techCard('ch-t4', 'Tiendas cerradas y no visitados por técnico', techs, res, [
       { label: 'Tienda Cerrada', color: COLOR['Tienda Cerrada'], match: v => v.Status_Tienda === 'Tienda Cerrada', drill: { status: ['Tienda Cerrada'] } },
       { label: 'No Visitado', color: COLOR['No Visitado'], match: v => v.Tipo_Visita === 'No Visitado', drill: { tipo: 'No Visitado' } }], false)}
@@ -616,7 +641,7 @@ function tableHTML(list, page, key) {
       <td>${esc(nameOf(v.Usuario_Asignado))}${v.Es_Fuera_De_Ruta === 'SI' ? ' <span class="badge bg-amber-100 text-amber-700">Fuera de ruta</span>' : ''}</td>
       <td><b>${esc(v.Nombre_Cliente)}</b><div class="text-xs text-slate-400">${esc(v.ID_Cliente)}</div></td>
       <td>${tipoBadge(v.Tipo_Visita)}</td>
-      <td><span class="badge" style="background:${col(v.Status_Tienda)}1a;color:${col(v.Status_Tienda)}">${esc(v.Status_Tienda || '—')}</span>${v.Retiro_Equipos ? `<div class="mt-1"><span class="badge" style="background:#ffedd5;color:#c2410c">📦 ${esc(v.Retiro_Equipos)}</span></div>` : ''}</td>
+      <td><span class="badge" style="background:${col(v.Status_Tienda)}1a;color:${col(v.Status_Tienda)}">${esc(v.Status_Tienda || '—')}</span>${v.Retiro_Equipos ? `<div class="mt-1"><span class="badge" style="background:#ffedd5;color:#c2410c">📦 ${esc(v.Retiro_Equipos)}</span></div>` : ''}${v.Reinstalacion_Equipo ? `<div class="mt-1"><span class="badge" style="background:#d1fae5;color:#047857">🔁 Reinstaló ${esc(v.Reinstalacion_Equipo)}</span></div>` : ''}${v.USB_Monitor === 'SI' ? `<div class="mt-1"><span class="badge" style="background:#e0e7ff;color:#4338ca">💾 USB</span></div>` : ''}${v.Mantenimiento === 'SI' ? `<div class="mt-1"><span class="badge" style="background:#e2e8f0;color:#334155">🛠️ Mantenimiento</span></div>` : ''}</td>
       <td class="whitespace-nowrap">${isNum(v.Distancia_Metros) ? Math.round(v.Distancia_Metros) + ' m' : '—'}</td>
       <td class="whitespace-nowrap">${v.URL_Foto_Fachada ? `<a class="text-blue-600" target="_blank" rel="noopener" href="${esc(v.URL_Foto_Fachada)}">Fachada</a>` : ''} ${v.URL_Foto_Monitor ? `<a class="text-blue-600" target="_blank" rel="noopener" href="${esc(v.URL_Foto_Monitor)}">Monitor</a>` : ''}${!v.URL_Foto_Fachada && !v.URL_Foto_Monitor ? '—' : ''}</td>
       <td class="min-w-[160px] max-w-[320px] text-slate-600">${esc(v.Observacion)}</td></tr>`).join('')}</tbody></table></div>
@@ -915,6 +940,228 @@ function renderLogs() {
 }
 
 /* =====================================================================
+ *  INFORMACIÓN DE TIENDA (matriz con la última incidencia de cada tienda)
+ * ===================================================================== */
+const diasDesde = s => { const d = dOf(s); if (!d) return null; return Math.round((new Date(ymd(new Date()) + 'T00:00:00') - new Date(d + 'T00:00:00')) / 86400000); };
+const TFILTROS = [['', 'Todas las tiendas'], ['pend', 'Equipo pendiente de reinstalar'], ['sinval', 'Instalado sin validar'], ['usb', 'Con USB en monitor'], ['nuc', 'Tiene NUC'], ['rb', 'Tiene RB'],
+  ['sinvisita', 'Sin visitas'], ['atras', 'Sin visita hace más de 30 días'], ['sinmant', 'Sin mantenimiento registrado']];
+const TPRED = {
+  '': () => true,
+  pend: t => !!t.Equipo_Pendiente_Reinstalar,
+  sinval: t => t.Estado_Equipo === 'Instalado sin validar',
+  usb: t => t.Tiene_USB === 'SI',
+  nuc: t => t.Componente_Actual === 'NUC',
+  rb: t => t.Componente_Actual === 'RB',
+  sinvisita: t => !t.Total_Visitas,
+  atras: t => { const d = diasDesde(t.Ultima_Visita); return d === null || d > 30; },
+  sinmant: t => !t.Ultimo_Mantenimiento
+};
+const compTxt = t => t.Componente_Actual || (t.Equipo_Pendiente_Reinstalar ? 'Sin equipo (retirado)' : 'Sin dato');
+const diasCol = d => d === null ? 'text-slate-400' : d > 30 ? 'text-red-600' : d > 14 ? 'text-amber-600' : 'text-green-600';
+const diasTxt = d => d === null ? 'sin visitas' : d === 0 ? 'hoy' : d === 1 ? 'ayer' : `hace ${d} días`;
+const tBadges = t => [
+  t.Equipo_Pendiente_Reinstalar ? `<span class="badge bg-amber-100 text-amber-800">⚠ Reinstalar ${esc(t.Equipo_Pendiente_Reinstalar)}</span>` : '',
+  t.Estado_Equipo === 'Instalado sin validar' ? '<span class="badge bg-orange-100 text-orange-700">🔧 Sin validar</span>' : '',
+  t.Tiene_USB === 'SI' ? '<span class="badge bg-indigo-100 text-indigo-700">💾 USB</span>' : ''
+].join(' ');
+
+async function loadTiendas(silent) {
+  try {
+    const d = await api('getTiendas');
+    S.tienda.data = d.tiendas || []; S.tienda.hoja = d.hojaTiendas !== false;
+    if (S.view === 'tiendas' && $('#tList') && $('#modal').classList.contains('hidden')) updateTiendas();
+    else if (S.view === 'tiendas' && $('#tList')) updateTiendas(true);
+  } catch (e) { if (!silent && e.code !== 'AUTH') toast(e.message, 'error'); }
+}
+
+function buildTiendas() {
+  const T = S.tienda;
+  $('#v-tiendas').innerHTML = `
+    <div id="tWarn"></div>
+    <div id="tChips" class="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-8 gap-2"></div>
+    <div class="card p-3 mt-3 flex flex-wrap gap-2 items-center">
+      <input id="tQ" type="search" class="inp flex-1 min-w-[200px]" placeholder="Buscar tienda, ID, técnico u observación" value="${esc(T.q)}">
+      <select id="tFiltro" class="inp !w-auto max-w-full">${TFILTROS.map(([k, l]) => `<option value="${k}" ${T.filtro === k ? 'selected' : ''}>${l}</option>`).join('')}</select>
+      <button class="btn btn-outline" data-texp="csv">⬇ CSV</button>
+      <button class="btn btn-outline" data-texp="xlsx">⬇ Excel</button>
+    </div>
+    <div class="text-xs text-slate-500 mt-2" id="tCount"></div>
+    <div class="grid grid-cols-1 lg:grid-cols-5 gap-3 mt-1">
+      <div class="card lg:col-span-3 overflow-hidden"><div id="tList"><div class="p-8 text-center text-sm text-slate-500">Cargando tiendas…</div></div></div>
+      <div id="tDetail" class="hidden lg:block lg:col-span-2"><div class="lg:sticky lg:top-20" id="tDetailBox"></div></div>
+    </div>`;
+  if (T.data) { updateTiendas(); loadTiendas(true); } else loadTiendas(false);   // con datos en memoria se muestra al instante y se actualiza detrás
+}
+
+function tiendaFiltrada() {
+  const T = S.tienda, q = norm(T.q.trim());
+  return (T.data || []).filter(t => TPRED[T.filtro](t) && (!q || norm(t.Nombre_Cliente).includes(q) || norm(t.ID_Cliente).includes(q) || norm(nameOf(t.Ultimo_Tecnico)).includes(q) || norm(t.Ultima_Observacion).includes(q)))
+    .sort((a, b) => String(a.Nombre_Cliente).localeCompare(String(b.Nombre_Cliente), 'es'));
+}
+
+function updateTiendas(soloLista) {
+  const T = S.tienda; if (!$('#tList')) return;
+  const data = T.data || [];
+  $('#tWarn').innerHTML = T.hoja ? '' : '<div class="card p-3 mb-3 text-sm bg-amber-50 border-amber-200 text-amber-900">La hoja <b>Tiendas</b> todavía no existe en tu Google Sheet. Ejecuta <b>setupSheet</b> en Apps Script una vez; mientras tanto solo se muestra la lista de clientes sin datos de visitas.</div>';
+  const chips = [['', 'Total tiendas'], ['pend', 'Pend. reinstalar'], ['sinval', 'Sin validar'], ['usb', 'Con USB'], ['nuc', 'Con NUC'], ['rb', 'Con RB'], ['sinvisita', 'Sin visitas'], ['atras', '+30 días sin visita']];
+  $('#tChips').innerHTML = chips.map(([k, l]) => `<button data-tchip="${k}" class="card kpi !p-2.5 ${T.filtro === k ? 'ring-2 ring-blue-500' : ''}"><div class="text-[11px] font-semibold text-slate-500 leading-tight">${l}</div><div class="text-2xl font-bold ${k === 'pend' ? 'text-amber-600' : k === 'usb' ? 'text-indigo-600' : 'text-slate-800'}">${n0(data.filter(TPRED[k]).length)}</div></button>`).join('');
+  const list = tiendaFiltrada();
+  S.tiendaList = list;
+  $('#tCount').textContent = `${n0(list.length)} de ${n0(data.length)} tiendas`;
+  const rows = list.slice(0, T.page * CONFIG.PAGE);
+  $('#tList').innerHTML = !list.length ? '<div class="p-8 text-center text-sm text-slate-500">No hay tiendas para mostrar.</div>' :
+    `<div class="overflow-x-auto"><table class="t"><thead><tr><th>Tienda</th><th>Última visita</th><th>Técnico</th><th>Status</th><th>Equipo</th></tr></thead><tbody>
+    ${rows.map(t => { const d = diasDesde(t.Ultima_Visita); return `<tr class="clk ${T.sel === t.ID_Cliente ? 'bg-blue-50' : ''}" data-tsel="${esc(t.ID_Cliente)}">
+      <td><b>${esc(t.Nombre_Cliente)}</b><div class="text-xs text-slate-400">${esc(t.ID_Cliente)}</div></td>
+      <td class="whitespace-nowrap">${t.Ultima_Visita ? fmtD(t.Ultima_Visita) : '—'}<div class="text-xs ${diasCol(d)}">${diasTxt(d)}</div></td>
+      <td>${t.Ultimo_Tecnico ? esc(nameOf(t.Ultimo_Tecnico)) : '—'}</td>
+      <td>${t.Ultimo_Status ? `<span class="badge" style="background:${col(t.Ultimo_Status)}1a;color:${col(t.Ultimo_Status)}">${esc(t.Ultimo_Status)}</span>` : (t.Ultimo_Tipo_Visita ? tipoBadge(t.Ultimo_Tipo_Visita) : '—')}</td>
+      <td><b>${esc(compTxt(t))}</b><div class="flex flex-wrap gap-1 mt-0.5">${tBadges(t)}</div></td></tr>`; }).join('')}</tbody></table></div>
+    ${list.length > rows.length ? `<div class="p-3 text-center"><button class="btn btn-ghost" data-more="tienda">Mostrar más (${n0(list.length - rows.length)})</button></div>` : ''}`;
+  if (!soloLista) renderTiendaDetail();
+}
+
+const TWIDE = () => matchMedia('(min-width: 1024px)').matches;
+function selTienda(id) {
+  S.tienda.sel = id; updateTiendas(true);
+  const t = (S.tienda.data || []).find(x => x.ID_Cliente === id); if (!t) return;
+  if (TWIDE()) renderTiendaDetail(); else { openModal(`<div class="p-4">${tiendaDetailHTML(t, true)}</div>`); ensureHist(id); }
+}
+function renderTiendaDetail() {
+  const box = $('#tDetailBox'); if (!box || !TWIDE()) return;
+  const t = (S.tienda.data || []).find(x => x.ID_Cliente === S.tienda.sel);
+  box.innerHTML = t ? tiendaDetailHTML(t, false) : '<div class="card p-8 text-center text-sm text-slate-400">Selecciona una tienda de la lista para ver su información actualizada.</div>';
+  if (t) ensureHist(t.ID_Cliente);
+}
+
+function tiendaDetailHTML(t, modal) {
+  const dias = diasDesde(t.Ultima_Visita);
+  const kv = (l, v) => `<div class="flex justify-between gap-3 py-1.5 border-b border-slate-100 text-sm"><span class="text-slate-500 shrink-0">${l}</span><span class="font-medium text-right break-words min-w-0">${v || '—'}</span></div>`;
+  const maps = isNum(t.Latitud) && isNum(t.Longitud) ? `https://www.google.com/maps?q=${t.Latitud},${t.Longitud}` : '';
+  const dt = s => s ? fmtDT(s) : '';
+  const eq = (f, e) => f ? `${fmtD(f)}${e ? ' · ' + esc(e) : ''}` : '';
+  const sub = x => `<div class="sec !mt-4 !mb-1">${x}</div>`;
+  return `<div class="card ${modal ? '!shadow-none !border-0 !p-0' : 'p-4'}">
+    <div class="flex items-start gap-2">
+      <div class="min-w-0 flex-1"><div class="text-lg font-bold leading-tight" id="tdName">${esc(t.Nombre_Cliente)}</div><div class="text-xs text-slate-400">${esc(t.ID_Cliente)}</div></div>
+      ${modal ? '<button data-close class="btn btn-ghost !py-1 !px-3">✕</button>' : ''}
+    </div>
+    <div class="flex flex-wrap gap-1 mt-2">${tBadges(t) || '<span class="text-xs text-slate-400">Sin alertas de equipos</span>'}</div>
+
+    ${sub('Ubicación')}
+    ${kv('Coordenadas', isNum(t.Latitud) && isNum(t.Longitud) ? `${t.Latitud.toFixed(6)}, ${t.Longitud.toFixed(6)}` : '')}
+    ${maps ? `<a class="text-blue-600 text-sm font-medium inline-block mt-1" target="_blank" rel="noopener" href="${maps}">📍 Abrir en Google Maps</a>` : ''}
+
+    ${sub('Última visita')}
+    ${kv('Fecha', t.Ultima_Visita ? `${dt(t.Ultima_Visita)} <span class="${diasCol(dias)} text-xs">(${diasTxt(dias)})</span>` : '')}
+    ${kv('Técnico', t.Ultimo_Tecnico ? esc(nameOf(t.Ultimo_Tecnico)) : '')}
+    ${kv('Tipo', t.Ultimo_Tipo_Visita ? esc(t.Ultimo_Tipo_Visita) : '')}
+    ${kv('Status', t.Ultimo_Status ? esc(t.Ultimo_Status) : '')}
+    ${t.Ultima_Observacion ? `<div class="mt-2 text-sm bg-slate-50 rounded-lg p-2.5 text-slate-700 whitespace-pre-wrap">${esc(t.Ultima_Observacion)}</div>` : ''}
+    ${kv('Última visita física', dt(t.Ultima_Visita_Fisica))}
+
+    ${sub('Equipos')}
+    ${kv('Componente actual', `<b>${esc(compTxt(t))}</b>`)}
+    ${kv('Estado del equipo', esc(t.Estado_Equipo || 'Sin dato'))}
+    ${kv('Pendiente de reinstalar', t.Equipo_Pendiente_Reinstalar ? `<span class="text-amber-700 font-bold">${esc(t.Equipo_Pendiente_Reinstalar)}</span>` : 'No')}
+    ${kv('USB en el monitor', t.Tiene_USB === 'SI' ? '<span class="text-indigo-700 font-bold">Sí</span>' : 'No')}
+    ${kv('Último retiro', eq(t.Ultimo_Retiro, t.Equipo_Retirado))}
+    ${kv('Última reinstalación', eq(t.Ultima_Reinstalacion, t.Equipo_Reinstalado))}
+
+    ${sub('Mantenimiento y averías')}
+    ${kv('Último mantenimiento', t.Ultimo_Mantenimiento ? `${fmtD(t.Ultimo_Mantenimiento)} · ${esc(nameOf(t.Tecnico_Mantenimiento))}` : '')}
+    ${kv('Mantenimientos registrados', n0(t.Total_Mantenimientos))}
+    ${kv('Última avería', t.Ultima_Averia ? `${fmtD(t.Ultima_Averia)} · ${esc(t.Ultima_Averia_Status)}` : '')}
+    ${kv('Averías registradas', n0(t.Total_Averias))}
+    ${kv('Visitas registradas', n0(t.Total_Visitas))}
+
+    ${(t.URL_Foto_Fachada || t.URL_Foto_Monitor) ? `${sub('Últimas fotos')}<div class="flex gap-4 text-sm font-medium">${t.URL_Foto_Fachada ? `<a class="text-blue-600" target="_blank" rel="noopener" href="${esc(t.URL_Foto_Fachada)}">📷 Fachada</a>` : ''}${t.URL_Foto_Monitor ? `<a class="text-blue-600" target="_blank" rel="noopener" href="${esc(t.URL_Foto_Monitor)}">🖥️ Monitor</a>` : ''}</div>` : ''}
+
+    ${sub('Historial reciente')}
+    <div id="tHist" class="text-sm text-slate-400">Cargando historial…</div>
+  </div>`;
+}
+
+async function ensureHist(id) {
+  const H = S.tienda.hist;
+  const paint = () => { const box = $('#tHist'); if (!box || S.tienda.sel !== id) return; const h = H[id];
+    box.innerHTML = !h ? '' : !h.visitas.length ? '<span class="text-slate-400">Esta tienda aún no tiene visitas resueltas.</span>' :
+      `<div class="divide-y divide-slate-100">${h.visitas.map(v => `<div class="py-2"><div class="flex flex-wrap items-center gap-1.5"><b class="text-xs">${fmtDT(v.Fecha_Resolucion)}</b>${tipoBadge(v.Tipo_Visita)}${v.Status_Tienda ? `<span class="badge" style="background:${col(v.Status_Tienda)}1a;color:${col(v.Status_Tienda)}">${esc(v.Status_Tienda)}</span>` : ''}${v.Retiro_Equipos ? `<span class="badge" style="background:#ffedd5;color:#c2410c">📦 ${esc(v.Retiro_Equipos)}</span>` : ''}${v.Reinstalacion_Equipo ? `<span class="badge" style="background:#d1fae5;color:#047857">🔁 ${esc(v.Reinstalacion_Equipo)}</span>` : ''}${v.USB_Monitor === 'SI' ? '<span class="badge" style="background:#e0e7ff;color:#4338ca">💾 USB</span>' : ''}${v.Mantenimiento === 'SI' ? '<span class="badge" style="background:#e2e8f0;color:#334155">🛠️</span>' : ''}</div><div class="text-xs text-slate-500">${esc(nameOf(v.Usuario_Asignado))}</div>${v.Observacion ? `<div class="text-sm text-slate-700 mt-0.5">${esc(v.Observacion)}</div>` : ''}</div>`).join('')}</div>${h.total > h.visitas.length ? `<div class="text-xs text-slate-400 pt-2">Mostrando las últimas ${h.visitas.length} de ${h.total} visitas.</div>` : ''}`; };
+  if (H[id]) return paint();
+  try { H[id] = await api('tiendaHistorial', { idCliente: id, limite: 10 }); paint(); }
+  catch (e) { const box = $('#tHist'); if (box) box.innerHTML = '<span class="text-red-600">No se pudo cargar el historial.</span>'; }
+}
+
+/* ---------- Exportación: CSV y Excel (.xlsx generado en el navegador, sin librerías externas) ---------- */
+function tiendaExport(list) {
+  const f = s => s ? String(s).slice(0, 19) : '';
+  const head = ['ID Cliente', 'Nombre', 'Latitud', 'Longitud', 'Google Maps', 'Total visitas', 'Última visita', 'Días desde la última visita', 'Técnico última visita', 'Tipo última visita', 'Status última visita', 'Última observación',
+    'Última visita física', 'Componente actual', 'Estado del equipo', 'Equipo pendiente de reinstalar', 'Tiene USB', 'Último mantenimiento', 'Técnico mantenimiento', 'Total mantenimientos',
+    'Último retiro', 'Equipo retirado', 'Última reinstalación', 'Equipo reinstalado', 'Total averías', 'Última avería', 'Status última avería', 'Foto fachada', 'Foto monitor', 'Actualizado'];
+  const rows = list.map(t => [t.ID_Cliente, t.Nombre_Cliente, isNum(t.Latitud) ? t.Latitud : '', isNum(t.Longitud) ? t.Longitud : '',
+    isNum(t.Latitud) && isNum(t.Longitud) ? `https://www.google.com/maps?q=${t.Latitud},${t.Longitud}` : '',
+    t.Total_Visitas || 0, f(t.Ultima_Visita), diasDesde(t.Ultima_Visita) ?? '', t.Ultimo_Tecnico ? nameOf(t.Ultimo_Tecnico) : '', t.Ultimo_Tipo_Visita || '', t.Ultimo_Status || '', t.Ultima_Observacion || '',
+    f(t.Ultima_Visita_Fisica), compTxt(t), t.Estado_Equipo || '', t.Equipo_Pendiente_Reinstalar || '', t.Tiene_USB === 'SI' ? 'Sí' : 'No', f(t.Ultimo_Mantenimiento), t.Tecnico_Mantenimiento ? nameOf(t.Tecnico_Mantenimiento) : '', t.Total_Mantenimientos || 0,
+    f(t.Ultimo_Retiro), t.Equipo_Retirado || '', f(t.Ultima_Reinstalacion), t.Equipo_Reinstalado || '', t.Total_Averias || 0, f(t.Ultima_Averia), t.Ultima_Averia_Status || '', t.URL_Foto_Fachada || '', t.URL_Foto_Monitor || '', f(t.Actualizado)]);
+  return { head, rows };
+}
+function exportTiendas(kind) {
+  const list = tiendaFiltrada(); if (!list.length) return toast('No hay tiendas para exportar', 'warn');
+  const { head, rows } = tiendaExport(list), name = `tiendas_${ymd(new Date())}`;
+  if (kind === 'csv') csvDownload(head, rows, name + '.csv'); else saveBlob(xlsxBlob(head, rows, 'Tiendas'), name + '.xlsx');
+  toast(`${n0(list.length)} tiendas exportadas`, 'ok');
+}
+function saveBlob(blob, name) {
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+}
+function csvDownload(head, rows, name) {
+  const q = v => { if (v === null || v === undefined) return '""'; let s = String(v); if (typeof v !== 'number' && /^[=+\-@\t\r]/.test(s)) s = "'" + s; return '"' + s.replace(/"/g, '""') + '"'; };
+  const csv = [head.map(q).join(',')].concat(rows.map(r => r.map(q).join(','))).join('\r\n');
+  saveBlob(new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' }), name);
+}
+
+/* .xlsx mínimo: ZIP sin compresión + hoja con texto en línea. Cabecera fija, filtros y anchos de columna. */
+const CRC_T = (() => { const t = []; for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+const crc32 = b => { let c = 0xFFFFFFFF; for (let i = 0; i < b.length; i++) c = CRC_T[(c ^ b[i]) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; };
+function zipStore(files) {
+  const enc = new TextEncoder(), parts = [], cen = []; let off = 0;
+  const w16 = n => [n & 255, (n >> 8) & 255], w32 = n => [n & 255, (n >> 8) & 255, (n >> 16) & 255, (n >>> 24) & 255];
+  files.forEach(f => {
+    const nm = enc.encode(f.name), data = enc.encode(f.text), crc = crc32(data);
+    const common = [...w16(20), ...w16(0x0800), ...w16(0), ...w16(0), ...w16(33), ...w32(crc), ...w32(data.length), ...w32(data.length), ...w16(nm.length), ...w16(0)];
+    parts.push(new Uint8Array([0x50, 0x4b, 3, 4, ...common]), nm, data);
+    cen.push(new Uint8Array([0x50, 0x4b, 1, 2, ...w16(20), ...common, ...w16(0), ...w16(0), ...w16(0), ...w32(0), ...w32(off)]), nm);
+    off += 30 + nm.length + data.length;
+  });
+  const cdSize = cen.reduce((a, b) => a + b.length, 0);
+  const end = new Uint8Array([0x50, 0x4b, 5, 6, 0, 0, 0, 0, ...w16(files.length), ...w16(files.length), ...w32(cdSize), ...w32(off), 0, 0]);
+  return new Blob([...parts, ...cen, end], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+}
+function xlsxBlob(head, rows, sheetName) {
+  const xe = s => String(s).replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  const L = i => { let s = '', n = i + 1; while (n > 0) { const m = (n - 1) % 26; s = String.fromCharCode(65 + m) + s; n = Math.floor((n - 1) / 26); } return s; };
+  const cell = (v, r, c, st) => {
+    const ref = L(c) + (r + 1), s = st ? ` s="${st}"` : '';
+    if (v === '' || v === null || v === undefined) return '';
+    if (typeof v === 'number' && isFinite(v)) return `<c r="${ref}"${s}><v>${v}</v></c>`;
+    return `<c r="${ref}"${s} t="inlineStr"><is><t xml:space="preserve">${xe(v)}</t></is></c>`;
+  };
+  const widths = head.map((h, i) => Math.min(60, Math.max(10, String(h).length + 2, ...rows.slice(0, 200).map(r => String(r[i] ?? '').length + 1))));
+  const sheetData = [head.map((h, c) => cell(h, 0, c, 1)).join('')].concat(rows.map((r, i) => r.map((v, c) => cell(v, i + 1, c, 0)).join(''))).map((x, i) => `<row r="${i + 1}">${x}</row>`).join('');
+  const X = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n';
+  const NS = 'xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"';
+  return zipStore([
+    { name: '[Content_Types].xml', text: X + '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>' },
+    { name: '_rels/.rels', text: X + '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>' },
+    { name: 'xl/workbook.xml', text: X + `<workbook ${NS} xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="${xe(sheetName)}" sheetId="1" r:id="rId1"/></sheets></workbook>` },
+    { name: 'xl/_rels/workbook.xml.rels', text: X + '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>' },
+    { name: 'xl/styles.xml', text: X + `<styleSheet ${NS}><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font></fonts><fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF1D4ED8"/><bgColor indexed="64"/></patternFill></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>` },
+    { name: 'xl/worksheets/sheet1.xml', text: X + `<worksheet ${NS}><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><cols>${widths.map((w, i) => `<col min="${i + 1}" max="${i + 1}" width="${w}" customWidth="1"/>`).join('')}</cols><sheetData>${sheetData}</sheetData><autoFilter ref="A1:${L(head.length - 1)}${rows.length + 1}"/></worksheet>` }
+  ]);
+}
+
+/* =====================================================================
  *  EVENTOS
  * ===================================================================== */
 function bindEvents() {
@@ -961,9 +1208,13 @@ function bindEvents() {
     if ((el = t.closest('[data-more]'))) {
       const k = el.dataset.more;
       if (k === 'drill') { S.drillPage++; renderDrill(false); } else if (k === 'hist') { S.hist.page++; updateHist(); }
+      else if (k === 'tienda') { S.tienda.page++; updateTiendas(true); }
       else if (k === 'pend') { S.pend.page++; updatePend(); } else if (k === 'asig') { S.asig.page++; updateAsigList(); }
       return;
     }
+    if ((el = t.closest('[data-tsel]'))) return selTienda(el.dataset.tsel);
+    if ((el = t.closest('[data-tchip]'))) { S.tienda.filtro = el.dataset.tchip; S.tienda.page = 1; const f = $('#tFiltro'); if (f) f.value = S.tienda.filtro; return updateTiendas(); }
+    if ((el = t.closest('[data-texp]'))) return exportTiendas(el.dataset.texp);
     if ((el = t.closest('[data-pchip]'))) { S.pend.tec = S.pend.tec === el.dataset.pchip ? '' : el.dataset.pchip; S.pend.page = 1; buildPend(); return; }
     if ((el = t.closest('[data-pact]'))) return pendAction(el.dataset.pact);
     if ((el = t.closest('[data-teamgo]'))) { const u = el.dataset.u; S.filtroTec = u; S.pend.tec = u; return go(el.dataset.teamgo); }
@@ -984,6 +1235,7 @@ function bindEvents() {
     const id = e.target.id;
     if (id === 'hQ') { S.hist.q = e.target.value; S.hist.page = 1; updateHist(); }
     else if (id === 'pQ') { S.pend.q = e.target.value; S.pend.page = 1; updatePend(); }
+    else if (id === 'tQ') { S.tienda.q = e.target.value; S.tienda.page = 1; updateTiendas(true); }
     else if (id === 'aQ') { S.asig.q = e.target.value; S.asig.page = 1; updateAsigList(); }
   });
 
@@ -992,6 +1244,7 @@ function bindEvents() {
     if (t.classList.contains('f-tec')) { S.filtroTec = t.value; S.drill = null; S.hist.page = 1; renderCurrent(false); return; }
     if (id === 'hTipo') { S.hist.tipo = t.value; S.hist.page = 1; updateHist(); }
     else if (id === 'hStatus') { S.hist.status = t.value; S.hist.page = 1; updateHist(); }
+    else if (id === 'tFiltro') { S.tienda.filtro = t.value; S.tienda.page = 1; updateTiendas(true); }
     else if (id === 'hFuera') { S.hist.fuera = t.checked; S.hist.page = 1; updateHist(); }
     else if (id === 'pTec') { S.pend.tec = t.value; S.pend.page = 1; updatePend(); }
     else if (id === 'pAtr') { S.pend.soloAtras = t.checked; S.pend.page = 1; updatePend(); }
