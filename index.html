@@ -167,7 +167,7 @@ const CONFIG = {
   GEOCERCA_METROS: 100,
   FOTO_MAX_ANCHO: 1000,
   FOTO_CALIDAD: 0.65,
-  MONITOR_OBLIGATORIO_FISICA: true,          // foto del monitor obligatoria en Visita Física (fachada es opcional); debe coincidir con Code.gs
+  MONITOR_OBLIGATORIO_FISICA: true,          // foto del monitor obligatoria en Visita Física (fachada es opcional); con "Tienda Cerrada" solo se exige la fachada; debe coincidir con Code.gs
   SESION_KEY: 'vt_sesion',
   CACHE_KEY: 'vt_cache'
 };
@@ -231,7 +231,7 @@ let toastTimer;
 function toast(msg, type = 'info') {
   const t = $('#toast');
   t.textContent = msg;
-  t.className = `fixed left-1/2 -translate-x-1/2 z-[4000] max-w-[92%] px-4 py-2 rounded-xl text-sm text-white shadow-lg ${type === 'error' ? 'bg-red-600' : type === 'ok' ? 'bg-green-600' : type === 'warn' ? 'bg-amber-600' : 'bg-slate-800'}`;
+  t.className = `fixed left-1/2 -translate-x-1/2 z-[4000] max-w-[92%] px-4 py-2 rounded-xl text-sm text-center text-white shadow-lg ${type === 'error' ? 'bg-red-600' : type === 'ok' ? 'bg-green-600' : type === 'warn' ? 'bg-amber-600' : 'bg-slate-800'}`;
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => t.classList.add('hidden'), 4000);
 }
@@ -268,6 +268,22 @@ const S = {
   view: 'inicio', filtroTec: '', limiteRes: 50, mostrarResMapa: false, periodoRes: 'hoy'
 };
 const isSup = () => S.user && S.user.Rol === 'Supervisor';
+const fmtTel = t => { const d = String(t || '').replace(/\D/g, ''); return d.length === 9 ? d.replace(/(\d{3})(\d{3})(\d{3})/, '$1 $2 $3') : d; };
+function contactosHTML(idCliente) {
+  const c = (S.clientes || []).find(x => x.ID_Cliente === idCliente) || {};
+  const tels = [c.Contacto_1, c.Contacto_2].filter(Boolean);
+  if (!tels.length) return '<div class="text-xs text-slate-400 mt-1">📞 Sin teléfono registrado</div>';
+  return `<div class="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">${tels.map(t => `<span class="whitespace-nowrap">📞 <a class="text-blue-600 font-semibold" href="tel:+51${esc(String(t).replace(/\D/g, ''))}">${esc(fmtTel(t))}</a> <a class="text-emerald-600 text-xs font-semibold" target="_blank" rel="noopener" href="https://wa.me/51${esc(String(t).replace(/\D/g, ''))}">WhatsApp</a></span>`).join('')}</div>`;
+}
+/* Seguimiento de una visita "Tienda Cerrada": ¿se puede actualizar? (el servidor vuelve a validar) */
+function tsMs(ts) { return new Date(String(ts || '').replace(' ', 'T') + '-05:00').getTime(); }   // Lima: UTC-5 fijo
+function hoyLima() { return new Date(Date.now() - 5 * 3600000).toISOString().slice(0, 10); }   // fecha de hoy en Lima (UTC-5 fijo), sin depender de la zona del teléfono
+function seguimientos(v) { return (S.visitas || []).filter(x => x.Seguimiento_De === v.ID_Visita); }
+function seguimientoElegible(v) {
+  if (v.Estado_Tarea !== 'Resuelta' || v.Status_Tienda !== 'Tienda Cerrada') return false;
+  if (seguimientos(v).some(x => x.Status_Tienda && x.Status_Tienda !== 'Tienda Cerrada')) return false;
+  return isSup() || (v.Usuario_Asignado === S.user.Usuario && String(v.Fecha_Resolucion).slice(0, 10) === hoyLima());   // el técnico solo puede actualizarla el mismo día
+}
 const techName = u => { const x = S.usuarios.find(y => y.Usuario === u); return x ? x.Nombre_Apellido : (S.user && S.user.Usuario === u ? S.user.Nombre_Apellido : u); };
 
 function saveSession() { try { localStorage.setItem(CONFIG.SESION_KEY, JSON.stringify({ token: S.token, user: S.user, loginAt: S.loginAt, device: S.device })); } catch (_) {} }
@@ -530,8 +546,11 @@ function renderResueltas() {
         ${v.USB_Monitor === 'SI' ? `<span class="badge bg-indigo-100 text-indigo-700">💾 USB en monitor</span>` : ''}
         ${v.Mantenimiento === 'SI' ? `<span class="badge bg-slate-200 text-slate-700">🛠️ Mantenimiento</span>` : ''}
         ${isSup() ? `<span class="badge bg-purple-50 text-purple-700">👤 ${esc(techName(v.Usuario_Asignado))}</span>` : ''}
+        ${v.Seguimiento_De ? `<span class="badge bg-sky-100 text-sky-700">↪ Seguimiento de tienda cerrada</span>` : ''}
+        ${seguimientos(v).filter(x => x.Status_Tienda && x.Status_Tienda !== 'Tienda Cerrada').slice(-1).map(x => `<span class="badge bg-green-100 text-green-700">✅ Actualizada: ${esc(x.Status_Tienda)}</span>`).join('')}
       </div>
       ${v.Observacion ? `<div class="mt-2 text-sm text-slate-600">${esc(v.Observacion)}</div>` : ''}
+      ${seguimientoElegible(v) ? `<button class="btn btn-outline w-full mt-2 text-sm" style="padding:7px 10px" data-seg="${esc(v.ID_Visita)}">🔄 La tienda abrió: actualizar estado</button>` : ''}
       <div class="mt-2 flex gap-3 text-sm">
         ${v.URL_Foto_Fachada ? `<a class="text-blue-600 font-medium" href="${esc(v.URL_Foto_Fachada)}" target="_blank" rel="noopener">📷 Fachada</a>` : ''}
         ${v.URL_Foto_Monitor ? `<a class="text-blue-600 font-medium" href="${esc(v.URL_Foto_Monitor)}" target="_blank" rel="noopener">🖥️ Monitor</a>` : ''}
@@ -582,7 +601,10 @@ function renderMapa(fit) {
       <div class="text-slate-500">ID: ${esc(v.ID_Cliente)}</div>
       <div class="text-slate-500">Técnico: ${esc(techName(v.Usuario_Asignado))}</div>
       <div class="mt-1 mb-2"><span class="badge ${pendiente ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'}">${pendiente ? 'Pendiente' : 'Resuelta'}</span></div>
-      <a class="btn btn-outline w-full block" style="padding:6px 10px;font-size:13px" target="_blank" rel="noopener" href="https://www.google.com/maps/dir/?api=1&destination=${v.Latitud_Tienda},${v.Longitud_Tienda}&travelmode=driving">Navegar (Google Maps)</a>
+      <div class="grid grid-cols-2 gap-1.5">
+        <a class="btn btn-outline block text-center" style="padding:6px 8px;font-size:13px" target="_blank" rel="noopener" href="https://www.google.com/maps/dir/?api=1&destination=${v.Latitud_Tienda},${v.Longitud_Tienda}&travelmode=driving">Google Maps</a>
+        <a class="btn btn-outline block text-center" style="padding:6px 8px;font-size:13px" target="_blank" rel="noopener" href="https://waze.com/ul?ll=${v.Latitud_Tienda},${v.Longitud_Tienda}&navigate=yes">Waze</a>
+      </div>
       ${pendiente ? `<button class="btn btn-primary w-full block mt-2" style="padding:6px 10px;font-size:13px" data-resolver="${esc(v.ID_Visita)}">Resolver Visita</button>` : ''}
     </div>`);
     m.addTo(pinLayer);
@@ -732,7 +754,7 @@ function openVisita(arg) {
         <div><label class="lbl">Usuario asignado</label><input class="inp" readonly value="${esc(v.Usuario_Asignado)}"></div>
         <div><label class="lbl">ID Cliente</label><input class="inp" readonly value="${esc(v.ID_Cliente)}"></div>
       </div>
-      <div><label class="lbl">Nombre del cliente</label><input class="inp" readonly value="${esc(v.Nombre_Cliente)}"></div>
+      <div><label class="lbl">Nombre del cliente</label><input class="inp" readonly value="${esc(v.Nombre_Cliente)}">${contactosHTML(v.ID_Cliente)}</div>
       <div class="grid grid-cols-2 gap-2">
         <div><label class="lbl">Latitud</label><input class="inp" readonly value="${esc(v.Latitud_Tienda)}"></div>
         <div><label class="lbl">Longitud</label><input class="inp" readonly value="${esc(v.Longitud_Tienda)}"></div>
@@ -753,15 +775,15 @@ function openVisita(arg) {
     </div>
 
     <div class="grid grid-cols-2 gap-3">
-      <div>
-        <label class="lbl">Foto de fachada <span class="font-normal text-slate-400">(opcional)</span></label>
+      <div id="fFachBox">
+        <label class="lbl">Foto de fachada <span id="lblFach" class="font-normal text-slate-400">(opcional)</span></label>
         <label for="fFachada" class="btn btn-outline w-full block text-sm">📷 Tomar foto</label>
         <input id="fFachada" type="file" accept="image/*" capture="environment" class="hidden">
         <label for="fFachadaG" class="gal-btn btn btn-ghost w-full text-sm mt-1.5 hidden">🖼️ Elegir de galería</label>
         <input id="fFachadaG" type="file" accept="image/*" class="hidden">
         <img id="prevFachada" alt="" class="hidden mt-2 w-full h-28 object-cover rounded-xl border">
       </div>
-      <div>
+      <div id="fMonBox">
         <label class="lbl">Foto del monitor <span class="font-normal text-slate-400">(obligatoria en visita física)</span></label>
         <label for="fMonitor" class="btn btn-outline w-full block text-sm">📷 Tomar foto</label>
         <input id="fMonitor" type="file" accept="image/*" capture="environment" class="hidden">
@@ -861,6 +883,7 @@ function openVisita(arg) {
 
 /* Campos que dependen del tipo y del status: checklist de retiro (Física + Avería NUC/RB) y observación obligatoria */
 function esFisica() { return $('#fTipo').value === 'Visita Física'; }
+function cerradaFisica() { return esFisica() && $('#fStatus').value === 'Tienda Cerrada'; }
 function retiroAplica() { return esFisica() && $('#fStatus').value === 'Avería NUC/RB'; }
 function reinstAplica() { const st = $('#fStatus').value; return esFisica() && (st === 'Activa Validada' || st === 'Activa Sin Validación'); }
 function usbAplica() { return esFisica() && $('#fStatus').value === 'Activa Sin Validación'; }      // "se deja USB"
@@ -880,6 +903,12 @@ function syncExtras() {
   // equipo confirmado: no se combina con un retiro o una reinstalación (esos movimientos ya definen el equipo)
   const eqOn = eqConfAplica();
   $('#fEqBox').classList.toggle('hidden', !eqOn); if (!eqOn) $('#fConfEq').value = '';
+  // fotos: con la tienda cerrada en visita física solo se pide la FACHADA (el monitor no es accesible y no se muestra)
+  const cerrada = cerradaFisica();
+  $('#fMonBox').classList.toggle('hidden', cerrada);
+  $('#fFachBox').classList.toggle('col-span-2', cerrada);
+  if (cerrada && F && F.monitor) quitarFoto('monitor', 'prevMonitor');
+  const lf = $('#lblFach'); lf.textContent = cerrada ? '(obligatoria)' : '(opcional)'; lf.className = cerrada ? 'font-semibold text-red-600' : 'font-normal text-slate-400';
 }
 /* Aviso del USB pendiente de retiro dentro de la caja de USB */
 function avisoUsbRet(v) {
@@ -1033,6 +1062,37 @@ async function onFoto(kind, input, prevId, gal) {
   input.value = '';
 }
 
+/* ---------- Seguimiento de una visita "Tienda Cerrada" (la tienda abrió y se validó después) ---------- */
+function openSeguimiento(idVisita) {
+  const o = S.visitas.find(x => x.ID_Visita === idVisita);
+  if (!o || !seguimientoElegible(o)) return toast('Esta visita ya no se puede actualizar', 'warn');
+  const opts = STATUS.filter(x => x !== 'Tienda Cerrada');
+  openModal(`${modalHeader('Actualizar tienda cerrada')}
+  <div class="p-4 space-y-3">
+    <div class="card">
+      <div class="font-semibold">${esc(o.Nombre_Cliente)}</div>
+      <div class="text-xs text-slate-500">${esc(o.ID_Cliente)} · visita del ${fmt(o.Fecha_Resolucion)} · <b>Tienda Cerrada</b></div>
+      ${contactosHTML(o.ID_Cliente)}
+    </div>
+    <div class="text-xs text-slate-600 bg-sky-50 border border-sky-200 rounded-xl p-2.5">Úsalo cuando la tienda abrió después de tu visita y el equipo ya se validó. Se registra como una <b>Visita Remota</b> vinculada a esta; la visita original se conserva como “Tienda Cerrada”.</div>
+    <div><label class="lbl">Nuevo status *</label><select id="sgStatus" class="inp"><option value="">Selecciona…</option>${opts.map(t => `<option>${t}</option>`).join('')}</select></div>
+    <div><label class="lbl">Observación *</label><textarea id="sgObs" rows="3" class="inp" placeholder="Ej.: El cliente abrió y encendió los equipos; validado por el ingeniero…"></textarea></div>
+    <div id="sgErr" class="hidden text-sm text-red-700 bg-red-50 border border-red-200 rounded-xl p-2"></div>
+    <div class="grid grid-cols-2 gap-3"><button data-close class="btn btn-ghost">Cancelar</button><button id="btnSg" class="btn btn-primary">Actualizar</button></div>
+  </div>`);
+  $('#btnSg').addEventListener('click', async () => {
+    const st = $('#sgStatus').value, obs = $('#sgObs').value.trim(), er = $('#sgErr'); er.classList.add('hidden');
+    const bad = m => { er.textContent = m; er.classList.remove('hidden'); };
+    if (!st) return bad('Selecciona el nuevo status de la tienda.');
+    if (!obs) return bad('La Observación es obligatoria.');
+    const b = $('#btnSg'); b.disabled = true; b.textContent = 'Guardando…'; showLoading(true);
+    try {
+      await api('resolveVisit', { seguimientoDe: idVisita, tipoVisita: 'Visita Remota', status: st, observacion: obs });
+      toast('Tienda actualizada correctamente', 'ok'); closeModal(); await refreshData(true);
+    } catch (e) { showLoading(false); bad(e.message); b.disabled = false; b.textContent = 'Actualizar'; } finally { showLoading(false); }
+  });
+}
+
 /* ---------- Guardar ---------- */
 function fErr(msg) { const e = $('#fErr'); e.textContent = msg; e.classList.remove('hidden'); e.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
 
@@ -1047,7 +1107,8 @@ async function guardarVisita() {
   if (tipo === 'Visita Física') {
     const g = geofenceError();
     if (g) { alert('⚠️ ' + g); return; }
-    if (CONFIG.MONITOR_OBLIGATORIO_FISICA && !F.monitor) return fErr('Para una Visita Física debes adjuntar la foto del monitor.');
+    if (status === 'Tienda Cerrada') { if (!F.fachada) return fErr('Con la tienda cerrada debes adjuntar la foto de la fachada.'); }
+    else if (CONFIG.MONITOR_OBLIGATORIO_FISICA && !F.monitor) return fErr('Para una Visita Física debes adjuntar la foto del monitor.');
   }
   const v = F.v;
   const btn = $('#btnGuardar'); btn.disabled = true; btn.textContent = 'Guardando…';
@@ -1063,7 +1124,7 @@ async function guardarVisita() {
       latReal: F.pos ? F.pos.lat : null,
       lngReal: F.pos ? F.pos.lng : null,
       fotoFachada: F.fachada,
-      fotoMonitor: F.monitor,
+      fotoMonitor: cerradaFisica() ? null : F.monitor,
       fotoGaleria: !!(F.galF || F.galM),
       retiroNuc: retiroAplica() && $('#fRetNuc').checked,
       retiroRb: retiroAplica() && $('#fRetRb').checked,
@@ -1207,7 +1268,7 @@ function bindEvents() {
     const c = e.target.closest('[data-vid]'); if (c) openVisita(c.dataset.vid);
   });
   $('#cargaChips').addEventListener('click', e => { const c = e.target.closest('[data-chip]'); if (c) setFiltro(S.filtroTec === c.dataset.chip ? '' : c.dataset.chip); });
-  $('#listRes').addEventListener('click', e => { if (e.target.closest('#btnMasRes')) { S.limiteRes += 50; renderResueltas(); } });
+  $('#listRes').addEventListener('click', e => { if (e.target.closest('#btnMasRes')) { S.limiteRes += 50; renderResueltas(); return; } const sg = e.target.closest('[data-seg]'); if (sg) openSeguimiento(sg.dataset.seg); });
 
   $('#inicioBody').addEventListener('click', async e => {
     const t = e.target.closest('[data-tec]');
