@@ -278,6 +278,12 @@ function contactosHTML(idCliente) {
 /* Seguimiento de una visita "Tienda Cerrada": ¿se puede actualizar? (el servidor vuelve a validar) */
 function tsMs(ts) { return new Date(String(ts || '').replace(' ', 'T') + '-05:00').getTime(); }   // Lima: UTC-5 fijo
 function hoyLima() { return new Date(Date.now() - 5 * 3600000).toISOString().slice(0, 10); }   // fecha de hoy en Lima (UTC-5 fijo), sin depender de la zona del teléfono
+/* Antigüedad de una visita pendiente: días de calendario (Lima) desde que se asignó */
+function diasPend(v) { const a = String(v.Fecha_Asignacion || '').slice(0, 10); if (!a) return 0; return Math.max(0, Math.round((Date.parse(hoyLima() + 'T00:00:00Z') - Date.parse(a + 'T00:00:00Z')) / 86400000)); }
+function antiguedadBadge(v) {
+  const d = diasPend(v); if (d < 1) return '';
+  return `<span class="badge ${d >= 3 ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-800'} self-start" data-antig="${d}">⏳ ${d === 1 ? 'desde ayer' : 'hace ' + d + ' días'}</span>`;
+}
 function seguimientos(v) { return (S.visitas || []).filter(x => x.Seguimiento_De === v.ID_Visita); }
 function seguimientoElegible(v) {
   if (v.Estado_Tarea !== 'Resuelta' || v.Status_Tienda !== 'Tienda Cerrada') return false;
@@ -518,7 +524,7 @@ function renderPendientes() {
           <div class="font-semibold truncate">${esc(v.Nombre_Cliente)}</div>
           <div class="text-xs text-slate-500">${esc(v.ID_Cliente)} · Asignada ${fmt(v.Fecha_Asignacion)}</div>
         </div>
-        <span class="badge bg-blue-100 text-blue-700 self-start">Pendiente</span>
+        <div class="flex flex-col items-end gap-1"><span class="badge bg-blue-100 text-blue-700 self-start">Pendiente</span>${antiguedadBadge(v)}</div>
       </div>
       ${isSup() ? `<div class="mt-2 flex items-center justify-between text-xs"><span class="text-slate-600">👤 ${esc(techName(v.Usuario_Asignado))}</span><button class="text-blue-600 font-semibold px-2 py-1" data-reasignar="${esc(v.ID_Visita)}">Reasignar</button></div>` : ''}
     </div>`).join('') : `<div class="text-center text-slate-500 py-10 text-sm">No hay tareas pendientes 🎉</div>`;
