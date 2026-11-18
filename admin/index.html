@@ -116,6 +116,7 @@
       <section id="v-pend" class="view hidden"></section>
       <section id="v-hist" class="view hidden"></section>
       <section id="v-tiendas" class="view hidden"></section>
+      <section id="v-lab" class="view hidden"></section>
       <section id="v-equipo" class="view hidden"></section>
       <section id="v-logs" class="view hidden"></section>
     </main>
@@ -153,7 +154,15 @@ const COLOR = {
   'Avería ISP': '#dc2626', 'Avería NUC/RB': '#ea580c', 'Avería CAM': '#f59e0b', 'Avería Otros': '#be185d',
   'Tienda Cerrada': '#475569', 'Solicitud de Retiro': '#7c3aed'
 };
-const VCOLS = ['ID_Visita', 'Fecha_Asignacion', 'Usuario_Asignado', 'ID_Cliente', 'Nombre_Cliente', 'Latitud_Tienda', 'Longitud_Tienda', 'Estado_Tarea', 'Tipo_Visita', 'Status_Tienda', 'URL_Foto_Fachada', 'URL_Foto_Monitor', 'Observacion', 'Fecha_Resolucion', 'Lat_Real_Tecnico', 'Lng_Real_Tecnico', 'Distancia_Metros', 'Es_Fuera_De_Ruta', 'Retiro_Equipos', 'Reinstalacion_Equipo', 'USB_Monitor', 'Mantenimiento', 'Confirma_Equipo', 'Confirma_USB', 'Retiro_USB', 'Seguimiento_De'];
+const VCOLS = ['ID_Visita', 'Fecha_Asignacion', 'Usuario_Asignado', 'ID_Cliente', 'Nombre_Cliente', 'Latitud_Tienda', 'Longitud_Tienda', 'Estado_Tarea', 'Tipo_Visita', 'Status_Tienda', 'URL_Foto_Fachada', 'URL_Foto_Monitor', 'Observacion', 'Fecha_Resolucion', 'Lat_Real_Tecnico', 'Lng_Real_Tecnico', 'Distancia_Metros', 'Es_Fuera_De_Ruta', 'Retiro_Equipos', 'Reinstalacion_Equipo', 'USB_Monitor', 'Mantenimiento', 'Confirma_Equipo', 'Confirma_USB', 'Retiro_USB', 'Seguimiento_De', 'Fecha_Programada', 'Etiqueta'];
+
+const ETIQUETAS = ['Avería', 'Mantenimiento', 'Reubicación', 'Instalación', 'Retiro', 'Fotografía'];
+const ETQ_ICON = { 'Avería': '🔧', 'Mantenimiento': '🛠️', 'Reubicación': '🚚', 'Instalación': '➕', 'Retiro': '📦', 'Fotografía': '📷' };
+const ETQ_COL = { 'Avería': ['#fee2e2', '#b91c1c'], 'Mantenimiento': ['#e2e8f0', '#334155'], 'Reubicación': ['#e0e7ff', '#4338ca'], 'Instalación': ['#d1fae5', '#047857'], 'Retiro': ['#ffedd5', '#c2410c'], 'Fotografía': ['#e0f2fe', '#0369a1'] };
+const SEG_STATUS = ['Tienda Cerrada', 'Activa Sin Validación', 'Avería ISP', 'Avería CAM', 'Avería Otros'];   // visitas que se pueden "recuperar" (igual que en Code.gs)
+const LAB_ESTADOS = ['Por recibir', 'En laboratorio', 'Reparado', 'Reemplazo', 'Enviado a tienda', 'Entregado', 'Baja'];
+const LAB_CERRADOS = ['Entregado', 'Baja'];
+const LAB_COL = { 'Por recibir': ['#fef3c7', '#b45309'], 'En laboratorio': ['#dbeafe', '#1d4ed8'], 'Reparado': ['#dcfce7', '#15803d'], 'Reemplazo': ['#ede9fe', '#6d28d9'], 'Enviado a tienda': ['#cffafe', '#0e7490'], 'Entregado': ['#f1f5f9', '#475569'], 'Baja': ['#fee2e2', '#b91c1c'] };
 
 // Retiro de equipos (solo Visita Física + Avería NUC/RB). '' = sin retiro
 const RET = { nuc: 'NUC', rb: 'RB' };   // solo se recoge uno por visita
@@ -167,13 +176,14 @@ const ICONS = {
   hist: '<circle cx="12" cy="12" r="9"/><path d="M8 12.5l3 3 5-6"/>',
   store: '<path d="M3 9l1.5-5h15L21 9"/><path d="M4 9v11h16V9"/><path d="M3 9a3 3 0 0 0 6 0 3 3 0 0 0 6 0 3 3 0 0 0 6 0"/><path d="M10 20v-6h4v6"/>',
   team: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>',
-  logs: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'
+  logs: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  lab: '<path d="M9 3h6M10 3v6l-5 9a2 2 0 0 0 2 3h10a2 2 0 0 0 2-3l-5-9V3"/><path d="M8 15h8"/>'
 };
 const NAV = [
   ['dash', 'Dashboard', 'dash'], ['asig', 'Asignación masiva', 'assign'], ['pend', 'Visitas pendientes', 'pend'],
-  ['hist', 'Historial de visitas', 'hist'], ['tiendas', 'Información de Tienda', 'store'], ['equipo', 'Equipo', 'team'], ['logs', 'Accesos', 'logs']
+  ['hist', 'Historial de visitas', 'hist'], ['tiendas', 'Información de Tienda', 'store'], ['lab', 'Laboratorio', 'lab'], ['equipo', 'Equipo', 'team'], ['logs', 'Accesos', 'logs']
 ];
-const TITLES = { dash: 'Dashboard', asig: 'Asignación masiva', pend: 'Visitas pendientes', hist: 'Historial de visitas', tiendas: 'Información de Tienda', equipo: 'Equipo', logs: 'Accesos al sistema' };
+const TITLES = { dash: 'Dashboard', asig: 'Asignación masiva', pend: 'Visitas pendientes', hist: 'Historial de visitas', tiendas: 'Información de Tienda', lab: 'Laboratorio', equipo: 'Equipo', logs: 'Accesos al sistema' };
 
 /* =====================================================================
  *  UTILIDADES
@@ -197,6 +207,24 @@ function fmtDT(s) {
   if (!m) return s ? esc(s) : '—';
   return `${m[3]}/${m[2]}/${m[1]}${m[4] ? ' ' + m[4] + ':' + m[5] : ''}`;
 }
+// Programación (fecha y hora, Lima) y etiquetas de las visitas pendientes
+const limaNow = () => new Date(Date.now() - 5 * 3600000).toISOString();
+const hoyLima = () => limaNow().slice(0, 10);
+const ahoraLima = () => limaNow().slice(0, 16).replace('T', ' ');
+function fmtProg(p) { const m = /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/.exec(String(p || '')); return m ? `${m[3]}/${m[2]} ${m[4]}:${m[5]}` : ''; }
+function progEstado(v) {   // vencida | hoy | futura | '' (sin programar)
+  const p = String(v.Fecha_Programada || '').slice(0, 16); if (!p) return '';
+  if (p < ahoraLima()) return 'vencida';
+  return p.slice(0, 10) === hoyLima() ? 'hoy' : 'futura';
+}
+const etqBadge = v => v.Etiqueta ? `<span class="badge" data-etq="${esc(v.Etiqueta)}" style="background:${(ETQ_COL[v.Etiqueta] || ['#f1f5f9', '#475569'])[0]};color:${(ETQ_COL[v.Etiqueta] || ['#f1f5f9', '#475569'])[1]}">${ETQ_ICON[v.Etiqueta] || '🏷'} ${esc(v.Etiqueta)}</span>` : '';
+function progBadge(v) {
+  const e = progEstado(v); if (!e) return '';
+  const c = e === 'vencida' ? ['#fee2e2', '#b91c1c'] : e === 'hoy' ? ['#fef3c7', '#b45309'] : ['#dbeafe', '#1d4ed8'];
+  return `<span class="badge" data-prog="${e}" style="background:${c[0]};color:${c[1]}">📅 ${fmtProg(v.Fecha_Programada)}${e === 'vencida' ? ' · vencida' : e === 'hoy' ? ' · hoy' : ''}</span>`;
+}
+// "Atrasada": programada ya vencida, o (sin programar) asignada en un día anterior
+const esAtras = v => v.Fecha_Programada ? progEstado(v) === 'vencida' : dOf(v.Fecha_Asignacion) < ymd(new Date());
 function fmtD(s) { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(s || '')); return m ? `${m[3]}/${m[2]}/${m[1]}` : ''; }
 
 let toastTimer;
@@ -240,8 +268,10 @@ const S = {
   clientMap: {}, pendByClient: {},
   view: 'dash', rango: { preset: 'hoy', desde: '', hasta: '' }, filtroTec: '',
   drill: null, drillPage: 1, drillList: [],
-  asig: { q: '', ocultarPend: true, sel: new Set(), modo: 'zonas', destino: '', tecs: new Set(), tecsInit: false, omitir: true, page: 1 },
-  pend: { q: '', tec: '', soloAtras: false, sel: new Set(), page: 1 },
+  asig: { etq: '', prog: '', q: '', ocultarPend: true, sel: new Set(), modo: 'zonas', destino: '', tecs: new Set(), tecsInit: false, omitir: true, page: 1 },
+  pend: { q: '', tec: '', etq: '', etqSet: '', progSet: '', soloAtras: false, sel: new Set(), page: 1 },
+  labv: { q: '', estado: '__abiertos', equipo: '', edad: '', lest: '', ldest: '', sel: new Set(), page: 1, data: null, err: '' },
+  lab: null,
   hist: { q: '', tipo: '', status: '', fuera: false, page: 1 },
   tienda: { q: '', filtro: '', distrito: '', sel: '', page: 1, data: null, hoja: true, setup: false, hist: {}, chk: new Set() },
   logs: [], logsFiltro: '', timer: null
@@ -322,7 +352,7 @@ async function loadData(silent) {
   try {
     if (!silent) showLoading(true);
     const d = await api('adminData', { desde: S.rango.desde, hasta: S.rango.hasta });
-    S.usuarios = d.usuarios || []; S.clientes = d.clientes || []; S.visitas = d.visitas || []; S.segs = d.segs || []; S.cerradas = d.cerradas || null; S.updated = new Date();
+    S.usuarios = d.usuarios || []; S.clientes = d.clientes || []; S.visitas = d.visitas || []; S.segs = d.segs || []; S.cerradas = d.cerradas || null; S.lab = d.lab || null; S.updated = new Date();
     indexData();
     $('#updated').textContent = 'Actualizado ' + S.updated.toLocaleTimeString('es-PE');
     renderCurrent(silent);
@@ -340,7 +370,7 @@ function orderedUsers() { return [...S.usuarios].sort((a, b) => (a.Rol === b.Rol
  * ===================================================================== */
 function renderNav() {
   const n = S.visitas.filter(v => v.Estado_Tarea === 'Pendiente').length;
-  $('#nav').innerHTML = NAV.map(([k, l, i]) => `<button class="navb ${S.view === k ? 'on' : ''}" data-nav="${k}">${ico(i)}<span class="flex-1">${l}</span>${k === 'pend' && n ? `<span class="badge bg-red-600 text-white">${n}</span>` : ''}</button>`).join('');
+  $('#nav').innerHTML = NAV.map(([k, l, i]) => `<button class="navb ${S.view === k ? 'on' : ''}" data-nav="${k}">${ico(i)}<span class="flex-1">${l}</span>${k === 'pend' && n ? `<span class="badge bg-red-600 text-white">${n}</span>` : ''}${k === 'lab' && S.lab && S.lab.abiertos ? `<span class="badge bg-sky-600 text-white">${S.lab.abiertos}</span>` : ''}</button>`).join('');
 }
 function openDrawer(b) { $('#sidebar').classList.toggle('-translate-x-full', !b); $('#backdrop').classList.toggle('hidden', !b); }
 
@@ -354,6 +384,7 @@ function go(v) {
   else if (v === 'pend') buildPend();
   else if (v === 'hist') buildHist();
   else if (v === 'tiendas') buildTiendas();
+  else if (v === 'lab') buildLab();
   else if (v === 'equipo') renderEquipo();
   else if (v === 'logs') loadLogs();
   window.scrollTo(0, 0);
@@ -368,6 +399,7 @@ function renderCurrent(silent) {
     case 'pend': if (silent) updatePend(); else buildPend(); break;
     case 'hist': if (silent) updateHist(); else buildHist(); break;
     case 'tiendas': if (silent) loadTiendas(true); else buildTiendas(); break;
+    case 'lab': if (silent) loadLab(true); else buildLab(); break;
     case 'equipo': renderEquipo(); break;
   }
 }
@@ -404,8 +436,8 @@ const D = o => (DR.push(o), DR.length - 1);
 
 function destroyCharts() { Object.keys(CH).forEach(k => { try { CH[k].destroy(); } catch (_) {} }); CH = {}; }
 
-// final = true (Dashboard): "resultado final". El seguimiento de una tienda cerrada NO cuenta como visita aparte; la visita original
-// se cuenta con su estado final (ej. Tienda Cerrada → Activa Validada) y conserva `Status_Inicial` = 'Tienda Cerrada'.
+// final = true (Dashboard): "resultado final". La recuperación de una visita (tienda cerrada, sin validar, avería, no visitado) NO cuenta como visita aparte; la visita original
+// se cuenta con su estado final (ej. Tienda Cerrada → Activa Validada) y conserva `Status_Inicial` y `Recuperada`.
 // final = false (Historial, Equipo): eventos tal como ocurrieron.
 function sets(final) {
   const { desde, hasta } = S.rango, t = S.filtroTec, ok = v => !t || v.Usuario_Asignado === t;
@@ -416,9 +448,11 @@ function sets(final) {
     asig: S.visitas.filter(v => ok(v) && inR(v.Fecha_Asignacion))
   };
   const sm = segMap();
+  const finalOf = id => { let x = sm[id], last = null, n = 0; while (x && n++ < 20) { last = x; x = sm[x.ID_Visita]; } return last; };   // última visita de la cadena de seguimientos
   return {
     res: S.visitas.filter(v => v.Estado_Tarea === 'Resuelta' && !v.Seguimiento_De && ok(v) && inR(v.Fecha_Resolucion))
-      .map(v => v.Status_Tienda === 'Tienda Cerrada' && sm[v.ID_Visita] ? Object.assign({}, v, { Status_Tienda: sm[v.ID_Visita].Status_Tienda, Status_Inicial: 'Tienda Cerrada' }) : v),
+      .map(v => { const f = (SEG_STATUS.includes(v.Status_Tienda) || v.Tipo_Visita === 'No Visitado') ? finalOf(v.ID_Visita) : null;
+        return f ? Object.assign({}, v, { Status_Tienda: f.Status_Tienda, Status_Inicial: v.Status_Tienda || '', Recuperada: true }) : v; }),
     pend: S.visitas.filter(v => v.Estado_Tarea === 'Pendiente' && ok(v)),
     asig: S.visitas.filter(v => !v.Seguimiento_De && ok(v) && inR(v.Fecha_Asignacion))
   };
@@ -485,14 +519,14 @@ function avisoSegHTML() {
       <div class="ml-auto flex items-center gap-1.5 text-xs text-slate-600">Avisar desde
         <input id="segN" type="number" min="1" max="999" class="inp !w-16 !py-1" value="${o.n}">
         <select id="segU" class="inp !w-auto !py-1"><option value="h" ${o.u === 'h' ? 'selected' : ''}>horas</option><option value="d" ${o.u === 'd' ? 'selected' : ''}>días</option></select></div></div>
-    ${S.cerradas === null ? `<div class="text-xs text-amber-700 mt-1.5">Actualiza <b>Code.gs</b> y publica una nueva versión para activar este aviso.</div>` : lst.length ? `<div class="text-xs text-slate-600 mt-1.5">Su última visita fue <b>Tienda Cerrada</b> y llevan ${esc(segTxt(o))} o más sin actualizarse. Un Supervisor puede hacerlo en la app de campo (<i>“La tienda abrió: actualizar estado”</i>) o programar otra visita.</div>
+    ${S.cerradas === null ? `<div class="text-xs text-amber-700 mt-1.5">Actualiza <b>Code.gs</b> y publica una nueva versión para activar este aviso.</div>` : lst.length ? `<div class="text-xs text-slate-600 mt-1.5">Su última visita fue <b>Tienda Cerrada</b> y llevan ${esc(segTxt(o))} o más sin actualizarse. Un Supervisor puede hacerlo en la app de campo (<i>“La tienda abrió: actualizar estado”</i>) o programar otra visita (con fecha y hora).</div>
       <div class="mt-2 divide-y divide-amber-200 text-sm">${top.map(x => `<button class="w-full text-left py-1.5 flex items-center gap-2 hover:bg-amber-100 rounded px-1" data-cssel="${esc(x.v.ID_Cliente)}"><span class="flex-1 min-w-0"><b>${esc(x.v.Nombre_Cliente)}</b> <span class="text-xs text-slate-500">${esc(x.v.ID_Cliente)} · ${esc(nameOf(x.v.Usuario_Asignado))}</span></span><span class="text-xs font-semibold text-amber-800 whitespace-nowrap">${haceTxt(x.horas)}</span></button>`).join('')}</div>
       ${lst.length > top.length ? `<div class="mt-2"><button class="btn btn-outline !py-1.5 !px-3 text-sm" data-tgofilter="cersinseg">Ver las ${n0(lst.length)} en Tiendas →</button></div>` : ''}`
     : `<div class="text-xs text-slate-500 mt-1.5">Ninguna tienda cerrada lleva ${esc(segTxt(o))} o más sin actualizarse.</div>`}</div>`;
 }
 
 function applyDrill(list, d) {
-  return list.filter(v => (!d.recup || v.Status_Inicial) && (!d.sinrec || v.Status_Tienda === 'Tienda Cerrada') && (!d.tec || v.Usuario_Asignado === d.tec) && (!d.tipo || v.Tipo_Visita === d.tipo) && (!d.status || d.status.includes(v.Status_Tienda)) && (!d.bucket || bucketKey(v) === d.bucket) && (!d.fuera || v.Es_Fuera_De_Ruta === 'SI') && (!d.retiro || d.retiro.includes(v.Retiro_Equipos || '')) && (!d.reinst || d.reinst.includes(v.Reinstalacion_Equipo || '')) && (!d.usb || v.USB_Monitor === 'SI') && (!d.usbret || !!v.Retiro_USB) && (!d.mant || v.Mantenimiento === 'SI'));
+  return list.filter(v => (!d.recup || (d.recup === 'cerrada' ? v.Recuperada && v.Status_Inicial === 'Tienda Cerrada' : d.recup === 'otras' ? v.Recuperada && v.Status_Inicial !== 'Tienda Cerrada' : !!v.Recuperada)) && (!d.sinrec || v.Status_Tienda === 'Tienda Cerrada') && (!d.tec || v.Usuario_Asignado === d.tec) && (!d.tipo || v.Tipo_Visita === d.tipo) && (!d.status || d.status.includes(v.Status_Tienda)) && (!d.bucket || bucketKey(v) === d.bucket) && (!d.fuera || v.Es_Fuera_De_Ruta === 'SI') && (!d.retiro || d.retiro.includes(v.Retiro_Equipos || '')) && (!d.reinst || d.reinst.includes(v.Reinstalacion_Equipo || '')) && (!d.usb || v.USB_Monitor === 'SI') && (!d.usbret || !!v.Retiro_USB) && (!d.mant || v.Mantenimiento === 'SI'));
 }
 
 function renderDash() {
@@ -510,7 +544,7 @@ function renderDash() {
   const rein = res.filter(v => v.Reinstalacion_Equipo), reN = rein.filter(v => v.Reinstalacion_Equipo === 'NUC'), reR = rein.filter(v => v.Reinstalacion_Equipo === 'RB');
   const okv = a => a.filter(v => v.Status_Tienda === 'Activa Validada').length;
   const usbN = c(v => v.USB_Monitor === 'SI'), usbRetN = c(v => !!v.Retiro_USB), mantN = c(v => v.Mantenimiento === 'SI');
-  const hoy = ymd(new Date()), atras = pend.filter(v => dOf(v.Fecha_Asignacion) < hoy).length;
+  const atras = pend.filter(esAtras).length, nProgPend = pend.filter(v => v.Fecha_Programada).length;
   const fuera = c(v => v.Es_Fuera_De_Ruta === 'SI');
   const dists = res.filter(v => v.Tipo_Visita === 'Visita Física' && isNum(v.Distancia_Metros)).map(v => v.Distancia_Metros);
   const distAvg = dists.length ? Math.round(dists.reduce((a, b) => a + b, 0) / dists.length) : null;
@@ -526,7 +560,7 @@ function renderDash() {
       <div class="text-xs text-slate-400">${pct(tot, total)}% de las visitas resueltas</div></button>
       <div class="mt-2 divide-y divide-slate-100 text-sm">${rows.map(s => `<button class="w-full flex items-center justify-between py-1.5 hover:bg-slate-50 rounded" data-di="${D({ status: [s], label: s })}"><span class="flex items-center gap-2"><i class="dot" style="background:${col(s)}"></i>${s}</span><b>${st[s]}</b></button>`).join('')}</div></div>`;
 
-  const sm = segMap(), cerR = res.filter(v => v.Status_Tienda === 'Tienda Cerrada' || v.Status_Inicial), recup = cerR.filter(v => v.Status_Inicial);
+  const sm = segMap(), esCer = v => v.Recuperada && v.Status_Inicial === 'Tienda Cerrada', cerR = res.filter(v => v.Status_Tienda === 'Tienda Cerrada' || esCer(v)), recup = cerR.filter(esCer), otras = res.filter(v => v.Recuperada && !esCer(v));
   const recH = recup.length ? recup.reduce((a, v) => a + (tsMs(sm[v.ID_Visita].Fecha_Resolucion) - tsMs(v.Fecha_Resolucion)) / 3600000, 0) / recup.length : null;
   const sinSeg = cerradasSinSeg(S.filtroTec);
   $('#v-dash').innerHTML = `${filterBar()}
@@ -536,7 +570,7 @@ function renderDash() {
   <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
     ${kpi('Asignadas en el rango', n0(asig.length), { d: { label: 'Visitas asignadas en el rango', asigRango: true }, sub: 'creadas en el periodo' })}
     ${kpi('Resueltas', n0(total), { color: 'text-green-600', d: { label: 'Visitas resueltas' }, sub: 'en el periodo' })}
-    ${kpi('Pendientes (cola actual)', n0(pend.length), { color: 'text-blue-600', go: 'pend', sub: `${n0(atras)} de días anteriores` })}
+    ${kpi('Pendientes (cola actual)', n0(pend.length), { color: 'text-blue-600', go: 'pend', sub: `${n0(atras)} de días anteriores${nProgPend ? ` · ${n0(nProgPend)} programadas` : ''}` })}
     <div class="card kpi cursor-default"><div class="text-xs font-semibold text-slate-500">Avance</div><div class="text-3xl font-bold text-slate-800 leading-tight">${avance}%</div>
       <div class="h-2 bg-slate-100 rounded mt-2"><div class="h-2 rounded bg-green-500" style="width:${Math.min(100, avance)}%"></div></div>
       <div class="text-xs text-slate-400 mt-1">resueltas ÷ (resueltas + pendientes)</div></div>
@@ -559,12 +593,19 @@ function renderDash() {
   </div>
 
   <div class="sec">Tienda cerrada · seguimiento <span class="normal-case font-normal text-slate-400">· cerradas del periodo que luego se activaron</span></div>
-  <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
-    ${kpi('Cerradas recuperadas', n0(recup.length), { color: 'text-emerald-600', dot: '#059669', d: { recup: true, label: 'Tiendas cerradas que luego se activaron (seguimiento)' }, sub: `${pct(recup.length, cerR.length)}% de las ${n0(cerR.length)} que se encontraron cerradas` })}
+  <div class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
+    ${kpi('Cerradas recuperadas', n0(recup.length), { color: 'text-emerald-600', dot: '#059669', d: { recup: 'cerrada', label: 'Tiendas cerradas que luego se activaron (seguimiento)' }, sub: `${pct(recup.length, cerR.length)}% de las ${n0(cerR.length)} que se encontraron cerradas` })}
     ${kpi('Cerradas sin recuperar', n0(cerR.length - recup.length), { color: 'text-slate-700', dot: COLOR['Tienda Cerrada'], d: { sinrec: true, label: 'Tiendas cerradas sin actualizar por seguimiento' }, sub: 'siguen cerradas (sin seguimiento)' })}
     <div class="card kpi cursor-default"><div class="text-xs font-semibold text-slate-500">Tiempo promedio de recuperación</div><div class="text-3xl font-bold text-sky-600 leading-tight">${recH === null ? '—' : recH < 24 ? Math.round(recH * 10) / 10 + ' h' : Math.round(recH / 24 * 10) / 10 + ' d'}</div><div class="text-xs text-slate-400 mt-0.5">desde la visita cerrada hasta el seguimiento</div></div>
     <button class="card kpi" data-tgofilter="cersinseg"><div class="text-xs font-semibold text-slate-500">⏰ Sin seguimiento ≥ ${esc(segTxt(segUmbral()))}</div><div class="text-3xl font-bold ${sinSeg.length ? 'text-amber-600' : 'text-green-600'} leading-tight">${n0(sinSeg.length)}</div><div class="text-xs text-slate-400 mt-0.5">tiendas cerradas ahora · ver en Tiendas</div></button>
+    ${kpi('Otras visitas recuperadas', n0(otras.length), { color: 'text-teal-600', dot: '#0d9488', d: { recup: 'otras', label: 'Visitas recuperadas por llamada o visita posterior (sin validar, averías, no visitado)' }, sub: 'sin validar, averías o no visitado que luego se resolvieron' })}
   </div>
+
+  ${S.lab ? `<div class="sec">Laboratorio · equipos retirados <span class="normal-case font-normal text-slate-400">· NUC y RB que aún no vuelven a la tienda</span></div>
+  <div class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
+    ${kpi('En el circuito', n0(S.lab.abiertos), { color: 'text-sky-600', dot: '#0284c7', go: 'lab', sub: 'por recibir hasta enviados' })}
+    ${['Por recibir', 'En laboratorio', 'Reparado', 'Reemplazo', 'Enviado a tienda'].map(e => kpi(e, n0((S.lab.porEstado || {})[e] || 0), { color: 'text-slate-700', dot: LAB_COL[e][1], go: 'lab', sub: 'ver en Laboratorio' })).join('')}
+  </div>` : ''}
 
   <div class="sec">Avería NUC/RB · retiro de equipos <span class="normal-case font-normal text-slate-400">· ${n0(rNuc)} NUC y ${n0(rRb)} RB recogidas</span></div>
   <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -697,10 +738,10 @@ function tableHTML(list, page, key) {
   const rows = list.slice(0, page * CONFIG.PAGE);
   return `<div class="overflow-x-auto"><table class="t"><thead><tr><th>Resolución</th><th>Técnico</th><th>Tienda</th><th>Tipo</th><th>Status</th><th>Dist.</th><th>Fotos</th><th>Observación</th></tr></thead><tbody>
     ${rows.map(v => `<tr><td class="whitespace-nowrap">${fmtDT(v.Fecha_Resolucion)}</td>
-      <td>${esc(nameOf(v.Usuario_Asignado))}${v.Es_Fuera_De_Ruta === 'SI' ? ' <span class="badge bg-amber-100 text-amber-700">Fuera de ruta</span>' : ''}${v.Seguimiento_De ? ' <span class="badge bg-sky-100 text-sky-700" title="Actualiza la visita ' + esc(v.Seguimiento_De) + ' (tienda cerrada)">Seguimiento</span>' : ''}</td>
-      <td><b>${esc(v.Nombre_Cliente)}</b><div class="text-xs text-slate-400">${esc(v.ID_Cliente)}</div></td>
+      <td>${esc(nameOf(v.Usuario_Asignado))}${v.Es_Fuera_De_Ruta === 'SI' ? ' <span class="badge bg-amber-100 text-amber-700">Fuera de ruta</span>' : ''}${v.Seguimiento_De ? ' <span class="badge bg-sky-100 text-sky-700" title="Recupera la visita ' + esc(v.Seguimiento_De) + '">Seguimiento</span>' : ''}</td>
+      <td><b>${esc(v.Nombre_Cliente)}</b><div class="text-xs text-slate-400">${esc(v.ID_Cliente)}</div>${v.Etiqueta ? `<div class="mt-0.5">${etqBadge(v)}</div>` : ''}</td>
       <td>${tipoBadge(v.Tipo_Visita)}</td>
-      <td><span class="badge" style="background:${col(v.Status_Tienda)}1a;color:${col(v.Status_Tienda)}">${esc(v.Status_Tienda || '—')}</span>${v.Status_Inicial ? '<div class="text-[10px] text-slate-400 mt-0.5">↪ se encontró Tienda Cerrada</div>' : ''}${v.Retiro_Equipos ? `<div class="mt-1"><span class="badge" style="background:#ffedd5;color:#c2410c">📦 ${esc(v.Retiro_Equipos)}</span></div>` : ''}${v.Reinstalacion_Equipo ? `<div class="mt-1"><span class="badge" style="background:#d1fae5;color:#047857">🔁 Reinstaló ${esc(v.Reinstalacion_Equipo)}</span></div>` : ''}${v.USB_Monitor === 'SI' ? `<div class="mt-1"><span class="badge" style="background:#e0e7ff;color:#4338ca">💾 USB</span></div>` : ''}${v.Mantenimiento === 'SI' ? `<div class="mt-1"><span class="badge" style="background:#e2e8f0;color:#334155">🛠️ Mantenimiento</span></div>` : ''}</td>
+      <td><span class="badge" style="background:${col(v.Status_Tienda)}1a;color:${col(v.Status_Tienda)}">${esc(v.Status_Tienda || '—')}</span>${v.Recuperada ? `<div class="text-[10px] text-slate-400 mt-0.5">↪ se encontró ${esc(v.Status_Inicial || 'No visitado')}</div>` : ''}${v.Retiro_Equipos ? `<div class="mt-1"><span class="badge" style="background:#ffedd5;color:#c2410c">📦 ${esc(v.Retiro_Equipos)}</span></div>` : ''}${v.Reinstalacion_Equipo ? `<div class="mt-1"><span class="badge" style="background:#d1fae5;color:#047857">🔁 Reinstaló ${esc(v.Reinstalacion_Equipo)}</span></div>` : ''}${v.USB_Monitor === 'SI' ? `<div class="mt-1"><span class="badge" style="background:#e0e7ff;color:#4338ca">💾 USB</span></div>` : ''}${v.Mantenimiento === 'SI' ? `<div class="mt-1"><span class="badge" style="background:#e2e8f0;color:#334155">🛠️ Mantenimiento</span></div>` : ''}</td>
       <td class="whitespace-nowrap">${isNum(v.Distancia_Metros) ? Math.round(v.Distancia_Metros) + ' m' : '—'}</td>
       <td class="whitespace-nowrap">${v.URL_Foto_Fachada ? `<a class="text-blue-600" target="_blank" rel="noopener" href="${esc(v.URL_Foto_Fachada)}">Fachada</a>` : ''} ${v.URL_Foto_Monitor ? `<a class="text-blue-600" target="_blank" rel="noopener" href="${esc(v.URL_Foto_Monitor)}">Monitor</a>` : ''}${!v.URL_Foto_Fachada && !v.URL_Foto_Monitor ? '—' : ''}</td>
       <td class="min-w-[160px] max-w-[320px] text-slate-600">${esc(v.Observacion)}</td></tr>`).join('')}</tbody></table></div>
@@ -709,7 +750,7 @@ function tableHTML(list, page, key) {
 
 function exportCSV(list, name) {
   const q = (v) => { if (v === null || v === undefined) return '""'; let s = String(v); if (typeof v !== 'number' && /^[=+\-@\t\r]/.test(s)) s = "'" + s; return '"' + s.replace(/"/g, '""') + '"'; };
-  const csv = [VCOLS.join(',')].concat(list.map(v => VCOLS.map(c => q(c === 'Status_Tienda' && v.Status_Inicial ? v.Status_Inicial : v[c])).join(','))).join('\r\n');
+  const csv = [VCOLS.join(',')].concat(list.map(v => VCOLS.map(c => q(c === 'Status_Tienda' && v.Recuperada ? v.Status_Inicial : v[c])).join(','))).join('\r\n');
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' }));
   a.download = name; document.body.appendChild(a); a.click();
@@ -753,7 +794,8 @@ function buildPend() {
     <div class="card p-3 flex flex-wrap gap-2 items-center">
       <input id="pQ" type="search" class="inp flex-1 min-w-[200px]" placeholder="Buscar por tienda, ID o técnico" value="${esc(p.q)}">
       <select id="pTec" class="inp !w-auto"><option value="">Todos los técnicos</option>${orderedUsers().map(u => `<option value="${esc(u.Usuario)}" ${p.tec === u.Usuario ? 'selected' : ''}>${esc(u.Nombre_Apellido)}</option>`).join('')}</select>
-      <label class="flex items-center gap-2 text-sm"><input id="pAtr" type="checkbox" ${p.soloAtras ? 'checked' : ''}> Solo de días anteriores</label>
+      <select id="pEtq" class="inp !w-auto"><option value="">Todas las etiquetas</option><option value="__prog" ${p.etq === '__prog' ? 'selected' : ''}>📅 Programadas</option><option value="__venc" ${p.etq === '__venc' ? 'selected' : ''}>⏰ Programadas vencidas</option><option value="__sin" ${p.etq === '__sin' ? 'selected' : ''}>Sin etiqueta</option>${ETIQUETAS.map(e => `<option value="${e}" ${p.etq === e ? 'selected' : ''}>${ETQ_ICON[e]} ${e}</option>`).join('')}</select>
+      <label class="flex items-center gap-2 text-sm"><input id="pAtr" type="checkbox" ${p.soloAtras ? 'checked' : ''}> Solo atrasadas (días anteriores o programación vencida)</label>
     </div>
     <div id="pChips" class="flex flex-wrap gap-1.5 mt-3"></div>
     <div class="card mt-3 overflow-hidden">
@@ -764,10 +806,12 @@ function buildPend() {
   updatePend();
 }
 function pendFiltered() {
-  const p = S.pend, q = norm(p.q.trim()), hoy = ymd(new Date());
-  return S.visitas.filter(v => v.Estado_Tarea === 'Pendiente' && (!p.tec || v.Usuario_Asignado === p.tec) && (!p.soloAtras || dOf(v.Fecha_Asignacion) < hoy)
+  const p = S.pend, q = norm(p.q.trim());
+  const etqOk = v => !p.etq || (p.etq === '__prog' ? !!v.Fecha_Programada : p.etq === '__venc' ? progEstado(v) === 'vencida' : p.etq === '__sin' ? !v.Etiqueta : v.Etiqueta === p.etq);
+  const grupo = v => { const e = progEstado(v); return (e === 'vencida' || e === 'hoy') ? 0 : e === 'futura' ? 2 : 1; };   // primero lo programado que ya toca, luego lo normal, al final lo programado a futuro
+  return S.visitas.filter(v => v.Estado_Tarea === 'Pendiente' && (!p.tec || v.Usuario_Asignado === p.tec) && (!p.soloAtras || esAtras(v)) && etqOk(v)
     && (!q || norm(v.Nombre_Cliente).includes(q) || norm(v.ID_Cliente).includes(q) || norm(nameOf(v.Usuario_Asignado)).includes(q)))
-    .sort((a, b) => String(a.Fecha_Asignacion).localeCompare(String(b.Fecha_Asignacion)));
+    .sort((a, b) => grupo(a) - grupo(b) || (grupo(a) !== 1 ? String(a.Fecha_Programada).localeCompare(String(b.Fecha_Programada)) : 0) || String(a.Fecha_Asignacion).localeCompare(String(b.Fecha_Asignacion)));
 }
 function daysAgo(s) { const d = dOf(s); if (!d) return 0; return Math.max(0, Math.round((new Date(ymd(new Date()) + 'T00:00:00') - new Date(d + 'T00:00:00')) / 86400000)); }
 function updatePend() {
@@ -782,8 +826,8 @@ function updatePend() {
   const rows = list.slice(0, p.page * CONFIG.PAGE);
   pl.innerHTML = rows.length ? rows.map(v => { const d = daysAgo(v.Fecha_Asignacion);
     return `<label class="row"><input type="checkbox" data-pid="${esc(v.ID_Visita)}" ${p.sel.has(v.ID_Visita) ? 'checked' : ''}>
-      <div class="min-w-0 flex-1"><div class="font-medium truncate">${esc(v.Nombre_Cliente)}</div><div class="text-xs text-slate-400">${esc(v.ID_Cliente)} · asignada ${fmtDT(v.Fecha_Asignacion)}</div></div>
-      <div class="text-right"><div class="text-sm">${esc(shortName(U(v.Usuario_Asignado) || { Usuario: v.Usuario_Asignado }))}</div>${d > 0 ? `<span class="badge bg-amber-100 text-amber-700">hace ${d} d</span>` : '<span class="badge bg-blue-100 text-blue-700">hoy</span>'}</div></label>`; }).join('')
+      <div class="min-w-0 flex-1"><div class="font-medium truncate">${esc(v.Nombre_Cliente)}</div><div class="text-xs text-slate-400">${esc(v.ID_Cliente)} · asignada ${fmtDT(v.Fecha_Asignacion)}</div>${v.Etiqueta ? `<div class="mt-0.5">${etqBadge(v)}</div>` : ''}</div>
+      <div class="text-right"><div class="text-sm">${esc(shortName(U(v.Usuario_Asignado) || { Usuario: v.Usuario_Asignado }))}</div>${v.Fecha_Programada ? progBadge(v) : d > 0 ? `<span class="badge bg-amber-100 text-amber-700">hace ${d} d</span>` : '<span class="badge bg-blue-100 text-blue-700">hoy</span>'}<div><button type="button" class="text-xs text-blue-600 font-semibold" data-pedit="${esc(v.ID_Visita)}">✏️ Editar</button></div></div></label>`; }).join('')
       + (list.length > rows.length ? `<div class="p-3 text-center"><button class="btn btn-ghost" data-more="pend">Mostrar más (${n0(list.length - rows.length)})</button></div>` : '')
     : '<div class="p-8 text-center text-sm text-slate-500">No hay visitas pendientes con ese filtro 🎉</div>';
   updatePendBar();
@@ -794,17 +838,35 @@ function updatePendBar() {
   const a = $('#pAll'); if (a) { a.checked = !!allOn; }
   const c = $('#pCount'); if (c) c.textContent = `Seleccionar las ${n0(list.length)} visitas filtradas${n ? ` · ${n0(n)} seleccionadas` : ''}`;
   const bar = $('#pBar'); if (!bar) return;
-  bar.innerHTML = n ? `<div class="card p-3 shadow-xl border-blue-300 flex flex-wrap items-center gap-2">
-      <b class="text-sm">${n0(n)} seleccionadas</b>
+  bar.innerHTML = n ? `<div class="card p-3 shadow-xl border-blue-300 space-y-2">
+      <div class="flex flex-wrap items-center gap-2"><b class="text-sm">${n0(n)} seleccionadas</b>
       <select id="pDest" class="inp !w-auto ml-auto"><option value="">Reasignar a…</option>${orderedUsers().map(u => `<option value="${esc(u.Usuario)}">${esc(u.Nombre_Apellido)} (${pendCount(u.Usuario)} pend.)</option>`).join('')}</select>
       <button class="btn btn-primary" data-pact="reasignar">Reasignar</button>
       <button class="btn btn-danger" data-pact="eliminar">Eliminar</button>
-      <button class="btn btn-ghost" data-pact="limpiar">Limpiar</button></div>` : '';
+      <button class="btn btn-ghost" data-pact="limpiar">Limpiar</button></div>
+      <div class="flex flex-wrap items-center gap-2 border-t border-slate-100 pt-2">
+        <select id="pEtqSet" class="inp !w-auto"><option value="">Etiqueta…</option>${ETIQUETAS.map(e => `<option value="${e}" ${p.etqSet === e ? 'selected' : ''}>${ETQ_ICON[e]} ${e}</option>`).join('')}<option value="__none" ${p.etqSet === '__none' ? 'selected' : ''}>(Quitar etiqueta)</option></select>
+        <button class="btn btn-outline" data-pact="etiquetar">🏷 Etiquetar</button>
+        <input id="pProgSet" type="datetime-local" class="inp !w-auto" min="${hoyLima()}T00:00" value="${esc(p.progSet)}">
+        <button class="btn btn-outline" data-pact="programar">📅 Programar / reprogramar</button>
+        <button class="btn btn-ghost" data-pact="desprogramar">Quitar fecha</button></div></div>` : '';
 }
 
 async function pendAction(kind) {
   const ids = [...S.pend.sel]; if (!ids.length) return;
   if (kind === 'limpiar') { S.pend.sel.clear(); updatePend(); return; }
+  if (kind === 'etiquetar' || kind === 'programar' || kind === 'desprogramar') {
+    let data;
+    if (kind === 'etiquetar') { const e = S.pend.etqSet; if (!e) return toast('Elige la etiqueta', 'warn'); data = { etiqueta: e === '__none' ? '' : e }; }
+    else if (kind === 'programar') { const f = S.pend.progSet; if (!f) return toast('Elige la fecha y la hora', 'warn'); if (f.slice(0, 10) < hoyLima()) return toast('La fecha no puede ser anterior a hoy', 'warn'); data = { programada: f }; }
+    else data = { programada: '' };
+    showLoading(true, 'Actualizando…');
+    let ok = 0, om = 0;
+    try { for (const lote of chunk(ids, 500)) { const r = await api('planVisitas', Object.assign({ idsVisita: lote }, data)); ok += r.actualizadas; om += r.omitidas || 0; }
+      toast(`${ok} visitas ${kind === 'etiquetar' ? 'etiquetadas' : kind === 'programar' ? 'programadas' : 'sin fecha programada'}${om ? ` · ${om} omitidas (ya resueltas)` : ''}`, 'ok'); }
+    catch (e) { toast(`${e.message} (actualizadas: ${ok})`, 'error'); }
+    await loadData(true); buildPend(); showLoading(false); return;
+  }
   if (kind === 'reasignar') {
     const dest = $('#pDest') ? $('#pDest').value : '';
     if (!dest) return toast('Elige el técnico destino', 'warn');
@@ -823,6 +885,30 @@ async function pendAction(kind) {
     S.pend.sel.clear(); await loadData(true); buildPend();
   }
   showLoading(false);
+}
+
+/* Editar etiqueta y fecha/hora de UNA visita pendiente */
+function openPlanPend(id) {
+  const v = S.visitas.find(x => x.ID_Visita === id); if (!v || v.Estado_Tarea !== 'Pendiente') return toast('Esa visita ya no está pendiente', 'warn');
+  const pv = String(v.Fecha_Programada || '').slice(0, 16).replace(' ', 'T');
+  openModal(`<div class="p-5 space-y-3">
+    <div class="text-lg font-bold">Programar y etiquetar</div>
+    <div class="text-sm"><b>${esc(v.Nombre_Cliente)}</b><div class="text-xs text-slate-500">${esc(v.ID_Cliente)} · ${esc(nameOf(v.Usuario_Asignado))}</div></div>
+    <div><label class="text-xs font-semibold text-slate-500">Etiqueta (qué hay que hacer)</label><select id="ppEtq" class="inp mt-1"><option value="">Sin etiqueta</option>${ETIQUETAS.map(e => `<option value="${e}" ${v.Etiqueta === e ? 'selected' : ''}>${ETQ_ICON[e]} ${e}</option>`).join('')}</select></div>
+    <div><label class="text-xs font-semibold text-slate-500">Fecha y hora programadas</label><input id="ppFecha" type="datetime-local" class="inp mt-1" value="${esc(pv)}" min="${hoyLima()}T00:00">
+      <button type="button" id="ppQuitar" class="text-xs text-blue-600 font-semibold mt-1">Quitar programación</button><span class="text-xs text-slate-400"> · para reprogramar, cambia la fecha u hora</span></div>
+    <div id="ppErr" class="hidden text-sm text-red-700 bg-red-50 rounded-lg p-2"></div>
+    <div class="grid grid-cols-2 gap-2"><button class="btn btn-ghost" data-close>Cancelar</button><button id="ppOk" class="btn btn-primary">Guardar</button></div></div>`);
+  $('#ppQuitar').addEventListener('click', () => { $('#ppFecha').value = ''; });
+  $('#ppOk').addEventListener('click', async () => {
+    const data = { idVisita: id }, etq = $('#ppEtq').value, f = $('#ppFecha').value;
+    if (etq !== (v.Etiqueta || '')) data.etiqueta = etq;
+    if (f !== pv) data.programada = f;
+    if (Object.keys(data).length === 1) return closeModal();
+    const b = $('#ppOk'); b.disabled = true; showLoading(true);
+    try { await api('planVisitas', data); toast('Visita actualizada', 'ok'); closeModal(); await loadData(true); buildPend(); }
+    catch (e) { const er = $('#ppErr'); if (er) { er.textContent = e.message; er.classList.remove('hidden'); } b.disabled = false; } finally { showLoading(false); }
+  });
 }
 
 /* =====================================================================
@@ -918,6 +1004,7 @@ function planAsig() {
   return { items, per, total, omit, tecs, efectivas: ids.length };
 }
 
+function updateAsigPlanTxt() { const b = $('#aPlan'); if (!b) return; const y = b.scrollTop; updateAsigPlan(); b.scrollTop = y; }
 function updateAsigPlan() {
   const a = S.asig, box = $('#aPlan'); if (!box) return;
   const plan = planAsig(), users = orderedUsers();
@@ -933,7 +1020,13 @@ function updateAsigPlan() {
       : `<div><div class="flex items-center justify-between text-xs font-semibold text-slate-500 mb-1"><span>Técnicos que participan</span><span><button class="text-blue-600" data-aact="tec-todos">Todos</button> · <button class="text-blue-600" data-aact="tec-ninguno">Ninguno</button></span></div>
         <div class="max-h-48 overflow-y-auto border border-slate-200 rounded-lg divide-y divide-slate-100">${users.map(u => `<label class="flex items-center gap-2 px-2.5 py-2 cursor-pointer hover:bg-slate-50"><input type="checkbox" data-atec="${esc(u.Usuario)}" ${a.tecs.has(u.Usuario) ? 'checked' : ''}><span class="text-sm flex-1 truncate">${esc(u.Nombre_Apellido)}${u.Rol === 'Supervisor' ? ' <span class="badge bg-purple-100 text-purple-700">Sup.</span>' : ''}</span><span class="text-xs text-slate-400">${pendCount(u.Usuario)} pend.</span></label>`).join('')}</div></div>`}
     <label class="flex items-start gap-2 text-sm"><input id="aOmitir" type="checkbox" ${a.omitir ? 'checked' : ''} class="mt-0.5"><span>Omitir tiendas que ya tienen una visita pendiente<span class="block text-xs text-slate-400">Evita duplicar visitas abiertas.</span></span></label>
+    <div class="font-semibold">Qué hay que hacer <span class="text-xs font-normal text-slate-400">(opcional · se aplica a todas las visitas de este reparto)</span></div>
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+      <div><label class="text-xs font-semibold text-slate-500">Etiqueta</label><select id="aEtq" class="inp mt-1"><option value="">Sin etiqueta</option>${ETIQUETAS.map(e => `<option value="${e}" ${a.etq === e ? 'selected' : ''}>${ETQ_ICON[e]} ${e}</option>`).join('')}</select></div>
+      <div><label class="text-xs font-semibold text-slate-500">Programar para (fecha y hora)</label><input id="aProg" type="datetime-local" class="inp mt-1" value="${esc(a.prog)}" min="${hoyLima()}T00:00"></div>
+    </div>
     <div class="font-semibold">3 · Revisa y asigna</div>
+    ${(a.etq || a.prog) ? `<div class="text-xs text-slate-600">Se asignarán${a.etq ? ` con la etiqueta <b>${ETQ_ICON[a.etq]} ${esc(a.etq)}</b>` : ''}${a.prog ? ` programadas para <b>${fmtProg(a.prog)}</b>` : ''}.</div>` : ''}
     <div class="text-sm">Seleccionadas: <b>${n0(plan.total)}</b>${plan.omit ? ` · se omitirán <b class="text-amber-700">${n0(plan.omit)}</b> con visita pendiente` : ''} · a asignar: <b class="text-blue-700">${n0(plan.items.length)}</b></div>
     ${plan.tecs.length ? `<div class="overflow-x-auto"><table class="t"><thead><tr><th>Técnico</th><th>Pend. hoy</th><th>Nuevas</th><th>Total</th></tr></thead><tbody>${plan.tecs.map(t => `<tr><td>${esc(shortName(U(t) || { Usuario: t }))}</td><td>${pendCount(t)}</td><td class="font-semibold text-blue-700">+${plan.per[t] || 0}</td><td>${pendCount(t) + (plan.per[t] || 0)}</td></tr>`).join('')}</tbody></table></div>` : '<div class="text-xs text-slate-400">Elige al menos un técnico para ver la vista previa.</div>'}
     <button class="btn btn-primary w-full" data-aact="ejecutar" ${plan.items.length ? '' : 'disabled'}>Asignar ${n0(plan.items.length)} visitas</button>`;
@@ -942,18 +1035,20 @@ function updateAsigPlan() {
 async function ejecutarAsig() {
   const plan = planAsig(); if (!plan.items.length) return;
   const resumen = plan.tecs.map(t => `• ${nameOf(t)}: +${plan.per[t] || 0}`).join('\n');
-  if (!confirm(`¿Asignar ${plan.items.length} visitas?\n\n${resumen}`)) return;
+  const a0 = S.asig;
+  if (a0.prog && a0.prog.slice(0, 10) < hoyLima()) return toast('La fecha programada no puede ser anterior a hoy', 'warn');
+  if (!confirm(`¿Asignar ${plan.items.length} visitas?\n\n${resumen}${a0.etq ? '\n\nEtiqueta: ' + a0.etq : ''}${a0.prog ? '\nProgramadas: ' + fmtProg(a0.prog) : ''}`)) return;
   showLoading(true, 'Asignando visitas…');
   let ok = 0; const omit = []; let fallo = '';
   try {
     const lotes = chunk(plan.items, CONFIG.LOTE_ASIGNAR);
     for (let i = 0; i < lotes.length; i++) {
       showLoading(true, `Asignando visitas… (${i + 1}/${lotes.length})`);
-      const r = await api('assignVisitsBulk', { items: lotes[i], omitirPendientes: S.asig.omitir });
+      const r = await api('assignVisitsBulk', { items: lotes[i], omitirPendientes: S.asig.omitir, etiqueta: S.asig.etq, programada: S.asig.prog });
       ok += r.asignadas; omit.push(...r.omitidas);
     }
   } catch (e) { fallo = e.message; }
-  S.asig.sel.clear(); S.asig.page = 1;
+  S.asig.sel.clear(); S.asig.page = 1; if (!fallo) { S.asig.etq = ''; S.asig.prog = ''; }   // la etiqueta y la fecha no se arrastran al siguiente reparto
   await loadData(true); showLoading(false);
   buildAsig();
   openModal(`<div class="p-5 space-y-3">
@@ -970,6 +1065,161 @@ function aplicarIds() {
   ids.forEach(id => { if (S.clientMap[id] && !S.clientMap[id].Retirada_Fecha) { S.asig.sel.add(id); ok++; } else no.push(id); });
   $('#aPasteMsg').textContent = `${ok} seleccionados${no.length ? ` · ${no.length} no encontrados: ${no.slice(0, 5).join(', ')}${no.length > 5 ? '…' : ''}` : ''}`;
   updateAsigList(); updateAsigPlan();
+}
+
+/* =====================================================================
+ *  LABORATORIO: equipos (NUC / RB) retirados de las tiendas
+ *  Cada retiro crea solo un registro "Por recibir". El Supervisor lo mueve: Por recibir → En laboratorio → Reparado / Reemplazo → Enviado a tienda → Entregado (o Baja).
+ * ===================================================================== */
+const labDias = r => { const d = dOf(r.Fecha_Ingreso); return d ? Math.max(0, Math.round((Date.parse(hoyLima() + 'T00:00:00Z') - Date.parse(d + 'T00:00:00Z')) / 86400000)) : 0; };
+const labBadge = e => { const c = LAB_COL[e] || ['#f1f5f9', '#475569']; return `<span class="badge" style="background:${c[0]};color:${c[1]}">${esc(e || '—')}</span>`; };
+const labAbierto = r => LAB_CERRADOS.indexOf(r.Estado) < 0;
+function labSummary() {   // mantiene al día el contador del menú y del Dashboard sin volver a pedir todo
+  const d = S.labv.data; if (!d) return;
+  const s = { abiertos: 0, porEstado: {} };
+  d.lab.forEach(r => { if (labAbierto(r)) { s.abiertos++; s.porEstado[r.Estado] = (s.porEstado[r.Estado] || 0) + 1; } });
+  S.lab = s; renderNav();
+}
+async function loadLab(silent) {
+  const L = S.labv;
+  if (!silent && !L.data && $('#lList')) $('#lList').innerHTML = '<div class="p-8 text-center text-sm text-slate-500">Cargando laboratorio…</div>';
+  try {
+    L.data = await api('getLab'); L.err = '';
+    const ids = new Set(L.data.lab.map(r => r.ID_Lab)); L.sel = new Set([...L.sel].filter(id => ids.has(id)));
+    labSummary();
+  } catch (e) { if (e.code === 'AUTH') return; L.err = e.message; if (!silent) toast(e.message, 'error'); }
+  if (S.view === 'lab' && $('#lList')) updateLab();
+}
+function buildLab(local) {
+  const L = S.labv;
+  $('#v-lab').innerHTML = `
+    <div id="lKpis" class="flex flex-wrap gap-1.5"></div>
+    <div class="card p-3 mt-3 flex flex-wrap gap-2 items-center">
+      <input id="lQ" type="search" class="inp flex-1 min-w-[180px]" placeholder="Buscar tienda, ID, serie, técnico o destino" value="${esc(L.q)}">
+      <select id="lEstado" class="inp !w-auto"><option value="__abiertos" ${L.estado === '__abiertos' ? 'selected' : ''}>En el circuito (sin Entregado/Baja)</option><option value="" ${L.estado === '' ? 'selected' : ''}>Todos los estados</option>${LAB_ESTADOS.map(e => `<option ${L.estado === e ? 'selected' : ''}>${e}</option>`).join('')}</select>
+      <select id="lEquipo" class="inp !w-auto"><option value="">NUC y RB</option><option ${L.equipo === 'NUC' ? 'selected' : ''}>NUC</option><option ${L.equipo === 'RB' ? 'selected' : ''}>RB</option></select>
+      <select id="lEdad" class="inp !w-auto"><option value="">Cualquier antigüedad</option>${[7, 15, 30].map(n => `<option value="${n}" ${String(L.edad) === String(n) ? 'selected' : ''}>${n} días o más</option>`).join('')}</select>
+      <button class="btn btn-outline" data-lact="nuevo">➕ Alta manual</button>
+      <button class="btn btn-outline" data-lact="sync" title="Crea registros para los retiros anteriores cuya tienda aún no recibió equipo">📥 Cargar historial</button>
+      <button class="btn btn-outline" data-lact="csv">Exportar CSV</button>
+    </div>
+    <div id="lMsg"></div>
+    <div class="card mt-3 overflow-hidden"><div id="lList"></div></div>
+    <div id="lBar" class="sticky bottom-3 mt-3 z-10"></div>`;
+  if (local && L.data) updateLab(); else loadLab();
+}
+function labFiltered() {
+  const L = S.labv, q = norm(L.q.trim()); if (!L.data) return [];
+  return L.data.lab.filter(r => (L.estado === '' ? true : L.estado === '__abiertos' ? labAbierto(r) : r.Estado === L.estado) && (!L.equipo || r.Equipo === L.equipo) && (!L.edad || labDias(r) >= +L.edad)
+    && (!q || norm(r.Nombre_Cliente).includes(q) || norm(r.ID_Cliente).includes(q) || norm(r.Serie).includes(q) || norm(nameOf(r.Tecnico)).includes(q) || norm(r.Destino).includes(q) || norm(r.Detalle).includes(q)));
+}
+function updateLab() {
+  const L = S.labv, d = L.data, box = $('#lList'); if (!box) return;
+  if (!d) { box.innerHTML = `<div class="p-8 text-center text-sm ${L.err ? 'text-red-600' : 'text-slate-500'}">${L.err ? esc(L.err) + '<br><span class="text-slate-500">Si acabas de actualizar Code.gs, publica una nueva versión del Web App.</span>' : 'Cargando laboratorio…'}</div>`; return; }
+  const cnt = {}; d.lab.forEach(r => { cnt[r.Estado] = (cnt[r.Estado] || 0) + 1; });
+  const ab = d.lab.filter(labAbierto).length;
+  $('#lKpis').innerHTML = `<button class="chip ${L.estado === '__abiertos' ? 'chip-on' : ''}" data-lchip="__abiertos">En el circuito: ${n0(ab)}</button>` + LAB_ESTADOS.map(e => `<button class="chip ${L.estado === e ? 'chip-on' : ''}" data-lchip="${esc(e)}">${e}: ${n0(cnt[e] || 0)}</button>`).join('');
+  const list = labFiltered(); S.labList = list;
+  const rows = list.slice(0, L.page * CONFIG.PAGE);
+  $('#lMsg').innerHTML = d.hoja === false ? '<div class="card p-3 mt-3 text-sm text-amber-800 bg-amber-50 border-amber-300">La hoja <b>Laboratorio</b> todavía no existe. Se crea sola con el primer retiro de equipo, o ejecuta <b>setupSheet</b> en Apps Script.</div>' : '';
+  const a = $('#lAll');
+  box.innerHTML = `<label class="flex items-center gap-3 p-3 border-b border-slate-100 cursor-pointer text-sm font-medium"><input id="lAll" type="checkbox" ${list.length && list.every(r => L.sel.has(r.ID_Lab)) ? 'checked' : ''}><span>${n0(list.length)} equipos${L.sel.size ? ` · ${n0(L.sel.size)} seleccionados` : ''}</span></label>` + (rows.length ? `<div class="overflow-x-auto"><table class="t"><thead><tr><th></th><th>Retirado</th><th>Tienda</th><th>Equipo</th><th>Técnico</th><th>Serie</th><th>Estado</th><th>Destino / detalle</th><th></th></tr></thead><tbody>
+    ${rows.map(r => { const t = (d.tiendas || {})[r.ID_Cliente], dias = labDias(r), ab1 = labAbierto(r);
+      return `<tr><td><input type="checkbox" data-lid="${esc(r.ID_Lab)}" ${L.sel.has(r.ID_Lab) ? 'checked' : ''}></td>
+      <td class="whitespace-nowrap">${fmtD(r.Fecha_Ingreso)}${ab1 ? `<div><span class="badge ${dias >= 15 ? 'bg-red-100 text-red-700' : dias >= 7 ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-600'}">${dias === 0 ? 'hoy' : 'hace ' + dias + ' d'}</span></div>` : ''}</td>
+      <td><b>${esc(r.Nombre_Cliente || '—')}</b><div class="text-xs text-slate-400">${esc(r.ID_Cliente)}</div>${ab1 && t && t.pend ? `<div class="text-[11px] text-amber-700">⚠️ la tienda sigue sin equipo (${esc(t.pend)})</div>` : ''}</td>
+      <td><span class="badge" style="background:${r.Equipo === 'NUC' ? '#e0f2fe' : '#ede9fe'};color:${r.Equipo === 'NUC' ? '#0369a1' : '#6d28d9'}">${esc(r.Equipo)}</span></td>
+      <td>${esc(r.Tecnico ? nameOf(r.Tecnico) : '—')}</td>
+      <td class="whitespace-nowrap">${esc(r.Serie || '—')}</td>
+      <td>${labBadge(r.Estado)}<div class="text-[10px] text-slate-400 mt-0.5">${fmtDT(r.Fecha_Estado)}</div></td>
+      <td class="min-w-[140px] max-w-[260px] text-slate-600">${r.Destino ? `<div><b>→</b> ${esc(r.Destino)}</div>` : ''}${esc(r.Detalle)}</td>
+      <td><button type="button" class="text-xs text-blue-600 font-semibold" data-ledit="${esc(r.ID_Lab)}">✏️ Editar</button></td></tr>`; }).join('')}</tbody></table></div>`
+    + (list.length > rows.length ? `<div class="p-3 text-center"><button class="btn btn-ghost" data-more="lab">Mostrar más (${n0(list.length - rows.length)})</button></div>` : '')
+    : `<div class="p-8 text-center text-sm text-slate-500">${d.lab.length ? 'No hay equipos con ese filtro.' : 'Aún no hay equipos en el laboratorio. Cada retiro de NUC/RB que registren los técnicos aparecerá aquí solo; usa “Cargar historial” para traer los retiros anteriores.'}</div>`);
+  updateLabBar();
+}
+function updateLabBar() {
+  const L = S.labv, n = L.sel.size, bar = $('#lBar'); if (!bar) return;
+  const c = $('#lList label span'); if (c) c.textContent = `${n0((S.labList || []).length)} equipos${n ? ` · ${n0(n)} seleccionados` : ''}`;
+  bar.innerHTML = n ? `<div class="card p-3 shadow-xl border-blue-300 flex flex-wrap items-center gap-2"><b class="text-sm">${n0(n)} seleccionados</b>
+    <select id="lEstSet" class="inp !w-auto ml-auto"><option value="">Cambiar estado a…</option>${LAB_ESTADOS.map(e => `<option ${L.lest === e ? 'selected' : ''}>${e}</option>`).join('')}</select>
+    <input id="lDestSet" class="inp !w-44" placeholder="Destino (opcional)" value="${esc(L.ldest)}">
+    <button class="btn btn-primary" data-lact="aplicar">Aplicar</button>
+    <button class="btn btn-danger" data-lact="eliminar">Eliminar</button>
+    <button class="btn btn-ghost" data-lact="limpiar">Limpiar</button></div>` : '';
+}
+async function labAction(kind) {
+  const L = S.labv;
+  if (kind === 'nuevo') return openLabNuevo();
+  if (kind === 'csv') {
+    const l = S.labList || []; if (!l.length) return toast('No hay datos para exportar', 'warn');
+    return csvDownload(['ID_Lab', 'Fecha_Ingreso', 'ID_Cliente', 'Nombre_Cliente', 'Equipo', 'Tecnico', 'Estado', 'Fecha_Estado', 'Serie', 'Destino', 'Detalle', 'Historial'], l.map(r => [r.ID_Lab, r.Fecha_Ingreso, r.ID_Cliente, r.Nombre_Cliente, r.Equipo, r.Tecnico, r.Estado, r.Fecha_Estado, r.Serie, r.Destino, r.Detalle, r.Historial]), `laboratorio_${hoyLima()}.csv`);
+  }
+  if (kind === 'sync') {
+    if (!confirm('¿Cargar el historial?\n\nSe crea un registro “En laboratorio” por cada retiro anterior de NUC/RB cuya tienda todavía no recibió un equipo después. No duplica los que ya existen.')) return;
+    showLoading(true, 'Revisando retiros anteriores…');
+    try { const r = await api('syncLab', {}); toast(`${r.creados} equipos cargados (${r.revisados} retiros revisados)`, 'ok'); await loadLab(true); } catch (e) { toast(e.message, 'error'); }
+    showLoading(false); return;
+  }
+  const ids = [...L.sel]; if (!ids.length) return;
+  if (kind === 'limpiar') { L.sel.clear(); return updateLab(); }
+  if (kind === 'aplicar') {
+    if (!L.lest) return toast('Elige el nuevo estado', 'warn');
+    showLoading(true, 'Actualizando…'); let ok = 0;
+    try { for (const lote of chunk(ids, 100)) { const data = { ids: lote, estado: L.lest }; if (L.ldest.trim()) data.destino = L.ldest.trim(); const r = await api('updateLab', data); ok += r.actualizados; } toast(`${ok} equipos pasaron a “${L.lest}”`, 'ok'); L.lest = ''; L.ldest = ''; }
+    catch (e) { toast(`${e.message} (actualizados: ${ok})`, 'error'); }
+    await loadLab(true); showLoading(false); return;
+  }
+  if (kind === 'eliminar') {
+    if (!confirm(`¿Eliminar ${ids.length} registros del laboratorio? Solo para corregir errores; no se puede deshacer.`)) return;
+    showLoading(true, 'Eliminando…'); let ok = 0;
+    try { for (const lote of chunk(ids, 100)) { const r = await api('deleteLab', { ids: lote }); ok += r.eliminados; } L.sel.clear(); toast(`${ok} registros eliminados`, 'ok'); }
+    catch (e) { toast(`${e.message} (eliminados: ${ok})`, 'error'); }
+    await loadLab(true); showLoading(false);
+  }
+}
+function openLabEdit(id) {
+  const r = (S.labv.data ? S.labv.data.lab : []).find(x => x.ID_Lab === id); if (!r) return;
+  const hist = String(r.Historial || '').split(' | ').filter(Boolean);
+  openModal(`<div class="p-5 space-y-3">
+    <div class="text-lg font-bold">${esc(r.Equipo)} · ${esc(r.Nombre_Cliente || 'sin tienda')}</div>
+    <div class="text-xs text-slate-500">${esc(r.ID_Cliente || '')} · retirado el ${fmtD(r.Fecha_Ingreso)}${r.Tecnico ? ' por ' + esc(nameOf(r.Tecnico)) : ''}${r.ID_Visita_Origen ? ' · visita ' + esc(r.ID_Visita_Origen) : ''}</div>
+    <div><label class="text-xs font-semibold text-slate-500">Estado</label><select id="leEstado" class="inp mt-1">${LAB_ESTADOS.map(e => `<option ${r.Estado === e ? 'selected' : ''}>${e}</option>`).join('')}</select></div>
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+      <div><label class="text-xs font-semibold text-slate-500">Serie <span class="font-normal text-slate-400">(opcional)</span></label><input id="leSerie" class="inp mt-1" maxlength="60" value="${esc(r.Serie)}"></div>
+      <div><label class="text-xs font-semibold text-slate-500">Destino <span class="font-normal text-slate-400">(otra tienda o Stock)</span></label><input id="leDestino" class="inp mt-1" maxlength="120" value="${esc(r.Destino)}"></div></div>
+    <div><label class="text-xs font-semibold text-slate-500">Detalle (qué se hizo: reparado, componente enviado, reemplazo…)</label><textarea id="leDetalle" rows="2" class="inp mt-1" maxlength="300">${esc(r.Detalle)}</textarea></div>
+    ${hist.length ? `<div><div class="text-xs font-semibold text-slate-500 mb-1">Historial</div><div class="text-xs text-slate-600 border border-slate-200 rounded-lg divide-y max-h-40 overflow-y-auto">${hist.map(h => `<div class="px-2 py-1">${esc(h)}</div>`).join('')}</div></div>` : ''}
+    <div id="leErr" class="hidden text-sm text-red-700 bg-red-50 rounded-lg p-2"></div>
+    <div class="grid grid-cols-2 gap-2"><button class="btn btn-ghost" data-close>Cancelar</button><button id="leOk" class="btn btn-primary">Guardar</button></div>
+    <button id="leDel" class="text-xs text-red-600 font-semibold">Eliminar este registro</button></div>`);
+  $('#leOk').addEventListener('click', async () => {
+    const b = $('#leOk'); b.disabled = true; showLoading(true);
+    try { await api('updateLab', { ids: [id], estado: $('#leEstado').value, serie: $('#leSerie').value, destino: $('#leDestino').value, detalle: $('#leDetalle').value }); toast('Equipo actualizado', 'ok'); closeModal(); await loadLab(true); }
+    catch (e) { const er = $('#leErr'); if (er) { er.textContent = e.message; er.classList.remove('hidden'); } b.disabled = false; } finally { showLoading(false); }
+  });
+  $('#leDel').addEventListener('click', async () => {
+    if (!confirm('¿Eliminar este registro? Solo para corregir errores.')) return;
+    showLoading(true); try { await api('deleteLab', { ids: [id] }); toast('Registro eliminado', 'ok'); closeModal(); S.labv.sel.delete(id); await loadLab(true); } catch (e) { toast(e.message, 'error'); } finally { showLoading(false); }
+  });
+}
+function openLabNuevo() {
+  openModal(`<div class="p-5 space-y-3">
+    <div class="text-lg font-bold">Alta manual en el laboratorio</div>
+    <div class="text-xs text-slate-500">Para un equipo que llegó sin pasar por una visita. Los retiros registrados por los técnicos entran solos.</div>
+    <div class="grid grid-cols-2 gap-2">
+      <div><label class="text-xs font-semibold text-slate-500">Equipo *</label><select id="lnEq" class="inp mt-1"><option>NUC</option><option>RB</option></select></div>
+      <div><label class="text-xs font-semibold text-slate-500">Estado inicial</label><select id="lnEst" class="inp mt-1">${['En laboratorio', 'Por recibir', 'Reparado', 'Reemplazo'].map(e => `<option>${e}</option>`).join('')}</select></div></div>
+    <div><label class="text-xs font-semibold text-slate-500">Tienda de origen <span class="font-normal text-slate-400">(ID de cliente, opcional)</span></label><input id="lnCli" class="inp mt-1" list="lnCliList" placeholder="Escribe el ID o el nombre" autocomplete="off"><datalist id="lnCliList">${S.clientes.slice(0, 4000).map(c => `<option value="${esc(c.ID_Cliente)}">${esc(c.Nombre_Cliente)}</option>`).join('')}</datalist></div>
+    <div><label class="text-xs font-semibold text-slate-500">Serie <span class="font-normal text-slate-400">(opcional)</span></label><input id="lnSerie" class="inp mt-1" maxlength="60"></div>
+    <div><label class="text-xs font-semibold text-slate-500">Detalle</label><textarea id="lnDet" rows="2" class="inp mt-1" maxlength="300"></textarea></div>
+    <div id="lnErr" class="hidden text-sm text-red-700 bg-red-50 rounded-lg p-2"></div>
+    <div class="grid grid-cols-2 gap-2"><button class="btn btn-ghost" data-close>Cancelar</button><button id="lnOk" class="btn btn-primary">Crear</button></div></div>`);
+  $('#lnOk').addEventListener('click', async () => {
+    const b = $('#lnOk'); b.disabled = true; showLoading(true);
+    try { await api('createLab', { equipo: $('#lnEq').value, estado: $('#lnEst').value, idCliente: $('#lnCli').value.trim(), serie: $('#lnSerie').value, detalle: $('#lnDet').value }); toast('Equipo registrado', 'ok'); closeModal(); await loadLab(true); }
+    catch (e) { const er = $('#lnErr'); if (er) { er.textContent = e.message; er.classList.remove('hidden'); } b.disabled = false; } finally { showLoading(false); }
+  });
 }
 
 /* =====================================================================
@@ -1686,6 +1936,7 @@ function bindEvents() {
       const k = el.dataset.more;
       if (k === 'drill') { S.drillPage++; renderDrill(false); } else if (k === 'hist') { S.hist.page++; updateHist(); }
       else if (k === 'tienda') { S.tienda.page++; updateTiendas(true); }
+      else if (k === 'lab') { S.labv.page++; updateLab(); }
       else if (k === 'pend') { S.pend.page++; updatePend(); } else if (k === 'asig') { S.asig.page++; updateAsigList(); }
       return;
     }
@@ -1703,7 +1954,11 @@ function bindEvents() {
     if ((el = t.closest('[data-tedit]'))) return openEditTienda(el.dataset.tedit);
     if (t.closest('[data-timp]')) return openImportTiendas();
     if ((el = t.closest('[data-pchip]'))) { S.pend.tec = S.pend.tec === el.dataset.pchip ? '' : el.dataset.pchip; S.pend.page = 1; buildPend(); return; }
+    if ((el = t.closest('[data-pedit]'))) { e.preventDefault(); return openPlanPend(el.dataset.pedit); }
     if ((el = t.closest('[data-pact]'))) return pendAction(el.dataset.pact);
+    if ((el = t.closest('[data-lact]'))) return labAction(el.dataset.lact);
+    if ((el = t.closest('[data-ledit]'))) { e.preventDefault(); return openLabEdit(el.dataset.ledit); }
+    if ((el = t.closest('[data-lchip]'))) { S.labv.estado = el.dataset.lchip; S.labv.page = 1; return buildLab(true); }
     if ((el = t.closest('[data-teamgo]'))) { const u = el.dataset.u; S.filtroTec = u; S.pend.tec = u; return go(el.dataset.teamgo); }
     if ((el = t.closest('[data-aact]'))) {
       const k = el.dataset.aact, a = S.asig;
@@ -1724,6 +1979,8 @@ function bindEvents() {
     else if (id === 'pQ') { S.pend.q = e.target.value; S.pend.page = 1; updatePend(); }
     else if (id === 'tQ') { S.tienda.q = e.target.value; S.tienda.page = 1; updateTiendas(true); }
     else if (id === 'aQ') { S.asig.q = e.target.value; S.asig.page = 1; updateAsigList(); }
+    else if (id === 'lQ') { S.labv.q = e.target.value; S.labv.page = 1; updateLab(); }
+    else if (id === 'lDestSet') { S.labv.ldest = e.target.value; }
   });
 
   root.addEventListener('change', e => {
@@ -1735,6 +1992,18 @@ function bindEvents() {
     else if (id === 'tDist') { S.tienda.distrito = t.value; S.tienda.page = 1; updateTiendas(true); }
     else if (id === 'hFuera') { S.hist.fuera = t.checked; S.hist.page = 1; updateHist(); }
     else if (id === 'pTec') { S.pend.tec = t.value; S.pend.page = 1; updatePend(); }
+    else if (id === 'pEtq') { S.pend.etq = t.value; S.pend.page = 1; updatePend(); }
+    else if (id === 'pEtqSet') { S.pend.etqSet = t.value; }
+    else if (id === 'pProgSet') { S.pend.progSet = t.value; }
+    else if (id === 'aEtq') { S.asig.etq = t.value; updateAsigPlanTxt(); }
+    else if (id === 'aProg') { S.asig.prog = t.value; updateAsigPlanTxt(); }
+    else if (id === 'lEstado') { S.labv.estado = t.value; S.labv.page = 1; buildLab(true); }
+    else if (id === 'lEquipo') { S.labv.equipo = t.value; S.labv.page = 1; updateLab(); }
+    else if (id === 'lEdad') { S.labv.edad = t.value; S.labv.page = 1; updateLab(); }
+    else if (id === 'lEstSet') { S.labv.lest = t.value; }
+    else if (id === 'lDestSet') { S.labv.ldest = t.value; }
+    else if (t.dataset.lid) { t.checked ? S.labv.sel.add(t.dataset.lid) : S.labv.sel.delete(t.dataset.lid); updateLabBar(); }
+    else if (id === 'lAll') { const l = S.labList || []; if (t.checked) l.forEach(r => S.labv.sel.add(r.ID_Lab)); else l.forEach(r => S.labv.sel.delete(r.ID_Lab)); updateLab(); }
     else if (id === 'pAtr') { S.pend.soloAtras = t.checked; S.pend.page = 1; updatePend(); }
     else if (id === 'pAll') { const l = S.pendList || []; if (t.checked) l.forEach(v => S.pend.sel.add(v.ID_Visita)); else l.forEach(v => S.pend.sel.delete(v.ID_Visita)); updatePend(); }
     else if (t.dataset.pid) { t.checked ? S.pend.sel.add(t.dataset.pid) : S.pend.sel.delete(t.dataset.pid); updatePendBar(); }
