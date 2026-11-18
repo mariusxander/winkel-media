@@ -99,6 +99,7 @@
           <button id="btnAsignar" class="btn btn-primary">Asignar</button>
         </div>
         <div id="cargaChips" class="hidden flex flex-wrap gap-1.5"></div>
+        <div id="etqChips" class="hidden flex flex-wrap gap-1.5"></div>
         <button id="btnFuera" class="btn btn-outline w-full">+ Visita fuera de ruta</button>
       </div>
       <div id="listPend" class="p-3 pt-1 space-y-2 pb-28"></div>
@@ -174,6 +175,10 @@ const CONFIG = {
 
 const TIPOS = ['Visita Física', 'Visita Remota', 'No Visitado'];
 const STATUS = ['Activa Validada', 'Activa Sin Validación', 'Avería ISP', 'Avería NUC/RB', 'Avería CAM', 'Avería Otros', 'Tienda Cerrada', 'Solicitud de Retiro'];
+const ETIQUETAS = ['Avería', 'Mantenimiento', 'Reubicación', 'Instalación', 'Retiro', 'Fotografía'];
+const ETQ_ICON = { 'Avería': '🔧', 'Mantenimiento': '🛠️', 'Reubicación': '🚚', 'Instalación': '➕', 'Retiro': '📦', 'Fotografía': '📷' };
+const ETQ_COLOR = { 'Avería': 'bg-red-100 text-red-700', 'Mantenimiento': 'bg-slate-200 text-slate-700', 'Reubicación': 'bg-indigo-100 text-indigo-700', 'Instalación': 'bg-emerald-100 text-emerald-700', 'Retiro': 'bg-orange-100 text-orange-700', 'Fotografía': 'bg-sky-100 text-sky-700' };
+const SEG_STATUS = ['Tienda Cerrada', 'Activa Sin Validación', 'Avería ISP', 'Avería CAM', 'Avería Otros'];   // estados que se pueden "recuperar" (debe coincidir con Code.gs)
 const STATUS_COLOR = {
   'Activa Validada': 'bg-green-100 text-green-700',
   'Activa Sin Validación': 'bg-lime-100 text-lime-700',
@@ -265,7 +270,7 @@ async function getDevice() {
 const S = {
   token: null, user: null, loginAt: null, device: '',
   clientes: [], visitas: [], usuarios: [], equipos: {},
-  view: 'inicio', filtroTec: '', limiteRes: 50, mostrarResMapa: false, periodoRes: 'hoy'
+  view: 'inicio', filtroTec: '', filtroEtq: '', limiteRes: 50, mostrarResMapa: false, periodoRes: 'hoy'
 };
 const isSup = () => S.user && S.user.Rol === 'Supervisor';
 const fmtTel = t => { const d = String(t || '').replace(/\D/g, ''); return d.length === 9 ? d.replace(/(\d{3})(\d{3})(\d{3})/, '$1 $2 $3') : d; };
@@ -281,14 +286,36 @@ function hoyLima() { return new Date(Date.now() - 5 * 3600000).toISOString().sli
 /* Antigüedad de una visita pendiente: días de calendario (Lima) desde que se asignó */
 function diasPend(v) { const a = String(v.Fecha_Asignacion || '').slice(0, 10); if (!a) return 0; return Math.max(0, Math.round((Date.parse(hoyLima() + 'T00:00:00Z') - Date.parse(a + 'T00:00:00Z')) / 86400000)); }
 function antiguedadBadge(v) {
+  if (v.Fecha_Programada) return '';   // las programadas se miden por su fecha, no por cuándo se asignaron
   const d = diasPend(v); if (d < 1) return '';
   return `<span class="badge ${d >= 3 ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-800'} self-start" data-antig="${d}">⏳ ${d === 1 ? 'desde ayer' : 'hace ' + d + ' días'}</span>`;
 }
 function seguimientos(v) { return (S.visitas || []).filter(x => x.Seguimiento_De === v.ID_Visita); }
+/* Recuperar una visita: la tienda se activó después (llamada o visita posterior). Aplica a Tienda Cerrada, Activa Sin Validación, Avería ISP/CAM/Otros y No Visitado, una sola vez por visita */
 function seguimientoElegible(v) {
-  if (v.Estado_Tarea !== 'Resuelta' || v.Status_Tienda !== 'Tienda Cerrada') return false;
-  if (seguimientos(v).some(x => x.Status_Tienda && x.Status_Tienda !== 'Tienda Cerrada')) return false;
+  if (v.Estado_Tarea !== 'Resuelta') return false;
+  if (!(SEG_STATUS.includes(v.Status_Tienda) || v.Tipo_Visita === 'No Visitado')) return false;
+  if (seguimientos(v).length) return false;
   return isSup() || (v.Usuario_Asignado === S.user.Usuario && String(v.Fecha_Resolucion).slice(0, 10) === hoyLima());   // el técnico solo puede actualizarla el mismo día
+}
+/* Programación (fecha y hora) y etiqueta de las visitas pendientes */
+function ahoraLima() { return new Date(Date.now() - 5 * 3600000).toISOString().slice(0, 16).replace('T', ' '); }   // 'yyyy-MM-dd HH:mm' en Lima
+function fmtProg(p) { const m = /^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2})/.exec(String(p || '')); return m ? `${m[3]}/${m[2]} ${m[4]}:${m[5]}` : ''; }
+function progEstado(v) {   // vencida | hoy | futura | '' (sin programar)
+  const p = String(v.Fecha_Programada || '').slice(0, 16); if (!p) return '';
+  if (p < ahoraLima()) return 'vencida';
+  return p.slice(0, 10) === hoyLima() ? 'hoy' : 'futura';
+}
+function etiquetaBadge(v) { return v.Etiqueta ? `<span class="badge ${ETQ_COLOR[v.Etiqueta] || 'bg-slate-100 text-slate-700'}" data-etq="${esc(v.Etiqueta)}">${ETQ_ICON[v.Etiqueta] || '🏷'} ${esc(v.Etiqueta)}</span>` : ''; }
+function progBadge(v) {
+  const e = progEstado(v); if (!e) return '';
+  const cls = e === 'vencida' ? 'bg-red-100 text-red-700' : e === 'hoy' ? 'bg-amber-100 text-amber-800' : 'bg-blue-50 text-blue-700';
+  return `<span class="badge ${cls}" data-prog="${e}">📅 ${fmtProg(v.Fecha_Programada)}${e === 'vencida' ? ' · vencida' : e === 'hoy' ? ' · hoy' : ''}</span>`;
+}
+/* Orden de pendientes: primero lo programado que vence hoy o ya venció, luego lo normal, al final lo programado a futuro */
+function ordenPend(list) {
+  const g = v => { const e = progEstado(v); return (e === 'vencida' || e === 'hoy') ? 0 : e === 'futura' ? 2 : 1; };
+  return list.map((v, i) => ({ v, i })).sort((a, b) => g(a.v) - g(b.v) || (g(a.v) !== 1 ? String(a.v.Fecha_Programada).localeCompare(String(b.v.Fecha_Programada)) : 0) || a.i - b.i).map(x => x.v);
 }
 const techName = u => { const x = S.usuarios.find(y => y.Usuario === u); return x ? x.Nombre_Apellido : (S.user && S.user.Usuario === u ? S.user.Nombre_Apellido : u); };
 
@@ -365,7 +392,7 @@ function logout(msg) {
   stopGps();
   closeModal();
   try { localStorage.removeItem(CONFIG.SESION_KEY); localStorage.removeItem(CONFIG.CACHE_KEY); } catch (_) {}
-  Object.assign(S, { token: null, user: null, loginAt: null, clientes: [], visitas: [], usuarios: [], equipos: {}, view: 'inicio', filtroTec: '' });
+  Object.assign(S, { token: null, user: null, loginAt: null, clientes: [], visitas: [], usuarios: [], equipos: {}, view: 'inicio', filtroTec: '', filtroEtq: '' });
   showLogin(typeof msg === 'string' ? msg : '');
 }
 
@@ -507,7 +534,8 @@ function filtrar(estado, q) {
 }
 
 function renderPendientes() {
-  const list = filtrar('Pendiente', $('#qPend').value);
+  let list = filtrar('Pendiente', $('#qPend').value);
+  const base = list;
   if (isSup()) {
     const all = S.visitas.filter(v => v.Estado_Tarea === 'Pendiente');
     const chips = S.usuarios.filter(x => x.Rol === 'Técnico' || all.some(v => v.Usuario_Asignado === x.Usuario)).map(x => {
@@ -517,6 +545,19 @@ function renderPendientes() {
     }).join('');
     const cc = $('#cargaChips'); cc.innerHTML = chips; cc.classList.toggle('hidden', !chips);
   }
+  // filtros por programación y etiqueta: solo aparecen si hay algo programado o etiquetado (si no, la pantalla queda como siempre)
+  const nProg = base.filter(v => v.Fecha_Programada).length, cnt = {};
+  base.forEach(v => { if (v.Etiqueta) cnt[v.Etiqueta] = (cnt[v.Etiqueta] || 0) + 1; });
+  const fil = [['', 'Todas', base.length]];
+  if (nProg) fil.push(['__prog', '📅 Programadas', nProg]);
+  ETIQUETAS.filter(e => cnt[e]).forEach(e => fil.push([e, `${ETQ_ICON[e]} ${e}`, cnt[e]]));
+  if (!fil.some(f => f[0] === S.filtroEtq)) S.filtroEtq = '';
+  const ec = $('#etqChips');
+  ec.innerHTML = fil.length > 1 ? fil.map(([k, t, n]) => `<button data-etqf="${esc(k)}" class="badge ${S.filtroEtq === k ? 'bg-blue-600 text-white' : 'bg-white border border-slate-300 text-slate-700'}">${t}: ${n}</button>`).join('') : '';
+  ec.classList.toggle('hidden', fil.length < 2);
+  if (S.filtroEtq === '__prog') list = list.filter(v => v.Fecha_Programada);
+  else if (S.filtroEtq) list = list.filter(v => v.Etiqueta === S.filtroEtq);
+  list = ordenPend(list);
   $('#listPend').innerHTML = list.length ? list.map(v => `
     <div class="card cursor-pointer" data-vid="${esc(v.ID_Visita)}">
       <div class="flex justify-between gap-2">
@@ -526,8 +567,10 @@ function renderPendientes() {
         </div>
         <div class="flex flex-col items-end gap-1"><span class="badge bg-blue-100 text-blue-700 self-start">Pendiente</span>${antiguedadBadge(v)}</div>
       </div>
-      ${isSup() ? `<div class="mt-2 flex items-center justify-between text-xs"><span class="text-slate-600">👤 ${esc(techName(v.Usuario_Asignado))}</span><button class="text-blue-600 font-semibold px-2 py-1" data-reasignar="${esc(v.ID_Visita)}">Reasignar</button></div>` : ''}
-    </div>`).join('') : `<div class="text-center text-slate-500 py-10 text-sm">No hay tareas pendientes 🎉</div>`;
+      ${(v.Etiqueta || v.Fecha_Programada) ? `<div class="mt-2 flex flex-wrap gap-1.5 text-xs">${etiquetaBadge(v)}${progBadge(v)}</div>` : ''}
+      ${isSup() ? `<div class="mt-2 flex items-center justify-between text-xs"><span class="text-slate-600">👤 ${esc(techName(v.Usuario_Asignado))}</span><span><button class="text-blue-600 font-semibold px-2 py-1" data-plan="${esc(v.ID_Visita)}">${v.Etiqueta || v.Fecha_Programada ? '✏️ Programar / etiqueta' : '📅 Programar / etiqueta'}</button><button class="text-blue-600 font-semibold px-2 py-1" data-reasignar="${esc(v.ID_Visita)}">Reasignar</button></span></div>`
+        : ''}
+    </div>`).join('') : `<div class="text-center text-slate-500 py-10 text-sm">${S.filtroEtq ? 'No hay visitas con este filtro.' : 'No hay tareas pendientes 🎉'}</div>`;
 }
 
 function renderResueltas() {
@@ -552,11 +595,12 @@ function renderResueltas() {
         ${v.USB_Monitor === 'SI' ? `<span class="badge bg-indigo-100 text-indigo-700">💾 USB en monitor</span>` : ''}
         ${v.Mantenimiento === 'SI' ? `<span class="badge bg-slate-200 text-slate-700">🛠️ Mantenimiento</span>` : ''}
         ${isSup() ? `<span class="badge bg-purple-50 text-purple-700">👤 ${esc(techName(v.Usuario_Asignado))}</span>` : ''}
-        ${v.Seguimiento_De ? `<span class="badge bg-sky-100 text-sky-700">↪ Seguimiento de tienda cerrada</span>` : ''}
-        ${seguimientos(v).filter(x => x.Status_Tienda && x.Status_Tienda !== 'Tienda Cerrada').slice(-1).map(x => `<span class="badge bg-green-100 text-green-700">✅ Actualizada: ${esc(x.Status_Tienda)}</span>`).join('')}
+        ${v.Etiqueta ? etiquetaBadge(v) : ''}
+        ${v.Seguimiento_De ? (o => `<span class="badge bg-sky-100 text-sky-700">↪ Visita recuperada${o ? ' · antes: ' + esc(o.Tipo_Visita === 'No Visitado' ? 'No visitado' : o.Status_Tienda) : ''}</span>`)((S.visitas || []).find(x => x.ID_Visita === v.Seguimiento_De)) : ''}
+        ${seguimientos(v).filter(x => x.Status_Tienda).slice(-1).map(x => `<span class="badge bg-green-100 text-green-700">✅ Actualizada: ${esc(x.Status_Tienda)}</span>`).join('')}
       </div>
       ${v.Observacion ? `<div class="mt-2 text-sm text-slate-600">${esc(v.Observacion)}</div>` : ''}
-      ${seguimientoElegible(v) ? `<button class="btn btn-outline w-full mt-2 text-sm" style="padding:7px 10px" data-seg="${esc(v.ID_Visita)}">🔄 La tienda abrió: actualizar estado</button>` : ''}
+      ${seguimientoElegible(v) ? `<button class="btn btn-outline w-full mt-2 text-sm" style="padding:7px 10px" data-seg="${esc(v.ID_Visita)}">${v.Status_Tienda === 'Tienda Cerrada' ? '🔄 La tienda abrió: actualizar estado' : '🔄 Recuperar visita: actualizar estado'}</button>` : ''}
       <div class="mt-2 flex gap-3 text-sm">
         ${v.URL_Foto_Fachada ? `<a class="text-blue-600 font-medium" href="${esc(v.URL_Foto_Fachada)}" target="_blank" rel="noopener">📷 Fachada</a>` : ''}
         ${v.URL_Foto_Monitor ? `<a class="text-blue-600 font-medium" href="${esc(v.URL_Foto_Monitor)}" target="_blank" rel="noopener">🖥️ Monitor</a>` : ''}
@@ -706,6 +750,8 @@ function openAsignar() {
       <div><label class="lbl">Cliente</label>${pickerHTML('pkAsig')}</div>
       <div id="pkInfo" class="hidden card text-sm"></div>
       <div><label class="lbl">Asignar a</label><select id="asigTec" class="inp">${userOptions(S.filtroTec)}</select></div>
+      <div><label class="lbl">Etiqueta <span class="font-normal text-slate-400">(opcional: qué hay que hacer)</span></label><select id="asigEtq" class="inp"><option value="">Sin etiqueta</option>${ETIQUETAS.map(e => `<option value="${e}">${ETQ_ICON[e]} ${e}</option>`).join('')}</select></div>
+      <div><label class="lbl">Programar para <span class="font-normal text-slate-400">(opcional: fecha y hora)</span></label><input id="asigProg" type="datetime-local" class="inp" min="${hoyLima()}T00:00"></div>
       <button id="btnDoAsig" class="btn btn-primary w-full" disabled>Asignar visita</button>
     </div>`);
   mountPicker('pkAsig', c => {
@@ -716,8 +762,40 @@ function openAsignar() {
   });
   $('#btnDoAsig').addEventListener('click', async () => {
     const b = $('#btnDoAsig'); b.disabled = true;
-    try { showLoading(true); await api('assignVisit', { idCliente: sel.ID_Cliente, usuario: $('#asigTec').value }); toast('Visita asignada', 'ok'); closeModal(); await refreshData(true); }
+    try { showLoading(true); await api('assignVisit', { idCliente: sel.ID_Cliente, usuario: $('#asigTec').value, etiqueta: $('#asigEtq').value, programada: $('#asigProg').value }); toast('Visita asignada', 'ok'); closeModal(); await refreshData(true); }
     catch (e) { toast(e.message, 'error'); b.disabled = false; } finally { showLoading(false); }
+  });
+}
+
+/* Etiqueta y programación (fecha/hora) de una visita pendiente: solo el Supervisor */
+function openPlan(idVisita) {
+  const v = S.visitas.find(x => x.ID_Visita === idVisita);
+  if (!isSup()) return;
+  if (!v || v.Estado_Tarea !== 'Pendiente') return toast('Esta visita ya no está pendiente', 'warn');
+  const sup = isSup(), pv = String(v.Fecha_Programada || '').slice(0, 16).replace(' ', 'T');
+  openModal(`${modalHeader(sup ? 'Programar y etiquetar' : 'Etiqueta de la visita')}
+    <div class="p-4 space-y-3">
+      <div class="card text-sm"><b>${esc(v.Nombre_Cliente)}</b><br>${esc(v.ID_Cliente)} · ${esc(techName(v.Usuario_Asignado))}</div>
+      <div><label class="lbl">Etiqueta (qué hay que hacer)</label><select id="plEtq" class="inp"><option value="">Sin etiqueta</option>${ETIQUETAS.map(e => `<option value="${e}" ${v.Etiqueta === e ? 'selected' : ''}>${ETQ_ICON[e]} ${e}</option>`).join('')}</select></div>
+      ${sup ? `<div><label class="lbl">Fecha y hora programadas</label><input id="plFecha" type="datetime-local" class="inp" value="${esc(pv)}" min="${hoyLima()}T00:00">
+        <button type="button" id="plQuitar" class="text-xs text-blue-600 font-semibold mt-1">Quitar programación</button>
+        <p class="text-xs text-slate-500 mt-1">Para reprogramar, cambia la fecha u hora y guarda.</p></div>` : '<p class="text-xs text-slate-500">La fecha y hora solo las programa un Supervisor.</p>'}
+      <div id="plErr" class="hidden text-sm text-red-700 bg-red-50 border border-red-200 rounded-xl p-2"></div>
+      <button id="btnPlan" class="btn btn-primary w-full">Guardar</button>
+    </div>`);
+  if (sup) $('#plQuitar').addEventListener('click', () => { $('#plFecha').value = ''; });
+  $('#btnPlan').addEventListener('click', async () => {
+    const er = $('#plErr'); er.classList.add('hidden');
+    const data = { idVisita };
+    const etq = $('#plEtq').value; if (etq !== (v.Etiqueta || '')) data.etiqueta = etq;
+    if (sup) { const f = $('#plFecha').value; if (f !== pv) data.programada = f; }
+    if (Object.keys(data).length === 1) return closeModal();
+    const b = $('#btnPlan'); b.disabled = true; showLoading(true);
+    try {
+      const r = await api('planVisitas', data);
+      if (r && r.actualizadas === 0) toast('No se pudo actualizar: la visita ya no está pendiente', 'warn'); else toast('Visita actualizada', 'ok');
+      closeModal(); await refreshData(true);
+    } catch (e) { showLoading(false); er.textContent = e.message; er.classList.remove('hidden'); b.disabled = false; } finally { showLoading(false); }
   });
 }
 
@@ -747,13 +825,18 @@ function openVisita(arg) {
     v = S.visitas.find(x => x.ID_Visita === arg);
     if (!v) return toast('No se encontró la visita', 'error');
     if (v.Estado_Tarea !== 'Pendiente') return toast('Esta visita ya fue resuelta', 'warn');
+  } else if (arg.seg) {   // recuperar una visita estando físicamente en la tienda
+    const o = arg.seg, c = (S.clientes || []).find(x => x.ID_Cliente === o.ID_Cliente) || {};
+    v = { ID_Visita: '', Usuario_Asignado: o.Usuario_Asignado, ID_Cliente: o.ID_Cliente, Nombre_Cliente: o.Nombre_Cliente,
+      Latitud_Tienda: isNum(c.Latitud) ? c.Latitud : o.Latitud_Tienda, Longitud_Tienda: isNum(c.Longitud) ? c.Longitud : o.Longitud_Tienda,
+      _seg: o.ID_Visita, _segStatus: o.Status_Tienda, _segPrev: o.Tipo_Visita === 'No Visitado' ? 'No visitado' : o.Status_Tienda, _segFecha: o.Fecha_Resolucion };
   } else {
     const c = arg.cliente;
     v = { ID_Visita: '', Usuario_Asignado: S.user.Usuario, ID_Cliente: c.ID_Cliente, Nombre_Cliente: c.Nombre_Cliente, Latitud_Tienda: c.Latitud, Longitud_Tienda: c.Longitud, _fuera: true };
   }
   F = { v, fachada: null, monitor: null, galF: false, galM: false, pos: null, dist: null, watchId: null, mini: null, storeMarker: null, meMarker: null, fitted: false };
 
-  openModal(`${modalHeader('Resolver visita', v._fuera ? '<span class="badge bg-amber-100 text-amber-700 align-middle">Fuera de ruta</span>' : '')}
+  openModal(`${modalHeader(v._seg ? 'Recuperar visita (presencial)' : 'Resolver visita', v._fuera ? '<span class="badge bg-amber-100 text-amber-700 align-middle">Fuera de ruta</span>' : '')}
   <div class="p-4 space-y-4">
     <div class="card space-y-2">
       <div class="grid grid-cols-2 gap-2">
@@ -767,6 +850,8 @@ function openVisita(arg) {
       </div>
     </div>
 
+    ${v._seg ? `<div class="text-xs text-slate-700 bg-sky-50 border border-sky-200 rounded-xl p-2.5">Visita presencial vinculada a la del ${fmt(v._segFecha)} (estado anterior: <b>${esc(v._segPrev)}</b>). La visita original no se modifica; se registra una nueva y la tienda queda con el estado que elijas.</div>` : ''}
+    ${(!v._fuera && !v._seg && (v.Etiqueta || v.Fecha_Programada)) ? `<div class="rounded-xl border border-blue-200 bg-blue-50 p-3 flex flex-wrap items-center gap-2 text-sm"><span class="font-semibold text-blue-900">Tarea:</span>${isSup() ? `<select id="fEtq" class="inp !w-auto !py-1 text-sm"><option value="">Sin etiqueta</option>${ETIQUETAS.map(e => `<option value="${e}" ${v.Etiqueta === e ? 'selected' : ''}>${ETQ_ICON[e]} ${e}</option>`).join('')}</select>` : (etiquetaBadge(v) || '<span class="text-slate-500">sin etiqueta</span>')}${progBadge(v)}</div>` : ''}
     ${avisoEquipos(v)}
     <div class="card space-y-2">
       <div id="miniMap" class="w-full h-48 rounded-xl overflow-hidden"></div>
@@ -776,7 +861,7 @@ function openVisita(arg) {
 
     <div>
       <label class="lbl">Tipo de visita *</label>
-      <select id="fTipo" class="inp"><option value="">Selecciona…</option>${TIPOS.map(t => `<option>${t}</option>`).join('')}</select>
+      <select id="fTipo" class="inp">${v._seg ? '<option selected>Visita Física</option>' : `<option value="">Selecciona…</option>${TIPOS.map(t => `<option>${t}</option>`).join('')}`}</select>
       <p class="text-xs text-slate-500 mt-1">“Visita Física” solo se permite a ${CONFIG.GEOCERCA_METROS} m o menos de la tienda.</p>
     </div>
 
@@ -801,7 +886,7 @@ function openVisita(arg) {
 
     <div id="fStatusBox">
       <label class="lbl">Status *</label>
-      <select id="fStatus" class="inp"><option value="">Selecciona…</option>${STATUS.map(t => `<option>${t}</option>`).join('')}</select>
+      <select id="fStatus" class="inp"><option value="">Selecciona…</option>${STATUS.filter(t => !v._seg || (t !== 'Tienda Cerrada' && t !== v._segStatus)).map(t => `<option>${t}</option>`).join('')}</select>
     </div>
     <div id="fRetiroBox" class="hidden rounded-xl border border-orange-200 bg-orange-50 p-3 space-y-2.5">
       <div class="text-sm font-semibold text-orange-800">Equipo que se retira de la tienda</div>
@@ -884,6 +969,13 @@ function openVisita(arg) {
   $('#fFachadaG').addEventListener('change', e => onFoto('fachada', e.target, 'prevFachada', true));
   $('#fMonitorG').addEventListener('change', e => onFoto('monitor', e.target, 'prevMonitor', true));
   $('#btnGuardar').addEventListener('click', guardarVisita);
+  // corregir la etiqueta desde el propio formulario (queda guardada al instante)
+  if ($('#fEtq')) $('#fEtq').addEventListener('change', async e => {
+    const vv = F && F.v, val = e.target.value; if (!vv) return;
+    try { await api('planVisitas', { idVisita: vv.ID_Visita, etiqueta: val }); vv.Etiqueta = val; saveCache(); toast('Etiqueta actualizada', 'ok'); }
+    catch (er) { e.target.value = vv.Etiqueta || ''; toast(er.message, 'error'); }
+  });
+  if (v._seg) syncExtras();
   startGps();
 }
 
@@ -931,6 +1023,7 @@ function avisoEquipos(v) {
   const l = [];
   if (eq.pend) l.push(`⚠️ <b>Equipo pendiente de reinstalar:</b> ${esc(eq.pend)}${f(eq.retiro)}`);
   if (eq.estado === 'Instalado sin validar') l.push(`🔧 ${esc(eq.comp || 'Equipo')} instalado en la visita anterior, <b>sin validar</b>`);
+  if (eq.lab) l.push(`🧪 <b>Laboratorio:</b> ${esc(eq.lab)}`);
   if (eq.usb) l.push(eq.usbRet ? '💾 <b>USB pendiente de retiro</b> en el monitor (lo retira un Supervisor)' : '💾 Esta tienda tiene un <b>USB en el monitor</b>');
   return l.length ? `<div class="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 space-y-1">${l.map(x => `<div>${x}</div>`).join('')}</div>` : '';
 }
@@ -1068,21 +1161,54 @@ async function onFoto(kind, input, prevId, gal) {
   input.value = '';
 }
 
-/* ---------- Seguimiento de una visita "Tienda Cerrada" (la tienda abrió y se validó después) ---------- */
+/* ---------- Recuperar una visita: la tienda se activó después (llamada o visita posterior) ---------- */
 function openSeguimiento(idVisita) {
   const o = S.visitas.find(x => x.ID_Visita === idVisita);
   if (!o || !seguimientoElegible(o)) return toast('Esta visita ya no se puede actualizar', 'warn');
-  const opts = STATUS.filter(x => x !== 'Tienda Cerrada');
-  openModal(`${modalHeader('Actualizar tienda cerrada')}
+  const dueno = o.Usuario_Asignado === S.user.Usuario;
+  const prev = o.Tipo_Visita === 'No Visitado' ? 'No visitado' : o.Status_Tienda;
+  const cli = (S.clientes || []).find(x => x.ID_Cliente === o.ID_Cliente) || {};
+  const lat = isNum(cli.Latitud) ? cli.Latitud : o.Latitud_Tienda, lng = isNum(cli.Longitud) ? cli.Longitud : o.Longitud_Tienda;
+  openModal(`${modalHeader('Recuperar visita')}
   <div class="p-4 space-y-3">
     <div class="card">
       <div class="font-semibold">${esc(o.Nombre_Cliente)}</div>
-      <div class="text-xs text-slate-500">${esc(o.ID_Cliente)} · visita del ${fmt(o.Fecha_Resolucion)} · <b>Tienda Cerrada</b></div>
+      <div class="text-xs text-slate-500">${esc(o.ID_Cliente)} · visita del ${fmt(o.Fecha_Resolucion)} · <b>${esc(prev)}</b></div>
       ${contactosHTML(o.ID_Cliente)}
     </div>
-    <div class="text-xs text-slate-600 bg-sky-50 border border-sky-200 rounded-xl p-2.5">Úsalo cuando la tienda abrió después de tu visita y el equipo ya se validó. Se registra como una <b>Visita Remota</b> vinculada a esta; la visita original se conserva como “Tienda Cerrada”.</div>
+    <div class="text-xs text-slate-600 bg-sky-50 border border-sky-200 rounded-xl p-2.5">Úsalo cuando la tienda se activó después de la visita (por una llamada o porque volviste). La visita original se conserva; se registra una nueva vinculada a ella.</div>
+    <div class="font-semibold text-sm">¿Estás físicamente en la tienda?</div>
+    ${dueno ? '<div id="sgDist" class="rounded-xl p-2 text-sm bg-slate-100 text-slate-700">Verificando tu ubicación…</div>' : '<p class="text-xs text-slate-500">Solo quien hizo la visita puede validarla físicamente. Tú puedes registrarla como Visita Remota.</p>'}
+    <div class="grid grid-cols-2 gap-2">
+      <button id="sgFis" class="btn btn-outline" ${dueno ? '' : 'disabled'}>📍 Sí, estoy en la tienda</button>
+      <button id="sgRem" class="btn btn-primary">📞 No: por llamada / remoto</button>
+    </div>
+  </div>`);
+  $('#sgRem').addEventListener('click', () => openSeguimientoRemoto(o, prev));
+  $('#sgFis').addEventListener('click', () => openVisita({ seg: o }));
+  if (dueno && navigator.geolocation && isNum(lat) && isNum(lng)) {
+    navigator.geolocation.getCurrentPosition(pos => {
+      const box = $('#sgDist'); if (!box) return;
+      const d = haversine(pos.coords.latitude, pos.coords.longitude, lat, lng), ok = d <= CONFIG.GEOCERCA_METROS;
+      box.className = 'rounded-xl p-2 text-sm ' + (ok ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-700');
+      box.innerHTML = `<b>${Math.round(d)} m</b> de la tienda · ${ok ? '✅ Puedes validar físicamente' : `⛔ Fuera de la geocerca (máx. ${CONFIG.GEOCERCA_METROS} m): registra la visita remota`}`;
+      if (!ok) $('#sgFis').disabled = true;
+    }, () => { const box = $('#sgDist'); if (box) box.textContent = 'No se pudo obtener tu ubicación. Si estás en la tienda, elige “Sí”: se validará el GPS en el formulario.'; }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
+  } else if (dueno) { const box = $('#sgDist'); if (box) box.textContent = 'Si estás en la tienda, elige “Sí”: se validará el GPS en el formulario.'; }
+}
+
+function openSeguimientoRemoto(o, prev) {
+  const opts = STATUS.filter(x => x !== 'Tienda Cerrada' && x !== o.Status_Tienda);
+  openModal(`${modalHeader('Recuperar visita (remota)')}
+  <div class="p-4 space-y-3">
+    <div class="card">
+      <div class="font-semibold">${esc(o.Nombre_Cliente)}</div>
+      <div class="text-xs text-slate-500">${esc(o.ID_Cliente)} · visita del ${fmt(o.Fecha_Resolucion)} · <b>${esc(prev)}</b></div>
+      ${contactosHTML(o.ID_Cliente)}
+    </div>
+    <div class="text-xs text-slate-600 bg-sky-50 border border-sky-200 rounded-xl p-2.5">Se registra como una <b>Visita Remota</b> vinculada a esta; la visita original se conserva como “${esc(prev)}”.</div>
     <div><label class="lbl">Nuevo status *</label><select id="sgStatus" class="inp"><option value="">Selecciona…</option>${opts.map(t => `<option>${t}</option>`).join('')}</select></div>
-    <div><label class="lbl">Observación *</label><textarea id="sgObs" rows="3" class="inp" placeholder="Ej.: El cliente abrió y encendió los equipos; validado por el ingeniero…"></textarea></div>
+    <div><label class="lbl">Observación *</label><textarea id="sgObs" rows="3" class="inp" placeholder="Ej.: El cliente llamó, abrió y encendió los equipos; validado por el ingeniero…"></textarea></div>
     <div id="sgErr" class="hidden text-sm text-red-700 bg-red-50 border border-red-200 rounded-xl p-2"></div>
     <div class="grid grid-cols-2 gap-3"><button data-close class="btn btn-ghost">Cancelar</button><button id="btnSg" class="btn btn-primary">Actualizar</button></div>
   </div>`);
@@ -1093,8 +1219,8 @@ function openSeguimiento(idVisita) {
     if (!obs) return bad('La Observación es obligatoria.');
     const b = $('#btnSg'); b.disabled = true; b.textContent = 'Guardando…'; showLoading(true);
     try {
-      await api('resolveVisit', { seguimientoDe: idVisita, tipoVisita: 'Visita Remota', status: st, observacion: obs });
-      toast('Tienda actualizada correctamente', 'ok'); closeModal(); await refreshData(true);
+      await api('resolveVisit', { seguimientoDe: o.ID_Visita, tipoVisita: 'Visita Remota', status: st, observacion: obs });
+      toast('Visita recuperada correctamente', 'ok'); closeModal(); await refreshData(true);
     } catch (e) { showLoading(false); bad(e.message); b.disabled = false; b.textContent = 'Actualizar'; } finally { showLoading(false); }
   });
 }
@@ -1122,6 +1248,7 @@ async function guardarVisita() {
   try {
     await api('resolveVisit', {
       idVisita: v.ID_Visita || '',
+      seguimientoDe: v._seg || '',
       fueraDeRuta: !!v._fuera,
       idCliente: v.ID_Cliente,
       tipoVisita: tipo,
@@ -1271,8 +1398,11 @@ function bindEvents() {
   $('#listPend').addEventListener('click', e => {
     const re = e.target.closest('[data-reasignar]');
     if (re) { e.stopPropagation(); return openReasignar(re.dataset.reasignar); }
+    const pl = e.target.closest('[data-plan]');
+    if (pl) { e.stopPropagation(); return openPlan(pl.dataset.plan); }
     const c = e.target.closest('[data-vid]'); if (c) openVisita(c.dataset.vid);
   });
+  $('#etqChips').addEventListener('click', e => { const c = e.target.closest('[data-etqf]'); if (c) { S.filtroEtq = c.dataset.etqf; renderPendientes(); } });
   $('#cargaChips').addEventListener('click', e => { const c = e.target.closest('[data-chip]'); if (c) setFiltro(S.filtroTec === c.dataset.chip ? '' : c.dataset.chip); });
   $('#listRes').addEventListener('click', e => { if (e.target.closest('#btnMasRes')) { S.limiteRes += 50; renderResueltas(); return; } const sg = e.target.closest('[data-seg]'); if (sg) openSeguimiento(sg.dataset.seg); });
 
