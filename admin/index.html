@@ -404,13 +404,23 @@ const D = o => (DR.push(o), DR.length - 1);
 
 function destroyCharts() { Object.keys(CH).forEach(k => { try { CH[k].destroy(); } catch (_) {} }); CH = {}; }
 
-function sets() {
+// final = true (Dashboard): "resultado final". El seguimiento de una tienda cerrada NO cuenta como visita aparte; la visita original
+// se cuenta con su estado final (ej. Tienda Cerrada → Activa Validada) y conserva `Status_Inicial` = 'Tienda Cerrada'.
+// final = false (Historial, Equipo): eventos tal como ocurrieron.
+function sets(final) {
   const { desde, hasta } = S.rango, t = S.filtroTec, ok = v => !t || v.Usuario_Asignado === t;
   const inR = s => { const d = dOf(s); return d >= desde && d <= hasta; };
-  return {
+  if (!final) return {
     res: S.visitas.filter(v => v.Estado_Tarea === 'Resuelta' && ok(v) && inR(v.Fecha_Resolucion)),
     pend: S.visitas.filter(v => v.Estado_Tarea === 'Pendiente' && ok(v)),
     asig: S.visitas.filter(v => ok(v) && inR(v.Fecha_Asignacion))
+  };
+  const sm = segMap();
+  return {
+    res: S.visitas.filter(v => v.Estado_Tarea === 'Resuelta' && !v.Seguimiento_De && ok(v) && inR(v.Fecha_Resolucion))
+      .map(v => v.Status_Tienda === 'Tienda Cerrada' && sm[v.ID_Visita] ? Object.assign({}, v, { Status_Tienda: sm[v.ID_Visita].Status_Tienda, Status_Inicial: 'Tienda Cerrada' }) : v),
+    pend: S.visitas.filter(v => v.Estado_Tarea === 'Pendiente' && ok(v)),
+    asig: S.visitas.filter(v => !v.Seguimiento_De && ok(v) && inR(v.Fecha_Asignacion))
   };
 }
 
@@ -482,13 +492,12 @@ function avisoSegHTML() {
 }
 
 function applyDrill(list, d) {
-  const sm = d.recup || d.sinrec ? segMap() : null;
-  return list.filter(v => (!d.recup || sm[v.ID_Visita]) && (!d.sinrec || !sm[v.ID_Visita]) && (!d.tec || v.Usuario_Asignado === d.tec) && (!d.tipo || v.Tipo_Visita === d.tipo) && (!d.status || d.status.includes(v.Status_Tienda)) && (!d.bucket || bucketKey(v) === d.bucket) && (!d.fuera || v.Es_Fuera_De_Ruta === 'SI') && (!d.retiro || d.retiro.includes(v.Retiro_Equipos || '')) && (!d.reinst || d.reinst.includes(v.Reinstalacion_Equipo || '')) && (!d.usb || v.USB_Monitor === 'SI') && (!d.usbret || !!v.Retiro_USB) && (!d.mant || v.Mantenimiento === 'SI'));
+  return list.filter(v => (!d.recup || v.Status_Inicial) && (!d.sinrec || v.Status_Tienda === 'Tienda Cerrada') && (!d.tec || v.Usuario_Asignado === d.tec) && (!d.tipo || v.Tipo_Visita === d.tipo) && (!d.status || d.status.includes(v.Status_Tienda)) && (!d.bucket || bucketKey(v) === d.bucket) && (!d.fuera || v.Es_Fuera_De_Ruta === 'SI') && (!d.retiro || d.retiro.includes(v.Retiro_Equipos || '')) && (!d.reinst || d.reinst.includes(v.Reinstalacion_Equipo || '')) && (!d.usb || v.USB_Monitor === 'SI') && (!d.usbret || !!v.Retiro_USB) && (!d.mant || v.Mantenimiento === 'SI'));
 }
 
 function renderDash() {
   destroyCharts(); DR = []; CQ = [];
-  const { res, pend, asig } = sets();
+  const { res, pend, asig } = sets(true);
   const total = res.length, c = fn => res.filter(fn).length;
   const fis = c(v => v.Tipo_Visita === 'Visita Física'), rem = c(v => v.Tipo_Visita === 'Visita Remota'), nov = c(v => v.Tipo_Visita === 'No Visitado');
   const st = {}; INC.forEach(s => { st[s] = c(v => v.Status_Tienda === s); });
@@ -517,7 +526,7 @@ function renderDash() {
       <div class="text-xs text-slate-400">${pct(tot, total)}% de las visitas resueltas</div></button>
       <div class="mt-2 divide-y divide-slate-100 text-sm">${rows.map(s => `<button class="w-full flex items-center justify-between py-1.5 hover:bg-slate-50 rounded" data-di="${D({ status: [s], label: s })}"><span class="flex items-center gap-2"><i class="dot" style="background:${col(s)}"></i>${s}</span><b>${st[s]}</b></button>`).join('')}</div></div>`;
 
-  const sm = segMap(), cerR = res.filter(v => v.Status_Tienda === 'Tienda Cerrada'), recup = cerR.filter(v => sm[v.ID_Visita]);
+  const sm = segMap(), cerR = res.filter(v => v.Status_Tienda === 'Tienda Cerrada' || v.Status_Inicial), recup = cerR.filter(v => v.Status_Inicial);
   const recH = recup.length ? recup.reduce((a, v) => a + (tsMs(sm[v.ID_Visita].Fecha_Resolucion) - tsMs(v.Fecha_Resolucion)) / 3600000, 0) / recup.length : null;
   const sinSeg = cerradasSinSeg(S.filtroTec);
   $('#v-dash').innerHTML = `${filterBar()}
@@ -541,7 +550,7 @@ function renderDash() {
     ${kpi('Fuera de ruta', n0(fuera), { color: 'text-amber-600', d: { fuera: true, label: 'Visitas fuera de ruta' }, sub: 'agregadas por el técnico' })}
   </div>
 
-  <div class="sec">Incidencias del periodo</div>
+  <div class="sec">Incidencias del periodo <span class="normal-case font-normal text-slate-400">· resultado final: si una tienda cerrada luego se activó, cuenta con su estado final y el seguimiento no se suma como visita aparte</span></div>
   <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
     ${group('Visitas activas', act, 'text-green-600', ACT, { status: ACT, label: 'Visitas activas (validada + sin validación)' })}
     ${group('Total averías', ave, 'text-red-600', AV, { status: AV, label: 'Total de averías' })}
@@ -551,8 +560,8 @@ function renderDash() {
 
   <div class="sec">Tienda cerrada · seguimiento <span class="normal-case font-normal text-slate-400">· cerradas del periodo que luego se activaron</span></div>
   <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
-    ${kpi('Cerradas recuperadas', n0(recup.length), { color: 'text-emerald-600', dot: '#059669', d: { status: ['Tienda Cerrada'], recup: true, label: 'Tiendas cerradas que luego se activaron (seguimiento)' }, sub: `${pct(recup.length, cerR.length)}% de las ${n0(cerR.length)} cerradas` })}
-    ${kpi('Cerradas sin recuperar', n0(cerR.length - recup.length), { color: 'text-slate-700', dot: COLOR['Tienda Cerrada'], d: { status: ['Tienda Cerrada'], sinrec: true, label: 'Tiendas cerradas sin actualizar por seguimiento' }, sub: 'no tienen seguimiento' })}
+    ${kpi('Cerradas recuperadas', n0(recup.length), { color: 'text-emerald-600', dot: '#059669', d: { recup: true, label: 'Tiendas cerradas que luego se activaron (seguimiento)' }, sub: `${pct(recup.length, cerR.length)}% de las ${n0(cerR.length)} que se encontraron cerradas` })}
+    ${kpi('Cerradas sin recuperar', n0(cerR.length - recup.length), { color: 'text-slate-700', dot: COLOR['Tienda Cerrada'], d: { sinrec: true, label: 'Tiendas cerradas sin actualizar por seguimiento' }, sub: 'siguen cerradas (sin seguimiento)' })}
     <div class="card kpi cursor-default"><div class="text-xs font-semibold text-slate-500">Tiempo promedio de recuperación</div><div class="text-3xl font-bold text-sky-600 leading-tight">${recH === null ? '—' : recH < 24 ? Math.round(recH * 10) / 10 + ' h' : Math.round(recH / 24 * 10) / 10 + ' d'}</div><div class="text-xs text-slate-400 mt-0.5">desde la visita cerrada hasta el seguimiento</div></div>
     <button class="card kpi" data-tgofilter="cersinseg"><div class="text-xs font-semibold text-slate-500">⏰ Sin seguimiento ≥ ${esc(segTxt(segUmbral()))}</div><div class="text-3xl font-bold ${sinSeg.length ? 'text-amber-600' : 'text-green-600'} leading-tight">${n0(sinSeg.length)}</div><div class="text-xs text-slate-400 mt-0.5">tiendas cerradas ahora · ver en Tiendas</div></button>
   </div>
@@ -671,7 +680,7 @@ function setDrill(d) {
 function renderDrill(scroll) {
   const box = $('#drillBox'); if (!box) return;
   if (!S.drill) { box.innerHTML = '<div class="text-center text-sm text-slate-400 py-6">Toca una tarjeta, un gráfico o una fila para ver el detalle de las visitas.</div>'; return; }
-  const { res } = sets(), d = S.drill;
+  const { res } = sets(true), d = S.drill;
   S.drillList = applyDrill(res, d).sort((a, b) => String(b.Fecha_Resolucion).localeCompare(String(a.Fecha_Resolucion)));
   box.innerHTML = `<div class="card overflow-hidden"><div class="p-3 flex flex-wrap items-center gap-2 border-b border-slate-100">
       <div class="font-semibold">Detalle: ${esc(d.label || 'Visitas')}</div><span class="badge bg-blue-100 text-blue-700">${n0(S.drillList.length)} visitas</span>
@@ -691,7 +700,7 @@ function tableHTML(list, page, key) {
       <td>${esc(nameOf(v.Usuario_Asignado))}${v.Es_Fuera_De_Ruta === 'SI' ? ' <span class="badge bg-amber-100 text-amber-700">Fuera de ruta</span>' : ''}${v.Seguimiento_De ? ' <span class="badge bg-sky-100 text-sky-700" title="Actualiza la visita ' + esc(v.Seguimiento_De) + ' (tienda cerrada)">Seguimiento</span>' : ''}</td>
       <td><b>${esc(v.Nombre_Cliente)}</b><div class="text-xs text-slate-400">${esc(v.ID_Cliente)}</div></td>
       <td>${tipoBadge(v.Tipo_Visita)}</td>
-      <td><span class="badge" style="background:${col(v.Status_Tienda)}1a;color:${col(v.Status_Tienda)}">${esc(v.Status_Tienda || '—')}</span>${v.Retiro_Equipos ? `<div class="mt-1"><span class="badge" style="background:#ffedd5;color:#c2410c">📦 ${esc(v.Retiro_Equipos)}</span></div>` : ''}${v.Reinstalacion_Equipo ? `<div class="mt-1"><span class="badge" style="background:#d1fae5;color:#047857">🔁 Reinstaló ${esc(v.Reinstalacion_Equipo)}</span></div>` : ''}${v.USB_Monitor === 'SI' ? `<div class="mt-1"><span class="badge" style="background:#e0e7ff;color:#4338ca">💾 USB</span></div>` : ''}${v.Mantenimiento === 'SI' ? `<div class="mt-1"><span class="badge" style="background:#e2e8f0;color:#334155">🛠️ Mantenimiento</span></div>` : ''}</td>
+      <td><span class="badge" style="background:${col(v.Status_Tienda)}1a;color:${col(v.Status_Tienda)}">${esc(v.Status_Tienda || '—')}</span>${v.Status_Inicial ? '<div class="text-[10px] text-slate-400 mt-0.5">↪ se encontró Tienda Cerrada</div>' : ''}${v.Retiro_Equipos ? `<div class="mt-1"><span class="badge" style="background:#ffedd5;color:#c2410c">📦 ${esc(v.Retiro_Equipos)}</span></div>` : ''}${v.Reinstalacion_Equipo ? `<div class="mt-1"><span class="badge" style="background:#d1fae5;color:#047857">🔁 Reinstaló ${esc(v.Reinstalacion_Equipo)}</span></div>` : ''}${v.USB_Monitor === 'SI' ? `<div class="mt-1"><span class="badge" style="background:#e0e7ff;color:#4338ca">💾 USB</span></div>` : ''}${v.Mantenimiento === 'SI' ? `<div class="mt-1"><span class="badge" style="background:#e2e8f0;color:#334155">🛠️ Mantenimiento</span></div>` : ''}</td>
       <td class="whitespace-nowrap">${isNum(v.Distancia_Metros) ? Math.round(v.Distancia_Metros) + ' m' : '—'}</td>
       <td class="whitespace-nowrap">${v.URL_Foto_Fachada ? `<a class="text-blue-600" target="_blank" rel="noopener" href="${esc(v.URL_Foto_Fachada)}">Fachada</a>` : ''} ${v.URL_Foto_Monitor ? `<a class="text-blue-600" target="_blank" rel="noopener" href="${esc(v.URL_Foto_Monitor)}">Monitor</a>` : ''}${!v.URL_Foto_Fachada && !v.URL_Foto_Monitor ? '—' : ''}</td>
       <td class="min-w-[160px] max-w-[320px] text-slate-600">${esc(v.Observacion)}</td></tr>`).join('')}</tbody></table></div>
@@ -700,7 +709,7 @@ function tableHTML(list, page, key) {
 
 function exportCSV(list, name) {
   const q = (v) => { if (v === null || v === undefined) return '""'; let s = String(v); if (typeof v !== 'number' && /^[=+\-@\t\r]/.test(s)) s = "'" + s; return '"' + s.replace(/"/g, '""') + '"'; };
-  const csv = [VCOLS.join(',')].concat(list.map(v => VCOLS.map(c => q(v[c])).join(','))).join('\r\n');
+  const csv = [VCOLS.join(',')].concat(list.map(v => VCOLS.map(c => q(c === 'Status_Tienda' && v.Status_Inicial ? v.Status_Inicial : v[c])).join(','))).join('\r\n');
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' }));
   a.download = name; document.body.appendChild(a); a.click();
