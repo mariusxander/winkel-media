@@ -153,7 +153,7 @@ const COLOR = {
   'Avería ISP': '#dc2626', 'Avería NUC/RB': '#ea580c', 'Avería CAM': '#f59e0b', 'Avería Otros': '#be185d',
   'Tienda Cerrada': '#475569', 'Solicitud de Retiro': '#7c3aed'
 };
-const VCOLS = ['ID_Visita', 'Fecha_Asignacion', 'Usuario_Asignado', 'ID_Cliente', 'Nombre_Cliente', 'Latitud_Tienda', 'Longitud_Tienda', 'Estado_Tarea', 'Tipo_Visita', 'Status_Tienda', 'URL_Foto_Fachada', 'URL_Foto_Monitor', 'Observacion', 'Fecha_Resolucion', 'Lat_Real_Tecnico', 'Lng_Real_Tecnico', 'Distancia_Metros', 'Es_Fuera_De_Ruta', 'Retiro_Equipos', 'Reinstalacion_Equipo', 'USB_Monitor', 'Mantenimiento', 'Confirma_Equipo', 'Confirma_USB', 'Retiro_USB'];
+const VCOLS = ['ID_Visita', 'Fecha_Asignacion', 'Usuario_Asignado', 'ID_Cliente', 'Nombre_Cliente', 'Latitud_Tienda', 'Longitud_Tienda', 'Estado_Tarea', 'Tipo_Visita', 'Status_Tienda', 'URL_Foto_Fachada', 'URL_Foto_Monitor', 'Observacion', 'Fecha_Resolucion', 'Lat_Real_Tecnico', 'Lng_Real_Tecnico', 'Distancia_Metros', 'Es_Fuera_De_Ruta', 'Retiro_Equipos', 'Reinstalacion_Equipo', 'USB_Monitor', 'Mantenimiento', 'Confirma_Equipo', 'Confirma_USB', 'Retiro_USB', 'Seguimiento_De'];
 
 // Retiro de equipos (solo Visita Física + Avería NUC/RB). '' = sin retiro
 const RET = { nuc: 'NUC', rb: 'RB' };   // solo se recoge uno por visita
@@ -322,7 +322,7 @@ async function loadData(silent) {
   try {
     if (!silent) showLoading(true);
     const d = await api('adminData', { desde: S.rango.desde, hasta: S.rango.hasta });
-    S.usuarios = d.usuarios || []; S.clientes = d.clientes || []; S.visitas = d.visitas || []; S.updated = new Date();
+    S.usuarios = d.usuarios || []; S.clientes = d.clientes || []; S.visitas = d.visitas || []; S.segs = d.segs || []; S.cerradas = d.cerradas || null; S.updated = new Date();
     indexData();
     $('#updated').textContent = 'Actualizado ' + S.updated.toLocaleTimeString('es-PE');
     renderCurrent(silent);
@@ -446,8 +446,44 @@ function bucketLabels(res) {
   return keys.map(k => [k, k.slice(5) + '/' + k.slice(0, 4)]);
 }
 
+/* ---------- Seguimiento de tiendas cerradas ---------- */
+const SEGU_KEY = 'vta_seg_umbral';
+const tsMs = ts => new Date(String(ts || '').replace(' ', 'T') + '-05:00').getTime();   // Lima: UTC-5 fijo
+function segUmbral() { try { const o = JSON.parse(localStorage.getItem(SEGU_KEY)); if (o && o.n > 0 && (o.u === 'h' || o.u === 'd')) return o; } catch (_) {} return { n: 24, u: 'h' }; }
+const segUmbralH = () => { const o = segUmbral(); return o.n * (o.u === 'd' ? 24 : 1); };
+const segTxt = o => `${o.n} ${o.u === 'd' ? (o.n === 1 ? 'día' : 'días') : (o.n === 1 ? 'hora' : 'horas')}`;
+const haceTxt = h => h < 1 ? 'hace minutos' : h < 24 ? `hace ${Math.floor(h)} h` : `hace ${Math.floor(h / 24)} d${Math.floor(h % 24) ? ' ' + Math.floor(h % 24) + ' h' : ''}`;
+function segMap() {   // ID de la visita "Tienda Cerrada" -> visita de seguimiento que la actualizó
+  const m = {};
+  (S.segs || []).forEach(x => { m[x.Seguimiento_De] = x; });   // el servidor envía todos los seguimientos, sin importar el rango de fechas
+  return m;
+}
+// Tiendas que siguen "Tienda Cerrada" desde una visita (lista que envía el servidor, sin importar el rango) y llevan al menos el umbral sin actualizarse.
+// Las tiendas Retiradas o eliminadas no vienen en la lista.
+function cerradasSinSeg(tec) {
+  const ahora = Date.now(), umb = segUmbralH();
+  return (S.cerradas || []).filter(c => !tec || c.Usuario === tec)
+    .map(c => ({ v: { ID_Cliente: c.ID_Cliente, Nombre_Cliente: c.Nombre_Cliente, Usuario_Asignado: c.Usuario, Fecha_Resolucion: c.Fecha_Estado }, horas: (ahora - tsMs(c.Fecha_Estado)) / 3600000 }))
+    .filter(x => x.horas >= umb).sort((a, b) => b.horas - a.horas);
+}
+function avisoSegHTML() {
+  const o = segUmbral(), lst = cerradasSinSeg(S.filtroTec), top = lst.slice(0, 6);
+  return `<div class="card p-3.5 mt-3 ${lst.length ? 'border-amber-300 bg-amber-50' : ''}" id="segAviso">
+    <div class="flex flex-wrap items-center gap-2">
+      <div class="font-semibold text-sm">${lst.length ? '⏰' : '✅'} Tiendas cerradas sin seguimiento</div>
+      <span class="badge ${lst.length ? 'bg-amber-200 text-amber-900' : 'bg-green-100 text-green-700'}">${n0(lst.length)}</span>
+      <div class="ml-auto flex items-center gap-1.5 text-xs text-slate-600">Avisar desde
+        <input id="segN" type="number" min="1" max="999" class="inp !w-16 !py-1" value="${o.n}">
+        <select id="segU" class="inp !w-auto !py-1"><option value="h" ${o.u === 'h' ? 'selected' : ''}>horas</option><option value="d" ${o.u === 'd' ? 'selected' : ''}>días</option></select></div></div>
+    ${S.cerradas === null ? `<div class="text-xs text-amber-700 mt-1.5">Actualiza <b>Code.gs</b> y publica una nueva versión para activar este aviso.</div>` : lst.length ? `<div class="text-xs text-slate-600 mt-1.5">Su última visita fue <b>Tienda Cerrada</b> y llevan ${esc(segTxt(o))} o más sin actualizarse. Un Supervisor puede hacerlo en la app de campo (<i>“La tienda abrió: actualizar estado”</i>) o programar otra visita.</div>
+      <div class="mt-2 divide-y divide-amber-200 text-sm">${top.map(x => `<button class="w-full text-left py-1.5 flex items-center gap-2 hover:bg-amber-100 rounded px-1" data-cssel="${esc(x.v.ID_Cliente)}"><span class="flex-1 min-w-0"><b>${esc(x.v.Nombre_Cliente)}</b> <span class="text-xs text-slate-500">${esc(x.v.ID_Cliente)} · ${esc(nameOf(x.v.Usuario_Asignado))}</span></span><span class="text-xs font-semibold text-amber-800 whitespace-nowrap">${haceTxt(x.horas)}</span></button>`).join('')}</div>
+      ${lst.length > top.length ? `<div class="mt-2"><button class="btn btn-outline !py-1.5 !px-3 text-sm" data-tgofilter="cersinseg">Ver las ${n0(lst.length)} en Tiendas →</button></div>` : ''}`
+    : `<div class="text-xs text-slate-500 mt-1.5">Ninguna tienda cerrada lleva ${esc(segTxt(o))} o más sin actualizarse.</div>`}</div>`;
+}
+
 function applyDrill(list, d) {
-  return list.filter(v => (!d.tec || v.Usuario_Asignado === d.tec) && (!d.tipo || v.Tipo_Visita === d.tipo) && (!d.status || d.status.includes(v.Status_Tienda)) && (!d.bucket || bucketKey(v) === d.bucket) && (!d.fuera || v.Es_Fuera_De_Ruta === 'SI') && (!d.retiro || d.retiro.includes(v.Retiro_Equipos || '')) && (!d.reinst || d.reinst.includes(v.Reinstalacion_Equipo || '')) && (!d.usb || v.USB_Monitor === 'SI') && (!d.usbret || !!v.Retiro_USB) && (!d.mant || v.Mantenimiento === 'SI'));
+  const sm = d.recup || d.sinrec ? segMap() : null;
+  return list.filter(v => (!d.recup || sm[v.ID_Visita]) && (!d.sinrec || !sm[v.ID_Visita]) && (!d.tec || v.Usuario_Asignado === d.tec) && (!d.tipo || v.Tipo_Visita === d.tipo) && (!d.status || d.status.includes(v.Status_Tienda)) && (!d.bucket || bucketKey(v) === d.bucket) && (!d.fuera || v.Es_Fuera_De_Ruta === 'SI') && (!d.retiro || d.retiro.includes(v.Retiro_Equipos || '')) && (!d.reinst || d.reinst.includes(v.Reinstalacion_Equipo || '')) && (!d.usb || v.USB_Monitor === 'SI') && (!d.usbret || !!v.Retiro_USB) && (!d.mant || v.Mantenimiento === 'SI'));
 }
 
 function renderDash() {
@@ -481,7 +517,11 @@ function renderDash() {
       <div class="text-xs text-slate-400">${pct(tot, total)}% de las visitas resueltas</div></button>
       <div class="mt-2 divide-y divide-slate-100 text-sm">${rows.map(s => `<button class="w-full flex items-center justify-between py-1.5 hover:bg-slate-50 rounded" data-di="${D({ status: [s], label: s })}"><span class="flex items-center gap-2"><i class="dot" style="background:${col(s)}"></i>${s}</span><b>${st[s]}</b></button>`).join('')}</div></div>`;
 
+  const sm = segMap(), cerR = res.filter(v => v.Status_Tienda === 'Tienda Cerrada'), recup = cerR.filter(v => sm[v.ID_Visita]);
+  const recH = recup.length ? recup.reduce((a, v) => a + (tsMs(sm[v.ID_Visita].Fecha_Resolucion) - tsMs(v.Fecha_Resolucion)) / 3600000, 0) / recup.length : null;
+  const sinSeg = cerradasSinSeg(S.filtroTec);
   $('#v-dash').innerHTML = `${filterBar()}
+  ${avisoSegHTML()}
   ${!total && !pend.length ? `<div class="card p-4 mt-3 text-sm text-slate-500">No hay visitas para el rango y técnico seleccionados.</div>` : ''}
   <div class="sec">Volumen de visitas</div>
   <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -507,6 +547,14 @@ function renderDash() {
     ${group('Total averías', ave, 'text-red-600', AV, { status: AV, label: 'Total de averías' })}
     ${kpi('Tienda cerrada', n0(cer), { color: 'text-slate-700', dot: COLOR['Tienda Cerrada'], d: { status: ['Tienda Cerrada'], label: 'Tiendas cerradas' }, sub: `${pct(cer, total)}% · incidencia única` })}
     ${kpi('Solicitud de retiro', n0(ret), { color: 'text-violet-600', dot: COLOR['Solicitud de Retiro'], d: { status: ['Solicitud de Retiro'], label: 'Solicitudes de retiro' }, sub: `${pct(ret, total)}% · otra incidencia` })}
+  </div>
+
+  <div class="sec">Tienda cerrada · seguimiento <span class="normal-case font-normal text-slate-400">· cerradas del periodo que luego se activaron</span></div>
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+    ${kpi('Cerradas recuperadas', n0(recup.length), { color: 'text-emerald-600', dot: '#059669', d: { status: ['Tienda Cerrada'], recup: true, label: 'Tiendas cerradas que luego se activaron (seguimiento)' }, sub: `${pct(recup.length, cerR.length)}% de las ${n0(cerR.length)} cerradas` })}
+    ${kpi('Cerradas sin recuperar', n0(cerR.length - recup.length), { color: 'text-slate-700', dot: COLOR['Tienda Cerrada'], d: { status: ['Tienda Cerrada'], sinrec: true, label: 'Tiendas cerradas sin actualizar por seguimiento' }, sub: 'no tienen seguimiento' })}
+    <div class="card kpi cursor-default"><div class="text-xs font-semibold text-slate-500">Tiempo promedio de recuperación</div><div class="text-3xl font-bold text-sky-600 leading-tight">${recH === null ? '—' : recH < 24 ? Math.round(recH * 10) / 10 + ' h' : Math.round(recH / 24 * 10) / 10 + ' d'}</div><div class="text-xs text-slate-400 mt-0.5">desde la visita cerrada hasta el seguimiento</div></div>
+    <button class="card kpi" data-tgofilter="cersinseg"><div class="text-xs font-semibold text-slate-500">⏰ Sin seguimiento ≥ ${esc(segTxt(segUmbral()))}</div><div class="text-3xl font-bold ${sinSeg.length ? 'text-amber-600' : 'text-green-600'} leading-tight">${n0(sinSeg.length)}</div><div class="text-xs text-slate-400 mt-0.5">tiendas cerradas ahora · ver en Tiendas</div></button>
   </div>
 
   <div class="sec">Avería NUC/RB · retiro de equipos <span class="normal-case font-normal text-slate-400">· ${n0(rNuc)} NUC y ${n0(rRb)} RB recogidas</span></div>
@@ -640,7 +688,7 @@ function tableHTML(list, page, key) {
   const rows = list.slice(0, page * CONFIG.PAGE);
   return `<div class="overflow-x-auto"><table class="t"><thead><tr><th>Resolución</th><th>Técnico</th><th>Tienda</th><th>Tipo</th><th>Status</th><th>Dist.</th><th>Fotos</th><th>Observación</th></tr></thead><tbody>
     ${rows.map(v => `<tr><td class="whitespace-nowrap">${fmtDT(v.Fecha_Resolucion)}</td>
-      <td>${esc(nameOf(v.Usuario_Asignado))}${v.Es_Fuera_De_Ruta === 'SI' ? ' <span class="badge bg-amber-100 text-amber-700">Fuera de ruta</span>' : ''}</td>
+      <td>${esc(nameOf(v.Usuario_Asignado))}${v.Es_Fuera_De_Ruta === 'SI' ? ' <span class="badge bg-amber-100 text-amber-700">Fuera de ruta</span>' : ''}${v.Seguimiento_De ? ' <span class="badge bg-sky-100 text-sky-700" title="Actualiza la visita ' + esc(v.Seguimiento_De) + ' (tienda cerrada)">Seguimiento</span>' : ''}</td>
       <td><b>${esc(v.Nombre_Cliente)}</b><div class="text-xs text-slate-400">${esc(v.ID_Cliente)}</div></td>
       <td>${tipoBadge(v.Tipo_Visita)}</td>
       <td><span class="badge" style="background:${col(v.Status_Tienda)}1a;color:${col(v.Status_Tienda)}">${esc(v.Status_Tienda || '—')}</span>${v.Retiro_Equipos ? `<div class="mt-1"><span class="badge" style="background:#ffedd5;color:#c2410c">📦 ${esc(v.Retiro_Equipos)}</span></div>` : ''}${v.Reinstalacion_Equipo ? `<div class="mt-1"><span class="badge" style="background:#d1fae5;color:#047857">🔁 Reinstaló ${esc(v.Reinstalacion_Equipo)}</span></div>` : ''}${v.USB_Monitor === 'SI' ? `<div class="mt-1"><span class="badge" style="background:#e0e7ff;color:#4338ca">💾 USB</span></div>` : ''}${v.Mantenimiento === 'SI' ? `<div class="mt-1"><span class="badge" style="background:#e2e8f0;color:#334155">🛠️ Mantenimiento</span></div>` : ''}</td>
@@ -950,10 +998,14 @@ const estadoBadge = (t, big) => t.Estado_Tienda
   ? `<span class="badge ${big ? '!text-sm !px-3 !py-1' : ''}" style="background:${(ESTADO_COL[t.Estado_Tienda] || ['#f1f5f9', '#475569'])[0]};color:${(ESTADO_COL[t.Estado_Tienda] || ['#f1f5f9', '#475569'])[1]}">${esc(t.Estado_Tienda)}</span>`
   : '<span class="text-xs text-slate-400">Sin dato</span>';
 const origenTxt = o => o === 'Importado' ? 'base anterior' : o === 'Visita' ? 'visita' : o === 'Manual' ? 'marcado por Supervisor' : '';
+// Una tienda Retirada pasa a la vista "Retiradas +90 días" (candidatas a eliminar de la base)
+const RETIRADA_DIAS = 90;
 const TFILTROS = [['', 'Todas las tiendas'],
-  ['enlinea', 'Estado: En Línea'], ['pendiente', 'Estado: Pendiente'], ['averia', 'Estado: Avería'], ['cerrada', 'Estado: Tienda Cerrada'], ['solret', 'Estado: Solicitud de Retiro'], ['retirado', 'Estado: Retirado'], ['sinestado', 'Estado: sin dato'],
+  ['enlinea', 'Estado: En Línea'], ['pendiente', 'Estado: Pendiente'], ['averia', 'Estado: Avería'], ['cerrada', 'Estado: Tienda Cerrada'], ['solret', 'Estado: Solicitud de Retiro'], ['retirado', 'Estado: Retirado'], ['ret90', `Retiradas hace más de ${RETIRADA_DIAS} días`], ['cersinseg', 'Cerradas sin seguimiento'], ['sinestado', 'Estado: sin dato'],
   ['pend', 'Equipo pendiente de reinstalar'], ['sinval', 'Instalado sin validar'], ['usb', 'Con USB en monitor'], ['usbret', 'USB por retirar (Supervisor)'], ['nuc', 'Tiene NUC'], ['rb', 'Tiene RB'], ['sineq', 'Equipo sin dato'],
   ['sinvisita', 'Sin visitas'], ['atras', 'Sin visita hace más de 30 días'], ['sinmant', 'Sin mantenimiento registrado'], ['sincontacto', 'Sin contacto'], ['sindistrito', 'Sin distrito']];
+let CSS = new Set();       // tiendas cerradas sin seguimiento (según el umbral del aviso)
+function refreshCSS() { CSS = new Set(cerradasSinSeg('').map(x => x.v.ID_Cliente)); }
 const actv = t => t.Estado_Tienda !== 'Retirado';   // las tiendas Retiradas no cuentan en los indicadores de pendientes
 const TPRED = {
   '': () => true,
@@ -963,6 +1015,8 @@ const TPRED = {
   cerrada: t => t.Estado_Tienda === 'Tienda Cerrada',
   solret: t => t.Estado_Tienda === 'Solicitud de Retiro',
   retirado: t => t.Estado_Tienda === 'Retirado',
+  ret90: t => { if (t.Estado_Tienda !== 'Retirado') return false; const d = diasDesde(t.Retirada_Fecha); return d !== null && d > RETIRADA_DIAS; },
+  cersinseg: t => t.Estado_Tienda === 'Tienda Cerrada' && CSS.has(t.ID_Cliente),
   sinestado: t => !t.Estado_Tienda,
   pend: t => actv(t) && !!t.Equipo_Pendiente_Reinstalar,
   sinval: t => actv(t) && t.Estado_Equipo === 'Instalado sin validar',
@@ -1021,11 +1075,12 @@ function buildTiendas() {
 }
 
 function tiendaFiltrada() {
+  refreshCSS();
   const T = S.tienda, q = norm(T.q.trim()), qd = T.q.replace(/\D/g, '');
   return (T.data || []).filter(t => TPRED[T.filtro](t) && (!T.distrito || t.Distrito === T.distrito)
       && (!q || norm(t.Nombre_Cliente).includes(q) || norm(t.ID_Cliente).includes(q) || norm(nameOf(t.Ultimo_Tecnico)).includes(q) || norm(t.Ultima_Observacion).includes(q)
         || norm(t.Distrito).includes(q) || norm(t.Direccion).includes(q) || (qd.length >= 4 && ((t.Contacto_1 || '').includes(qd) || (t.Contacto_2 || '').includes(qd)))))
-    .sort((a, b) => String(a.Nombre_Cliente).localeCompare(String(b.Nombre_Cliente), 'es'));
+    .sort((a, b) => T.filtro === 'ret90' ? String(a.Retirada_Fecha).localeCompare(String(b.Retirada_Fecha)) : T.filtro === 'cersinseg' ? String(a.Fecha_Estado).localeCompare(String(b.Fecha_Estado)) : String(a.Nombre_Cliente).localeCompare(String(b.Nombre_Cliente), 'es'));
 }
 function refreshDistritos() {
   const sel = $('#tDist'); if (!sel) return;
@@ -1036,13 +1091,16 @@ function refreshDistritos() {
 
 function updateTiendas(soloLista) {
   const T = S.tienda; if (!$('#tList')) return;
+  refreshCSS();
   const data = T.data || [];
   $('#tWarn').innerHTML = !T.hoja ? '<div class="card p-3 mb-3 text-sm bg-amber-50 border-amber-200 text-amber-900">La hoja <b>Tiendas</b> todavía no existe en tu Google Sheet. Ejecuta <b>setupSheet</b> en Apps Script una vez; mientras tanto solo se muestra la lista de clientes sin datos de visitas.</div>'
     : T.setup ? '<div class="card p-3 mb-3 text-sm bg-amber-50 border-amber-200 text-amber-900">Faltan columnas nuevas en tu Google Sheet (estado, distrito, contactos, USB, retiros). Ejecuta <b>setupSheet</b> en Apps Script una vez para activarlas: no se pierde ningún dato.</div>' : '';
+  if (T.filtro === 'ret90') $('#tWarn').innerHTML += `<div class="card p-3 mb-3 text-sm bg-slate-50">Tiendas <b>Retiradas hace más de ${RETIRADA_DIAS} días</b>, de la más antigua a la más reciente. Si ya no las necesitas, selecciónalas con la casilla del encabezado y usa <b>🗑 Eliminar</b> para limpiar la base (sus visitas resueltas se conservan en el historial). Si quieres respaldo, exporta antes con ⬇ Excel.</div>`;
+  if (T.filtro === 'cersinseg') $('#tWarn').innerHTML += `<div class="card p-3 mb-3 text-sm bg-amber-50 border-amber-200 text-amber-900">Tiendas cuya última visita fue <b>Tienda Cerrada</b> y llevan <b>${esc(segTxt(segUmbral()))}</b> o más sin actualizarse (el umbral se cambia en el aviso del Dashboard). Ordenadas de la más antigua a la más reciente.</div>`;
   refreshDistritos();
-  const chips = [['', 'Total tiendas'], ['enlinea', 'En Línea'], ['pendiente', 'Pendiente'], ['averia', 'Avería'], ['cerrada', 'Tienda Cerrada'], ['solret', 'Solicitud de Retiro'], ['retirado', 'Retirado'], ['sinvisita', 'Sin visitas'], ['atras', '+30 días sin visita'],
+  const chips = [['', 'Total tiendas'], ['enlinea', 'En Línea'], ['pendiente', 'Pendiente'], ['averia', 'Avería'], ['cerrada', 'Tienda Cerrada'], ['cersinseg', 'Cerradas sin seguimiento'], ['solret', 'Solicitud de Retiro'], ['retirado', 'Retirado'], ['ret90', `Retiradas +${RETIRADA_DIAS} días`], ['sinvisita', 'Sin visitas'], ['atras', '+30 días sin visita'],
     ['nuc', 'Con NUC'], ['rb', 'Con RB'], ['sineq', 'Equipo sin dato'], ['pend', 'Pend. reinstalar'], ['sinval', 'Sin validar'], ['usb', 'Con USB'], ['usbret', 'USB por retirar']];
-  const chipCol = { enlinea: 'text-green-600', pendiente: 'text-amber-600', averia: 'text-red-600', cerrada: 'text-slate-600', solret: 'text-violet-700', retirado: 'text-slate-500', pend: 'text-amber-600', usb: 'text-indigo-600', usbret: 'text-red-600' };
+  const chipCol = { enlinea: 'text-green-600', pendiente: 'text-amber-600', averia: 'text-red-600', cerrada: 'text-slate-600', solret: 'text-violet-700', retirado: 'text-slate-500', ret90: 'text-red-600', cersinseg: 'text-amber-600', pend: 'text-amber-600', usb: 'text-indigo-600', usbret: 'text-red-600' };
   $('#tChips').innerHTML = chips.map(([k, l]) => `<button data-tchip="${k}" class="card kpi !p-2.5 ${T.filtro === k ? 'ring-2 ring-blue-500' : ''}"><div class="text-[11px] font-semibold text-slate-500 leading-tight">${l}</div><div class="text-2xl font-bold ${chipCol[k] || 'text-slate-800'}">${n0(data.filter(TPRED[k]).length)}</div></button>`).join('');
   const list = tiendaFiltrada();
   S.tiendaList = list;
@@ -1055,7 +1113,7 @@ function updateTiendas(soloLista) {
       <td><b>${esc(t.Nombre_Cliente)}</b><div class="text-xs text-slate-400">${esc(t.ID_Cliente)}${t.Distrito ? ' · ' + esc(t.Distrito) : ''}</div></td>
       <td class="whitespace-nowrap">${t.Ultima_Visita ? fmtD(t.Ultima_Visita) : '—'}<div class="text-xs ${diasCol(d)}">${diasTxt(d)}</div></td>
       <td>${t.Ultimo_Tecnico ? esc(nameOf(t.Ultimo_Tecnico)) : '—'}</td>
-      <td>${estadoBadge(t)}${t.Estado_Tienda === 'Avería' && /^Avería/.test(t.Ultimo_Status || '') ? `<div class="text-[11px] text-slate-500 mt-0.5">${esc(t.Ultimo_Status)}</div>` : ''}${t.Estado_Tienda && t.Origen_Estado === 'Importado' ? '<div class="text-[10px] text-slate-400 mt-0.5">base anterior</div>' : ''}${t.Estado_Tienda === 'Retirado' && t.Retirada_Fecha ? `<div class="text-[10px] text-slate-400 mt-0.5">desde ${fmtD(t.Retirada_Fecha)}</div>` : ''}</td>
+      <td>${estadoBadge(t)}${t.Estado_Tienda === 'Avería' && /^Avería/.test(t.Ultimo_Status || '') ? `<div class="text-[11px] text-slate-500 mt-0.5">${esc(t.Ultimo_Status)}</div>` : ''}${t.Estado_Tienda && t.Origen_Estado === 'Importado' ? '<div class="text-[10px] text-slate-400 mt-0.5">base anterior</div>' : ''}${t.Estado_Tienda === 'Retirado' && t.Retirada_Fecha ? `<div class="text-[10px] text-slate-400 mt-0.5">desde ${fmtD(t.Retirada_Fecha)} · ${diasTxt(diasDesde(t.Retirada_Fecha))}</div>` : ''}${t.Estado_Tienda === 'Tienda Cerrada' && CSS.has(t.ID_Cliente) ? '<div class="text-[10px] text-amber-700 font-semibold mt-0.5">⏰ sin seguimiento</div>' : ''}</td>
       <td><b>${esc(compTxt(t))}</b><div class="flex flex-wrap gap-1 mt-0.5">${tBadges(t)}</div></td></tr>`; }).join('')}</tbody></table></div>
     ${list.length > rows.length ? `<div class="p-3 text-center"><button class="btn btn-ghost" data-more="tienda">Mostrar más (${n0(list.length - rows.length)})</button></div>` : ''}`;
   renderSelBar();
@@ -1606,6 +1664,8 @@ function bindEvents() {
       S.rango = { preset: 'custom', desde: d, hasta: h }; S.drill = null; return loadData(false);
     }
     if ((el = t.closest('[data-di]'))) { const d = DR[+el.dataset.di]; if (d) setDrill(d); return; }
+    if ((el = t.closest('[data-cssel]'))) { S.tienda.sel = el.dataset.cssel; S.tienda.filtro = 'cersinseg'; S.tienda.page = 1; return go('tiendas'); }
+    if ((el = t.closest('[data-tgofilter]'))) { S.tienda.filtro = el.dataset.tgofilter; S.tienda.page = 1; return go('tiendas'); }
     if ((el = t.closest('[data-go]'))) { if (el.dataset.go === 'pend') S.pend.tec = S.filtroTec; return go(el.dataset.go); }
     if (t.closest('[data-drillclear]')) { S.drill = null; renderDrill(false); return; }
     if ((el = t.closest('[data-csv]'))) {
@@ -1675,6 +1735,11 @@ function bindEvents() {
     else if (id === 'aDestino') { S.asig.destino = t.value; updateAsigPlan(); }
     else if (id === 'aOmitir') { S.asig.omitir = t.checked; updateAsigPlan(); }
     else if (t.dataset.atec) { t.checked ? S.asig.tecs.add(t.dataset.atec) : S.asig.tecs.delete(t.dataset.atec); updateAsigPlan(); }
+    else if (id === 'segN' || id === 'segU') {
+      const n = Math.max(1, Math.min(999, Math.round(+$('#segN').value) || 24));
+      try { localStorage.setItem(SEGU_KEY, JSON.stringify({ n, u: $('#segU').value === 'd' ? 'd' : 'h' })); } catch (_) {}
+      renderCurrent(false);
+    }
     else if (id === 'lgFiltro') { S.logsFiltro = t.value; renderLogs(); }
   });
 
