@@ -112,6 +112,7 @@
     </header>
     <main id="content" class="flex-1 p-3 sm:p-5 max-w-[1500px] w-full mx-auto">
       <section id="v-dash" class="view hidden"></section>
+      <section id="v-inc" class="view hidden"></section>
       <section id="v-asig" class="view hidden"></section>
       <section id="v-pend" class="view hidden"></section>
       <section id="v-hist" class="view hidden"></section>
@@ -146,20 +147,20 @@ const CONFIG = {
 
 const TIPOS = ['Visita Física', 'Visita Remota', 'No Visitado'];
 const ACT = ['Activa Validada', 'Activa Sin Validación'];
-const AV = ['Avería ISP', 'Avería NUC/RB', 'Avería CAM', 'Avería Otros'];
+const AV = ['Avería ISP', 'Avería NUC/RB', 'Avería Otros'];   // Avería CAM eliminado (las visitas antiguas con CAM se muestran como Avería Otros)
 const INC = [...ACT, ...AV, 'Tienda Cerrada', 'Solicitud de Retiro'];
 const COLOR = {
   'Visita Física': '#2563eb', 'Visita Remota': '#8b5cf6', 'No Visitado': '#94a3b8',
   'Activa Validada': '#16a34a', 'Activa Sin Validación': '#84cc16',
-  'Avería ISP': '#dc2626', 'Avería NUC/RB': '#ea580c', 'Avería CAM': '#f59e0b', 'Avería Otros': '#be185d',
+  'Avería ISP': '#dc2626', 'Avería NUC/RB': '#ea580c', 'Avería Otros': '#be185d',
   'Tienda Cerrada': '#475569', 'Solicitud de Retiro': '#7c3aed'
 };
-const VCOLS = ['ID_Visita', 'Fecha_Asignacion', 'Usuario_Asignado', 'ID_Cliente', 'Nombre_Cliente', 'Latitud_Tienda', 'Longitud_Tienda', 'Estado_Tarea', 'Tipo_Visita', 'Status_Tienda', 'URL_Foto_Fachada', 'URL_Foto_Monitor', 'Observacion', 'Fecha_Resolucion', 'Lat_Real_Tecnico', 'Lng_Real_Tecnico', 'Distancia_Metros', 'Es_Fuera_De_Ruta', 'Retiro_Equipos', 'Reinstalacion_Equipo', 'USB_Monitor', 'Mantenimiento', 'Confirma_Equipo', 'Confirma_USB', 'Retiro_USB', 'Seguimiento_De', 'Fecha_Programada', 'Etiqueta'];
+const VCOLS = ['ID_Visita', 'Fecha_Asignacion', 'Usuario_Asignado', 'ID_Cliente', 'Nombre_Cliente', 'Latitud_Tienda', 'Longitud_Tienda', 'Estado_Tarea', 'Tipo_Visita', 'Status_Tienda', 'URL_Foto_Fachada', 'URL_Foto_Monitor', 'Observacion', 'Fecha_Resolucion', 'Lat_Real_Tecnico', 'Lng_Real_Tecnico', 'Distancia_Metros', 'Es_Fuera_De_Ruta', 'Retiro_Equipos', 'Reinstalacion_Equipo', 'USB_Monitor', 'Mantenimiento', 'Confirma_Equipo', 'Confirma_USB', 'Retiro_USB', 'Seguimiento_De', 'Fecha_Programada', 'Etiqueta', 'Incidencia', 'Perifericos', 'Perif_Resuelto', 'Se_Retira', 'No_Recogio', 'USB_Respuesta'];
 
 const ETIQUETAS = ['Avería', 'Mantenimiento', 'Reubicación', 'Instalación', 'Retiro', 'Fotografía'];
 const ETQ_ICON = { 'Avería': '🔧', 'Mantenimiento': '🛠️', 'Reubicación': '🚚', 'Instalación': '➕', 'Retiro': '📦', 'Fotografía': '📷' };
 const ETQ_COL = { 'Avería': ['#fee2e2', '#b91c1c'], 'Mantenimiento': ['#e2e8f0', '#334155'], 'Reubicación': ['#e0e7ff', '#4338ca'], 'Instalación': ['#d1fae5', '#047857'], 'Retiro': ['#ffedd5', '#c2410c'], 'Fotografía': ['#e0f2fe', '#0369a1'] };
-const SEG_STATUS = ['Tienda Cerrada', 'Activa Sin Validación', 'Avería ISP', 'Avería CAM', 'Avería Otros'];   // visitas que se pueden "recuperar" (igual que en Code.gs)
+const SEG_STATUS = ['Tienda Cerrada', 'Activa Sin Validación', 'Avería ISP', 'Avería Otros'];   // visitas que se pueden "recuperar" (igual que en Code.gs)
 const LAB_ESTADOS = ['Por recibir', 'En laboratorio', 'Reparado', 'Reemplazo', 'Enviado a tienda', 'Entregado', 'Baja'];
 const LAB_CERRADOS = ['Entregado', 'Baja'];
 const LAB_COL = { 'Por recibir': ['#fef3c7', '#b45309'], 'En laboratorio': ['#dbeafe', '#1d4ed8'], 'Reparado': ['#dcfce7', '#15803d'], 'Reemplazo': ['#ede9fe', '#6d28d9'], 'Enviado a tienda': ['#cffafe', '#0e7490'], 'Entregado': ['#f1f5f9', '#475569'], 'Baja': ['#fee2e2', '#b91c1c'] };
@@ -177,13 +178,14 @@ const ICONS = {
   store: '<path d="M3 9l1.5-5h15L21 9"/><path d="M4 9v11h16V9"/><path d="M3 9a3 3 0 0 0 6 0 3 3 0 0 0 6 0 3 3 0 0 0 6 0"/><path d="M10 20v-6h4v6"/>',
   team: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>',
   logs: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  inc: '<path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18h.01"/>',
   lab: '<path d="M9 3h6M10 3v6l-5 9a2 2 0 0 0 2 3h10a2 2 0 0 0 2-3l-5-9V3"/><path d="M8 15h8"/>'
 };
 const NAV = [
-  ['dash', 'Dashboard', 'dash'], ['asig', 'Asignación masiva', 'assign'], ['pend', 'Visitas pendientes', 'pend'],
+  ['dash', 'Dashboard', 'dash'], ['inc', 'Incidencias', 'inc'], ['asig', 'Asignación masiva', 'assign'], ['pend', 'Visitas pendientes', 'pend'],
   ['hist', 'Historial de visitas', 'hist'], ['tiendas', 'Información de Tienda', 'store'], ['lab', 'Laboratorio', 'lab'], ['equipo', 'Equipo', 'team'], ['logs', 'Accesos', 'logs']
 ];
-const TITLES = { dash: 'Dashboard', asig: 'Asignación masiva', pend: 'Visitas pendientes', hist: 'Historial de visitas', tiendas: 'Información de Tienda', lab: 'Laboratorio', equipo: 'Equipo', logs: 'Accesos al sistema' };
+const TITLES = { dash: 'Dashboard', inc: 'Incidencias', asig: 'Asignación masiva', pend: 'Visitas pendientes', hist: 'Historial de visitas', tiendas: 'Información de Tienda', lab: 'Laboratorio', equipo: 'Equipo', logs: 'Accesos al sistema' };
 
 /* =====================================================================
  *  UTILIDADES
@@ -271,7 +273,9 @@ const S = {
   asig: { etq: '', prog: '', q: '', ocultarPend: true, sel: new Set(), modo: 'zonas', destino: '', tecs: new Set(), tecsInit: false, omitir: true, page: 1 },
   pend: { q: '', tec: '', etq: '', etqSet: '', progSet: '', soloAtras: false, sel: new Set(), page: 1 },
   labv: { q: '', estado: '__abiertos', equipo: '', edad: '', lest: '', ldest: '', sel: new Set(), page: 1, data: null, err: '' },
-  lab: null,
+  lab: null, incs: null, cerradas: null,
+  incv: { tipo: '', estado: 'Abierta', q: '', sel: new Set(), page: 1, nota: '' },
+  rev: { f: 'prev', q: '', sel: new Set(), page: 1, status: 'Activa Validada', usuario: '', prog: '', etq: '' },
   hist: { q: '', tipo: '', status: '', fuera: false, page: 1 },
   tienda: { q: '', filtro: '', distrito: '', sel: '', page: 1, data: null, hoja: true, setup: false, hist: {}, chk: new Set() },
   logs: [], logsFiltro: '', timer: null
@@ -352,7 +356,9 @@ async function loadData(silent) {
   try {
     if (!silent) showLoading(true);
     const d = await api('adminData', { desde: S.rango.desde, hasta: S.rango.hasta });
-    S.usuarios = d.usuarios || []; S.clientes = d.clientes || []; S.visitas = d.visitas || []; S.segs = d.segs || []; S.cerradas = d.cerradas || null; S.lab = d.lab || null; S.updated = new Date();
+    S.usuarios = d.usuarios || []; S.clientes = d.clientes || []; S.visitas = d.visitas || []; S.segs = d.segs || []; S.cerradas = d.cerradas || null; S.incs = d.incs || null; S.lab = d.lab || null; S.updated = new Date();
+    S.visitas.forEach(v => { if (v.Status_Tienda === 'Avería CAM') v.Status_Tienda = 'Avería Otros'; });   // Avería CAM ya no existe: el historial antiguo cuenta como Avería Otros
+    { const ids = new Set((S.incs || []).map(r => r.ID_Inc)); S.incv.sel = new Set([...S.incv.sel].filter(id => ids.has(id))); const cs = new Set((S.cerradas || []).map(c => c.ID_Cliente)); S.rev.sel = new Set([...S.rev.sel].filter(id => cs.has(id))); }
     indexData();
     $('#updated').textContent = 'Actualizado ' + S.updated.toLocaleTimeString('es-PE');
     renderCurrent(silent);
@@ -370,16 +376,18 @@ function orderedUsers() { return [...S.usuarios].sort((a, b) => (a.Rol === b.Rol
  * ===================================================================== */
 function renderNav() {
   const n = S.visitas.filter(v => v.Estado_Tarea === 'Pendiente').length;
-  $('#nav').innerHTML = NAV.map(([k, l, i]) => `<button class="navb ${S.view === k ? 'on' : ''}" data-nav="${k}">${ico(i)}<span class="flex-1">${l}</span>${k === 'pend' && n ? `<span class="badge bg-red-600 text-white">${n}</span>` : ''}${k === 'lab' && S.lab && S.lab.abiertos ? `<span class="badge bg-sky-600 text-white">${S.lab.abiertos}</span>` : ''}</button>`).join('');
+  $('#nav').innerHTML = NAV.map(([k, l, i]) => `<button class="navb ${S.view === k ? 'on' : ''}" data-nav="${k}">${ico(i)}<span class="flex-1">${l}</span>${k === 'pend' && n ? `<span class="badge bg-red-600 text-white">${n}</span>` : ''}${k === 'inc' && S.incs && S.incs.filter(r => r.Estado === 'Abierta').length ? `<span class="badge bg-amber-500 text-white">${S.incs.filter(r => r.Estado === 'Abierta').length}</span>` : ''}${k === 'lab' && S.lab && S.lab.abiertos ? `<span class="badge bg-sky-600 text-white">${S.lab.abiertos}</span>` : ''}</button>`).join('');
 }
 function openDrawer(b) { $('#sidebar').classList.toggle('-translate-x-full', !b); $('#backdrop').classList.toggle('hidden', !b); }
 
 function go(v) {
+  if (v !== S.view) S.drill = null;
   S.view = v;
   $$('.view').forEach(x => x.classList.toggle('hidden', x.id !== 'v-' + v));
   $('#title').textContent = TITLES[v];
   renderNav(); openDrawer(false);
   if (v === 'dash') renderDash();
+  else if (v === 'inc') renderInc();
   else if (v === 'asig') buildAsig();
   else if (v === 'pend') buildPend();
   else if (v === 'hist') buildHist();
@@ -395,6 +403,7 @@ function renderCurrent(silent) {
   if (!$('#modal').classList.contains('hidden')) return;
   switch (S.view) {
     case 'dash': renderDash(); break;
+    case 'inc': renderInc(); break;
     case 'asig': if (silent) { updateAsigList(); updateAsigPlan(); } else buildAsig(); break;
     case 'pend': if (silent) updatePend(); else buildPend(); break;
     case 'hist': if (silent) updateHist(); else buildHist(); break;
@@ -519,14 +528,14 @@ function avisoSegHTML() {
       <div class="ml-auto flex items-center gap-1.5 text-xs text-slate-600">Avisar desde
         <input id="segN" type="number" min="1" max="999" class="inp !w-16 !py-1" value="${o.n}">
         <select id="segU" class="inp !w-auto !py-1"><option value="h" ${o.u === 'h' ? 'selected' : ''}>horas</option><option value="d" ${o.u === 'd' ? 'selected' : ''}>días</option></select></div></div>
-    ${S.cerradas === null ? `<div class="text-xs text-amber-700 mt-1.5">Actualiza <b>Code.gs</b> y publica una nueva versión para activar este aviso.</div>` : lst.length ? `<div class="text-xs text-slate-600 mt-1.5">Su última visita fue <b>Tienda Cerrada</b> y llevan ${esc(segTxt(o))} o más sin actualizarse. Un Supervisor puede hacerlo en la app de campo (<i>“La tienda abrió: actualizar estado”</i>) o programar otra visita (con fecha y hora).</div>
+    ${S.cerradas === null ? `<div class="text-xs text-amber-700 mt-1.5">Actualiza <b>Code.gs</b> y publica una nueva versión para activar este aviso.</div>` : lst.length ? `<div class="text-xs text-slate-600 mt-1.5">Su última visita fue <b>Tienda Cerrada</b> y llevan ${esc(segTxt(o))} o más sin actualizarse. Usa la <b>revisión de tiendas cerradas</b> (más abajo) para marcar las que ya están activas o volver a asignarlas; también se puede hacer en la app de campo (<i>“La tienda abrió: actualizar estado”</i>).</div>
       <div class="mt-2 divide-y divide-amber-200 text-sm">${top.map(x => `<button class="w-full text-left py-1.5 flex items-center gap-2 hover:bg-amber-100 rounded px-1" data-cssel="${esc(x.v.ID_Cliente)}"><span class="flex-1 min-w-0"><b>${esc(x.v.Nombre_Cliente)}</b> <span class="text-xs text-slate-500">${esc(x.v.ID_Cliente)} · ${esc(nameOf(x.v.Usuario_Asignado))}</span></span><span class="text-xs font-semibold text-amber-800 whitespace-nowrap">${haceTxt(x.horas)}</span></button>`).join('')}</div>
       ${lst.length > top.length ? `<div class="mt-2"><button class="btn btn-outline !py-1.5 !px-3 text-sm" data-tgofilter="cersinseg">Ver las ${n0(lst.length)} en Tiendas →</button></div>` : ''}`
     : `<div class="text-xs text-slate-500 mt-1.5">Ninguna tienda cerrada lleva ${esc(segTxt(o))} o más sin actualizarse.</div>`}</div>`;
 }
 
 function applyDrill(list, d) {
-  return list.filter(v => (!d.recup || (d.recup === 'cerrada' ? v.Recuperada && v.Status_Inicial === 'Tienda Cerrada' : d.recup === 'otras' ? v.Recuperada && v.Status_Inicial !== 'Tienda Cerrada' : !!v.Recuperada)) && (!d.sinrec || v.Status_Tienda === 'Tienda Cerrada') && (!d.tec || v.Usuario_Asignado === d.tec) && (!d.tipo || v.Tipo_Visita === d.tipo) && (!d.status || d.status.includes(v.Status_Tienda)) && (!d.bucket || bucketKey(v) === d.bucket) && (!d.fuera || v.Es_Fuera_De_Ruta === 'SI') && (!d.retiro || d.retiro.includes(v.Retiro_Equipos || '')) && (!d.reinst || d.reinst.includes(v.Reinstalacion_Equipo || '')) && (!d.usb || v.USB_Monitor === 'SI') && (!d.usbret || !!v.Retiro_USB) && (!d.mant || v.Mantenimiento === 'SI'));
+  return list.filter(v => (!d.recup || (d.recup === 'cerrada' ? v.Recuperada && v.Status_Inicial === 'Tienda Cerrada' : d.recup === 'otras' ? v.Recuperada && v.Status_Inicial !== 'Tienda Cerrada' : !!v.Recuperada)) && (!d.sinrec || v.Status_Tienda === 'Tienda Cerrada') && (!d.tec || v.Usuario_Asignado === d.tec) && (!d.tipo || v.Tipo_Visita === d.tipo) && (!d.status || d.status.includes(v.Status_Tienda)) && (!d.bucket || bucketKey(v) === d.bucket) && (!d.fuera || v.Es_Fuera_De_Ruta === 'SI') && (!d.retiro || d.retiro.includes(v.Retiro_Equipos || '')) && (!d.reinst || d.reinst.includes(v.Reinstalacion_Equipo || '')) && (!d.usb || v.USB_Monitor === 'SI') && (!d.usbret || !!v.Retiro_USB) && (!d.mant || v.Mantenimiento === 'SI') && (!d.norec || v.No_Recogio === 'SI') && (!d.sinNoRec || v.No_Recogio !== 'SI') && (!d.seret || v.Se_Retira === 'SI'));
 }
 
 function renderDash() {
@@ -563,8 +572,9 @@ function renderDash() {
   const sm = segMap(), esCer = v => v.Recuperada && v.Status_Inicial === 'Tienda Cerrada', cerR = res.filter(v => v.Status_Tienda === 'Tienda Cerrada' || esCer(v)), recup = cerR.filter(esCer), otras = res.filter(v => v.Recuperada && !esCer(v));
   const recH = recup.length ? recup.reduce((a, v) => a + (tsMs(sm[v.ID_Visita].Fecha_Resolucion) - tsMs(v.Fecha_Resolucion)) / 3600000, 0) / recup.length : null;
   const sinSeg = cerradasSinSeg(S.filtroTec);
+  const incAbN = (S.incs || []).filter(r => r.Estado === 'Abierta' && (!S.filtroTec || r.Tecnico === S.filtroTec)).length, porRev = (S.cerradas || []).filter(x => (!S.filtroTec || x.Usuario === S.filtroTec) && dOf(x.Fecha_Estado) < hoyLima() && !x.Pend_ID).length;
   $('#v-dash').innerHTML = `${filterBar()}
-  ${avisoSegHTML()}
+  <button class="card p-3 mt-3 w-full text-left flex flex-wrap items-center gap-2 ${incAbN || sinSeg.length || porRev ? 'border-amber-300 bg-amber-50' : ''}" data-go="inc"><span class="font-semibold text-sm">⚠️ Incidencias</span><span class="badge bg-amber-200 text-amber-900">${n0(incAbN)} abiertas</span><span class="badge bg-slate-200 text-slate-700">${n0(porRev)} tiendas cerradas por revisar</span><span class="badge bg-slate-200 text-slate-700">${n0(S.lab ? S.lab.abiertos : 0)} equipos en laboratorio</span><span class="ml-auto text-xs text-blue-600 font-semibold">Ir a Incidencias →</span></button>
   ${!total && !pend.length ? `<div class="card p-4 mt-3 text-sm text-slate-500">No hay visitas para el rango y técnico seleccionados.</div>` : ''}
   <div class="sec">Volumen de visitas</div>
   <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -592,39 +602,6 @@ function renderDash() {
     ${kpi('Solicitud de retiro', n0(ret), { color: 'text-violet-600', dot: COLOR['Solicitud de Retiro'], d: { status: ['Solicitud de Retiro'], label: 'Solicitudes de retiro' }, sub: `${pct(ret, total)}% · otra incidencia` })}
   </div>
 
-  <div class="sec">Tienda cerrada · seguimiento <span class="normal-case font-normal text-slate-400">· cerradas del periodo que luego se activaron</span></div>
-  <div class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
-    ${kpi('Cerradas recuperadas', n0(recup.length), { color: 'text-emerald-600', dot: '#059669', d: { recup: 'cerrada', label: 'Tiendas cerradas que luego se activaron (seguimiento)' }, sub: `${pct(recup.length, cerR.length)}% de las ${n0(cerR.length)} que se encontraron cerradas` })}
-    ${kpi('Cerradas sin recuperar', n0(cerR.length - recup.length), { color: 'text-slate-700', dot: COLOR['Tienda Cerrada'], d: { sinrec: true, label: 'Tiendas cerradas sin actualizar por seguimiento' }, sub: 'siguen cerradas (sin seguimiento)' })}
-    <div class="card kpi cursor-default"><div class="text-xs font-semibold text-slate-500">Tiempo promedio de recuperación</div><div class="text-3xl font-bold text-sky-600 leading-tight">${recH === null ? '—' : recH < 24 ? Math.round(recH * 10) / 10 + ' h' : Math.round(recH / 24 * 10) / 10 + ' d'}</div><div class="text-xs text-slate-400 mt-0.5">desde la visita cerrada hasta el seguimiento</div></div>
-    <button class="card kpi" data-tgofilter="cersinseg"><div class="text-xs font-semibold text-slate-500">⏰ Sin seguimiento ≥ ${esc(segTxt(segUmbral()))}</div><div class="text-3xl font-bold ${sinSeg.length ? 'text-amber-600' : 'text-green-600'} leading-tight">${n0(sinSeg.length)}</div><div class="text-xs text-slate-400 mt-0.5">tiendas cerradas ahora · ver en Tiendas</div></button>
-    ${kpi('Otras visitas recuperadas', n0(otras.length), { color: 'text-teal-600', dot: '#0d9488', d: { recup: 'otras', label: 'Visitas recuperadas por llamada o visita posterior (sin validar, averías, no visitado)' }, sub: 'sin validar, averías o no visitado que luego se resolvieron' })}
-  </div>
-
-  ${S.lab ? `<div class="sec">Laboratorio · equipos retirados <span class="normal-case font-normal text-slate-400">· NUC y RB que aún no vuelven a la tienda</span></div>
-  <div class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
-    ${kpi('En el circuito', n0(S.lab.abiertos), { color: 'text-sky-600', dot: '#0284c7', go: 'lab', sub: 'por recibir hasta enviados' })}
-    ${['Por recibir', 'En laboratorio', 'Reparado', 'Reemplazo', 'Enviado a tienda'].map(e => kpi(e, n0((S.lab.porEstado || {})[e] || 0), { color: 'text-slate-700', dot: LAB_COL[e][1], go: 'lab', sub: 'ver en Laboratorio' })).join('')}
-  </div>` : ''}
-
-  <div class="sec">Avería NUC/RB · retiro de equipos <span class="normal-case font-normal text-slate-400">· ${n0(rNuc)} NUC y ${n0(rRb)} RB recogidas</span></div>
-  <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
-    ${kpi('Averías NUC/RB', n0(nr.length), { color: 'text-orange-600', dot: COLOR['Avería NUC/RB'], d: { status: ['Avería NUC/RB'], label: 'Averías NUC/RB' }, sub: `${n0(rCon)} con retiro · ${pct(rCon, nr.length)}%` })}
-    ${kpi('Se recogió NUC', n0(rNuc), { color: 'text-sky-600', dot: RET_COLOR['NUC'], d: { status: ['Avería NUC/RB'], retiro: [RET.nuc], label: 'Avería NUC/RB · se recogió NUC' }, sub: `${pct(rNuc, nr.length)}% de las averías NUC/RB` })}
-    ${kpi('Se recogió RB', n0(rRb), { color: 'text-violet-600', dot: RET_COLOR['RB'], d: { status: ['Avería NUC/RB'], retiro: [RET.rb], label: 'Avería NUC/RB · se recogió RB' }, sub: `${pct(rRb, nr.length)}% de las averías NUC/RB` })}
-    ${kpi('Sin retiro', n0(rSin), { color: 'text-slate-600', dot: RET_COLOR[''], d: { status: ['Avería NUC/RB'], retiro: [''], label: 'Avería NUC/RB · sin retiro de equipos' }, sub: `${pct(rSin, nr.length)}% · incluye remotas` })}
-  </div>
-
-  <div class="sec">Reinstalación de equipos, USB y mantenimiento <span class="normal-case font-normal text-slate-400">· solo visitas físicas</span></div>
-  <div class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
-    ${kpi('Equipos reinstalados', n0(rein.length), { color: 'text-emerald-600', dot: REI_COLOR['NUC'], d: { reinst: ['NUC', 'RB'], label: 'Equipos reinstalados (NUC + RB)' }, sub: `${n0(okv(rein))} validados · ${n0(rein.length - okv(rein))} sin validar` })}
-    ${kpi('Se reinstaló NUC', n0(reN.length), { color: 'text-emerald-700', dot: REI_COLOR['NUC'], d: { reinst: ['NUC'], label: 'Se reinstaló NUC' }, sub: `${n0(okv(reN))} validados · ${n0(reN.length - okv(reN))} sin validar` })}
-    ${kpi('Se reinstaló RB', n0(reR.length), { color: 'text-emerald-500', dot: REI_COLOR['RB'], d: { reinst: ['RB'], label: 'Se reinstaló RB' }, sub: `${n0(okv(reR))} validados · ${n0(reR.length - okv(reR))} sin validar` })}
-    ${kpi('USB en monitor', n0(usbN), { color: 'text-indigo-600', dot: REI_COLOR.usb, d: { usb: true, label: 'Visitas con USB dejado en el monitor' }, sub: 'solo en Activa Sin Validación' })}
-    ${kpi('USB retirados', n0(usbRetN), { color: 'text-red-600', dot: '#dc2626', d: { usbret: true, label: 'Visitas en que un Supervisor retiró el USB del monitor' }, sub: 'solo lo retira un Supervisor' })}
-    ${kpi('Mantenimientos', n0(mantN), { color: 'text-slate-700', dot: REI_COLOR.mant, d: { mant: true, label: 'Visitas con mantenimiento' }, sub: `${pct(mantN, fis)}% de las visitas físicas` })}
-  </div>
-
   <div class="sec">Distribución y tendencia</div>
   <div class="grid grid-cols-1 lg:grid-cols-3 gap-3">
     <div class="card p-3"><div class="text-sm font-semibold mb-2">Tipo de visita</div><div class="chartbox" style="height:260px"><canvas id="ch-tipo"></canvas></div></div>
@@ -638,12 +615,11 @@ function renderDash() {
     ${techCard('ch-t2', 'Visitas activas por técnico', techs, res, ACT.map(s => ({ label: s, color: COLOR[s], match: v => v.Status_Tienda === s, drill: { status: [s] } })))}
     ${techCard('ch-t3', 'Averías por técnico', techs, res, AV.map(s => ({ label: s, color: COLOR[s], match: v => v.Status_Tienda === s, drill: { status: [s] } })))}
     ${techCard('ch-t5', 'Retiro de equipos por técnico (Avería NUC/RB)', techs, res, [RET.nuc, RET.rb].map(k => ({ label: 'Se recogió ' + k, color: RET_COLOR[k], match: v => v.Status_Tienda === 'Avería NUC/RB' && v.Retiro_Equipos === k, drill: { status: ['Avería NUC/RB'], retiro: [k] } })))}
-    ${techCard('ch-t6', 'Reinstalación, USB y mantenimiento por técnico', techs, res, [
+    ${techCard('ch-t6', 'Reinstalación y USB por técnico', techs, res, [
       { label: 'Reinstaló NUC', color: REI_COLOR['NUC'], match: v => v.Reinstalacion_Equipo === 'NUC', drill: { reinst: ['NUC'] } },
       { label: 'Reinstaló RB', color: REI_COLOR['RB'], match: v => v.Reinstalacion_Equipo === 'RB', drill: { reinst: ['RB'] } },
       { label: 'USB en monitor', color: REI_COLOR.usb, match: v => v.USB_Monitor === 'SI', drill: { usb: true } },
-      { label: 'USB retirado', color: '#dc2626', match: v => !!v.Retiro_USB, drill: { usbret: true } },
-      { label: 'Mantenimiento', color: REI_COLOR.mant, match: v => v.Mantenimiento === 'SI', drill: { mant: true } }], false)}
+      { label: 'USB retirado', color: '#dc2626', match: v => !!v.Retiro_USB, drill: { usbret: true } }], false)}
     ${techCard('ch-t4', 'Tiendas cerradas y no visitados por técnico', techs, res, [
       { label: 'Tienda Cerrada', color: COLOR['Tienda Cerrada'], match: v => v.Status_Tienda === 'Tienda Cerrada', drill: { status: ['Tienda Cerrada'] } },
       { label: 'No Visitado', color: COLOR['No Visitado'], match: v => v.Tipo_Visita === 'No Visitado', drill: { tipo: 'No Visitado' } }], false)}
@@ -675,6 +651,214 @@ function renderDash() {
   buildCharts();
   renderDrill(false);
 }
+
+/* =====================================================================
+ *  INCIDENCIAS (menú debajo del Dashboard)
+ *  Reúne lo que requiere seguimiento: tiendas cerradas, laboratorio, retiro de equipos, reinstalaciones/USB y las incidencias que marca el técnico
+ *  en la visita física (Solicita reubicación, Mudanza de tienda, Revisar periféricos). Es interactivo igual que el Dashboard (rango, técnico, tarjetas con detalle).
+ * ===================================================================== */
+const INC_TIPOS = [['Solicita reubicación', '🚚', '#4338ca', 'Mover la pantalla de zona, ordenar cables, bajar equipos…'], ['Mudanza de tienda', '📦', '#b45309', 'La tienda cambió de dirección: reubicar todos los equipos'], ['Revisar periféricos', '🔌', '#0e7490', 'Cable UTP / HDMI, cámara IP… se confirma en la siguiente visita']];
+const incTipoInfo = t => INC_TIPOS.find(x => x[0] === t) || [t, '⚠️', '#475569', ''];
+const incAb = r => r.Estado === 'Abierta';
+const incsF = () => (S.incs || []).filter(r => !S.filtroTec || r.Tecnico === S.filtroTec);
+function incStats(tipo) {
+  const L = incsF().filter(r => r.Tipo === tipo), { desde, hasta } = S.rango, inR = s => dOf(s) >= desde && dOf(s) <= hasta;
+  return { ab: L.filter(incAb).length, rep: L.filter(r => inR(r.Fecha)).length, res: L.filter(r => r.Estado === 'Resuelta' && inR(r.Fecha_Cierre)).length, viejas: L.filter(r => incAb(r) && diasDesde(r.Fecha) > 7).length };
+}
+const kpiH = (label, val, o = {}) => `<button class="card kpi" ${o.d !== undefined ? `data-di="${D(o.d)}"` : ''} ${o.go ? `data-go="${o.go}"` : ''} ${o.raw || ''}>
+    <div class="text-xs font-semibold text-slate-500 flex items-center gap-1.5">${o.dot ? `<i class="dot" style="background:${o.dot}"></i>` : ''}${label}</div>
+    <div class="text-3xl font-bold ${o.color || 'text-slate-800'} leading-tight">${val}</div>
+    <div class="text-xs text-slate-400 mt-0.5">${o.sub || '&nbsp;'}</div>${o.extra || ''}</button>`;
+
+function renderInc() {
+  destroyCharts(); DR = [];
+  const { res } = sets(true), c = fn => res.filter(fn).length;
+  const fis = c(v => v.Tipo_Visita === 'Visita Física');
+  const nr = res.filter(v => v.Status_Tienda === 'Avería NUC/RB');
+  const rc = k => nr.filter(v => (v.Retiro_Equipos || '') === k).length;
+  const rNuc = rc(RET.nuc), rRb = rc(RET.rb), rCon = rNuc + rRb, rNo = nr.filter(v => v.No_Recogio === 'SI').length, rSin = Math.max(0, nr.length - rCon - rNo);
+  const seRet = c(v => v.Se_Retira === 'SI');
+  const rein = res.filter(v => v.Reinstalacion_Equipo), reN = rein.filter(v => v.Reinstalacion_Equipo === 'NUC'), reR = rein.filter(v => v.Reinstalacion_Equipo === 'RB');
+  const okv = a => a.filter(v => v.Status_Tienda === 'Activa Validada').length;
+  const usbN = c(v => v.USB_Monitor === 'SI'), usbRetN = c(v => !!v.Retiro_USB), mantN = c(v => v.Mantenimiento === 'SI');
+  const sm = segMap(), esCer = v => v.Recuperada && v.Status_Inicial === 'Tienda Cerrada', cerR = res.filter(v => v.Status_Tienda === 'Tienda Cerrada' || esCer(v)), recup = cerR.filter(esCer), otras = res.filter(v => v.Recuperada && !esCer(v));
+  const recH = recup.length ? recup.reduce((a, v) => a + (tsMs(sm[v.ID_Visita].Fecha_Resolucion) - tsMs(v.Fecha_Resolucion)) / 3600000, 0) / recup.length : null;
+  const sinSeg = cerradasSinSeg(S.filtroTec);
+  const incKpi = ([t, ic, color, ayuda]) => { const s = incStats(t); return kpiH(`${ic} ${t}`, n0(s.ab), { color: s.ab ? '' : 'text-green-600', dot: color, raw: `data-ikpi="${esc(t)}"`, sub: `abiertas · ${n0(s.rep)} reportadas en el periodo · ${n0(s.res)} resueltas${s.viejas ? ` · <b class="text-red-600">${n0(s.viejas)} con +7 días</b>` : ''}`, extra: `<div class="text-[11px] text-slate-400 mt-1">${esc(ayuda)}</div>` }); };
+  const totAb = incsF().filter(incAb).length;
+  $('#v-inc').innerHTML = `${filterBar()}
+  ${avisoSegHTML()}
+
+  <div class="sec">Incidencias marcadas en las visitas <span class="normal-case font-normal text-slate-400">· el técnico las marca (opcional) en Visita Física; ${n0(totAb)} abiertas ahora</span></div>
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-3">${INC_TIPOS.map(incKpi).join('')}</div>
+  <div id="incBox" class="mt-3"></div>
+
+  <div class="sec">Tienda cerrada · seguimiento <span class="normal-case font-normal text-slate-400">· cerradas del periodo que luego se activaron</span></div>
+  <div class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
+    ${kpiH('Cerradas recuperadas', n0(recup.length), { color: 'text-emerald-600', dot: '#059669', d: { recup: 'cerrada', label: 'Tiendas cerradas que luego se activaron (seguimiento)' }, sub: `${pct(recup.length, cerR.length)}% de las ${n0(cerR.length)} que se encontraron cerradas` })}
+    ${kpiH('Cerradas sin recuperar', n0(cerR.length - recup.length), { color: 'text-slate-700', dot: COLOR['Tienda Cerrada'], d: { sinrec: true, label: 'Tiendas cerradas sin actualizar por seguimiento' }, sub: 'siguen cerradas (sin seguimiento)' })}
+    <div class="card kpi cursor-default"><div class="text-xs font-semibold text-slate-500">Tiempo promedio de recuperación</div><div class="text-3xl font-bold text-sky-600 leading-tight">${recH === null ? '—' : recH < 24 ? Math.round(recH * 10) / 10 + ' h' : Math.round(recH / 24 * 10) / 10 + ' d'}</div><div class="text-xs text-slate-400 mt-0.5">desde la visita cerrada hasta el seguimiento</div></div>
+    <button class="card kpi" data-tgofilter="cersinseg"><div class="text-xs font-semibold text-slate-500">⏰ Sin seguimiento ≥ ${esc(segTxt(segUmbral()))}</div><div class="text-3xl font-bold ${sinSeg.length ? 'text-amber-600' : 'text-green-600'} leading-tight">${n0(sinSeg.length)}</div><div class="text-xs text-slate-400 mt-0.5">tiendas cerradas ahora · ver en Tiendas</div></button>
+    ${kpiH('Otras visitas recuperadas', n0(otras.length), { color: 'text-teal-600', dot: '#0d9488', d: { recup: 'otras', label: 'Visitas recuperadas por llamada o visita posterior (sin validar, averías, no visitado)' }, sub: 'sin validar, averías o no visitado que luego se resolvieron' })}
+  </div>
+  <div id="revBox" class="mt-3"></div>
+
+  ${S.lab ? `<div class="sec">Laboratorio · equipos retirados <span class="normal-case font-normal text-slate-400">· NUC y RB que aún no vuelven a la tienda</span></div>
+  <div class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
+    ${kpiH('En el circuito', n0(S.lab.abiertos), { color: 'text-sky-600', dot: '#0284c7', go: 'lab', sub: 'por recibir hasta enviados' })}
+    ${['Por recibir', 'En laboratorio', 'Reparado', 'Reemplazo', 'Enviado a tienda'].map(e => kpiH(e, n0((S.lab.porEstado || {})[e] || 0), { color: 'text-slate-700', dot: LAB_COL[e][1], go: 'lab', sub: 'ver en Laboratorio' })).join('')}
+  </div>` : ''}
+
+  <div class="sec">Avería NUC/RB · retiro de equipos <span class="normal-case font-normal text-slate-400">· ${n0(rNuc)} NUC y ${n0(rRb)} RB recogidas</span></div>
+  <div class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
+    ${kpiH('Averías NUC/RB', n0(nr.length), { color: 'text-orange-600', dot: COLOR['Avería NUC/RB'], d: { status: ['Avería NUC/RB'], label: 'Averías NUC/RB' }, sub: `${n0(rCon)} con retiro · ${pct(rCon, nr.length)}%` })}
+    ${kpiH('Se recogió NUC', n0(rNuc), { color: 'text-sky-600', dot: RET_COLOR['NUC'], d: { status: ['Avería NUC/RB'], retiro: [RET.nuc], label: 'Avería NUC/RB · se recogió NUC' }, sub: `${pct(rNuc, nr.length)}% de las averías NUC/RB` })}
+    ${kpiH('Se recogió RB', n0(rRb), { color: 'text-violet-600', dot: RET_COLOR['RB'], d: { status: ['Avería NUC/RB'], retiro: [RET.rb], label: 'Avería NUC/RB · se recogió RB' }, sub: `${pct(rRb, nr.length)}% de las averías NUC/RB` })}
+    ${kpiH('No se recogió', n0(rNo), { color: 'text-red-600', dot: '#dc2626', d: { status: ['Avería NUC/RB'], norec: true, label: 'Avería NUC/RB · no se recogió el equipo (ver motivo en la observación)' }, sub: `${pct(rNo, nr.length)}% · motivo en la observación` })}
+    ${kpiH('Sin dato de retiro', n0(rSin), { color: 'text-slate-600', dot: RET_COLOR[''], d: { status: ['Avería NUC/RB'], retiro: [''], sinNoRec: true, label: 'Avería NUC/RB · sin dato de retiro (remotas o anteriores a la respuesta obligatoria)' }, sub: `${pct(rSin, nr.length)}% · remotas o anteriores` })}
+    ${kpiH('Retirados por solicitud de retiro', n0(seRet), { color: 'text-violet-700', dot: '#7c3aed', d: { seret: true, label: 'Solicitud de retiro · se retiró el equipo (pasó al Laboratorio)' }, sub: 'pasan solos al Laboratorio' })}
+  </div>
+
+  <div class="sec">Reinstalación de equipos, USB y Mantenimiento <span class="normal-case font-normal text-slate-400">· solo visitas físicas</span></div>
+  <div class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
+    ${kpiH('Equipos reinstalados', n0(rein.length), { color: 'text-emerald-600', dot: REI_COLOR['NUC'], d: { reinst: ['NUC', 'RB'], label: 'Equipos reinstalados (NUC + RB)' }, sub: `${n0(okv(rein))} validados · ${n0(rein.length - okv(rein))} sin validar` })}
+    ${kpiH('Se reinstaló NUC', n0(reN.length), { color: 'text-emerald-700', dot: REI_COLOR['NUC'], d: { reinst: ['NUC'], label: 'Se reinstaló NUC' }, sub: `${n0(okv(reN))} validados · ${n0(reN.length - okv(reN))} sin validar` })}
+    ${kpiH('Se reinstaló RB', n0(reR.length), { color: 'text-emerald-500', dot: REI_COLOR['RB'], d: { reinst: ['RB'], label: 'Se reinstaló RB' }, sub: `${n0(okv(reR))} validados · ${n0(reR.length - okv(reR))} sin validar` })}
+    ${kpiH('USB en monitor', n0(usbN), { color: 'text-indigo-600', dot: REI_COLOR.usb, d: { usb: true, label: 'Visitas con USB dejado en el monitor' }, sub: 'solo en Activa Sin Validación' })}
+    ${kpiH('USB retirados', n0(usbRetN), { color: 'text-red-600', dot: '#dc2626', d: { usbret: true, label: 'Visitas en que un Supervisor retiró el USB del monitor' }, sub: 'solo lo retira un Supervisor' })}
+    ${mantN ? kpiH('Mantenimientos (histórico)', n0(mantN), { color: 'text-slate-700', dot: REI_COLOR.mant, d: { mant: true, label: 'Visitas con mantenimiento (ya no se pregunta)' }, sub: `${pct(mantN, fis)}% de las visitas físicas · ya no se registra` }) : ''}
+  </div>
+
+  <div id="drillBoxI" class="mt-5"></div>`;
+  updateIncList(); updateRev(); renderDrill(false);
+}
+
+/* ---- Lista de incidencias (reubicación, mudanza, periféricos) ---- */
+function incFiltered() {
+  const I = S.incv, q = norm(I.q.trim());
+  return incsF().filter(r => (!I.tipo || r.Tipo === I.tipo) && (I.estado === '' ? true : I.estado === 'Abierta' ? incAb(r) : r.Estado === I.estado) && (!q || norm(r.Nombre_Cliente).includes(q) || norm(r.ID_Cliente).includes(q) || norm(r.Detalle).includes(q) || norm(nameOf(r.Tecnico)).includes(q)))
+    .sort((a, b) => incAb(a) !== incAb(b) ? (incAb(a) ? -1 : 1) : incAb(a) ? String(a.Fecha).localeCompare(String(b.Fecha)) : String(b.Fecha_Cierre).localeCompare(String(a.Fecha_Cierre)));
+}
+function updateIncList() {
+  const box = $('#incBox'); if (!box) return;
+  const I = S.incv, d = S.incs;
+  if (d === null) { box.innerHTML = `<div class="card p-3 text-sm text-amber-800 bg-amber-50 border-amber-300">Actualiza <b>Code.gs</b>, ejecuta <b>setupSheet</b> y publica una nueva versión del Web App para activar las incidencias.</div>`; return; }
+  const list = incFiltered(); S.incList = list;
+  const rows = list.slice(0, I.page * CONFIG.PAGE);
+  const todas = incsF();
+  const chip = (k, l, on, extra) => `<button class="chip ${on ? 'chip-on' : ''}" ${extra}>${l}</button>`;
+  box.innerHTML = `<div class="card overflow-hidden"><div class="p-3 flex flex-wrap items-center gap-1.5 border-b border-slate-100">
+      ${chip('', `Todas (${n0(todas.length)})`, !I.tipo, 'data-itipo=""')}${INC_TIPOS.map(([t, ic]) => chip(t, `${ic} ${t} (${n0(todas.filter(r => r.Tipo === t).length)})`, I.tipo === t, `data-itipo="${esc(t)}"`)).join('')}
+      <span class="mx-1 text-slate-300">|</span>
+      ${[['Abierta', 'Abiertas'], ['Resuelta', 'Resueltas'], ['', 'Todas']].map(([k, l]) => chip(k, l, I.estado === k, `data-iestado="${k}"`)).join('')}
+      <input id="iQ" type="search" class="inp !w-48 ml-auto" placeholder="Buscar tienda o técnico" value="${esc(I.q)}">
+      <button class="btn btn-outline !py-1.5" data-iact="csv">CSV</button></div>
+    ${rows.length ? `<label class="flex items-center gap-3 p-3 border-b border-slate-100 cursor-pointer text-sm font-medium"><input id="iAll" type="checkbox" ${list.length && list.every(r => I.sel.has(r.ID_Inc)) ? 'checked' : ''}><span id="iCnt">${n0(list.length)} incidencias${I.sel.size ? ` · ${n0(I.sel.size)} seleccionadas` : ''}</span></label>
+    <div class="overflow-x-auto"><table class="t"><thead><tr><th></th><th>Incidencia</th><th>Tienda</th><th>Reportada</th><th>Técnico</th><th>Observación de la visita</th><th>Estado</th></tr></thead><tbody>
+    ${rows.map(r => { const inf = incTipoInfo(r.Tipo), dias = diasDesde(r.Fecha); return `<tr><td><input type="checkbox" data-ick="${esc(r.ID_Inc)}" ${I.sel.has(r.ID_Inc) ? 'checked' : ''}></td>
+      <td><span class="badge" style="background:${inf[2]}1a;color:${inf[2]}">${inf[1]} ${esc(r.Tipo)}</span></td>
+      <td><b>${esc(r.Nombre_Cliente)}</b><div class="text-xs text-slate-400">${esc(r.ID_Cliente)}</div></td>
+      <td class="whitespace-nowrap">${fmtD(r.Fecha)}${incAb(r) ? `<div class="text-xs ${dias > 7 ? 'text-red-600 font-semibold' : 'text-slate-500'}">${dias === 0 ? 'hoy' : 'hace ' + dias + ' d'}</div>` : ''}</td>
+      <td>${esc(nameOf(r.Tecnico))}</td>
+      <td class="min-w-[160px] max-w-[300px] text-slate-600">${esc(r.Detalle)}</td>
+      <td>${incAb(r) ? '<span class="badge bg-amber-100 text-amber-800">Abierta</span>' : '<span class="badge bg-green-100 text-green-700">Resuelta</span>'}${!incAb(r) ? `<div class="text-[10px] text-slate-400 mt-0.5">${fmtD(r.Fecha_Cierre)} · ${esc(nameOf(r.Cerrado_Por))}${r.ID_Visita_Cierre ? ' · en visita' : ''}</div>` : ''}</td></tr>`; }).join('')}</tbody></table></div>
+    ${list.length > rows.length ? `<div class="p-3 text-center"><button class="btn btn-ghost" data-more="inc">Mostrar más (${n0(list.length - rows.length)})</button></div>` : ''}`
+    : `<div class="p-8 text-center text-sm text-slate-500">${todas.length ? 'No hay incidencias con ese filtro.' : 'Todavía no hay incidencias. Aparecen aquí cuando un técnico marca “Solicita reubicación”, “Mudanza de tienda” o “Revisar periféricos” en una visita física.'}</div>`}</div>
+    <div id="incBar" class="sticky bottom-3 mt-3 z-10"></div>`;
+  updateIncBar();
+}
+function updateIncBar() {
+  const I = S.incv, n = I.sel.size, bar = $('#incBar'); if (!bar) return;
+  const c = $('#iCnt'); if (c) c.textContent = `${n0((S.incList || []).length)} incidencias${n ? ` · ${n0(n)} seleccionadas` : ''}`;
+  bar.innerHTML = n ? `<div class="card p-3 shadow-xl border-blue-300 flex flex-wrap items-center gap-2"><b class="text-sm">${n0(n)} seleccionadas</b>
+    <input id="iNota" class="inp !w-56 ml-auto" maxlength="200" placeholder="Nota (opcional)" value="${esc(I.nota)}">
+    <button class="btn btn-primary" data-iact="resolver">✅ Marcar resuelta</button>
+    <button class="btn btn-outline" data-iact="reabrir">↩ Reabrir</button>
+    <button class="btn btn-ghost" data-iact="limpiar">Limpiar</button></div>` : '';
+}
+async function incAction(kind) {
+  const I = S.incv;
+  if (kind === 'csv') { const l = S.incList || []; if (!l.length) return toast('No hay datos para exportar', 'warn'); return csvDownload(['ID_Inc', 'Fecha', 'ID_Cliente', 'Nombre_Cliente', 'Tipo', 'Tecnico', 'Estado', 'Fecha_Cierre', 'Cerrado_Por', 'Detalle', 'Historial'], l.map(r => [r.ID_Inc, r.Fecha, r.ID_Cliente, r.Nombre_Cliente, r.Tipo, r.Tecnico, r.Estado, r.Fecha_Cierre, r.Cerrado_Por, r.Detalle, r.Historial]), `incidencias_${hoyLima()}.csv`); }
+  if (kind === 'limpiar') { I.sel.clear(); return updateIncList(); }
+  const ids = [...I.sel]; if (!ids.length) return;
+  const accion = kind === 'reabrir' ? 'reabrir' : 'resolver';
+  if (!confirm(accion === 'resolver' ? `¿Marcar ${ids.length} incidencia(s) como resueltas?` : `¿Reabrir ${ids.length} incidencia(s)?`)) return;
+  showLoading(true, 'Actualizando…'); let ok = 0;
+  try { for (const lote of chunk(ids, 100)) { const r = await api('updateInc', { ids: lote, accion, detalle: I.nota }); ok += r.actualizadas; } toast(`${ok} incidencia(s) ${accion === 'resolver' ? 'resueltas' : 'reabiertas'}`, 'ok'); I.sel.clear(); I.nota = ''; }
+  catch (e) { toast(`${e.message} (actualizadas: ${ok})`, 'error'); }
+  await loadData(true); showLoading(false);
+}
+
+/* ---- Revisión de tiendas cerradas (día siguiente) ---- */
+const REV_FILTROS = [['prev', 'Por revisar (días anteriores)'], ['hoy', 'Cerradas hoy'], ['reasig', 'Ya reasignadas'], ['todas', 'Todas']];
+function revFiltered() {
+  const R = S.rev, hoy = hoyLima(), q = norm(R.q.trim());
+  return (S.cerradas || []).filter(c => (!S.filtroTec || c.Usuario === S.filtroTec) && (!q || norm(c.Nombre_Cliente).includes(q) || norm(c.ID_Cliente).includes(q))
+    && (R.f === 'todas' ? true : R.f === 'hoy' ? dOf(c.Fecha_Estado) === hoy && !c.Pend_ID : R.f === 'reasig' ? !!c.Pend_ID : dOf(c.Fecha_Estado) < hoy && !c.Pend_ID))
+    .sort((a, b) => String(a.Fecha_Estado).localeCompare(String(b.Fecha_Estado)));
+}
+function updateRev() {
+  const box = $('#revBox'); if (!box) return;
+  const R = S.rev, all = (S.cerradas || []).filter(c => !S.filtroTec || c.Usuario === S.filtroTec), hoy = hoyLima();
+  if (S.cerradas === null) { box.innerHTML = ''; return; }
+  const cnt = k => all.filter(c => k === 'todas' ? true : k === 'hoy' ? dOf(c.Fecha_Estado) === hoy && !c.Pend_ID : k === 'reasig' ? !!c.Pend_ID : dOf(c.Fecha_Estado) < hoy && !c.Pend_ID).length;
+  const list = revFiltered(); S.revList = list;
+  const rows = list.slice(0, R.page * CONFIG.PAGE), ahora = Date.now();
+  const tecs = orderedUsers();
+  box.innerHTML = `<div class="card overflow-hidden"><div class="p-3 border-b border-slate-100">
+      <div class="font-semibold text-sm">🔎 Revisión de tiendas cerradas <span class="font-normal text-slate-500">· las tiendas que el técnico encontró cerradas y siguen así en el sistema</span></div>
+      <div class="text-xs text-slate-500 mt-0.5">Muchas se activan solas al día siguiente. Marca las que <b>ya están activas</b> (no necesitan visita) y <b>reasigna</b> las que siguen cerradas a un técnico o supervisor.</div>
+      <div class="flex flex-wrap items-center gap-1.5 mt-2">${REV_FILTROS.map(([k, l]) => `<button class="chip ${R.f === k ? 'chip-on' : ''}" data-revf="${k}">${l} (${n0(cnt(k))})</button>`).join('')}
+        <input id="revQ" type="search" class="inp !w-48 ml-auto" placeholder="Buscar tienda" value="${esc(R.q)}"></div></div>
+    ${rows.length ? `<label class="flex items-center gap-3 p-3 border-b border-slate-100 cursor-pointer text-sm font-medium"><input id="revAll" type="checkbox" ${list.every(c => R.sel.has(c.ID_Cliente)) ? 'checked' : ''}><span id="revCnt">${n0(list.length)} tiendas</span></label>
+    <div class="overflow-x-auto"><table class="t"><thead><tr><th></th><th>Tienda</th><th>Encontrada por</th><th>Cerrada desde</th><th>Situación</th></tr></thead><tbody>
+    ${rows.map(c => { const h = (ahora - tsMs(c.Fecha_Estado)) / 3600000; return `<tr><td><input type="checkbox" data-revck="${esc(c.ID_Cliente)}" ${R.sel.has(c.ID_Cliente) ? 'checked' : ''}></td>
+      <td><b>${esc(c.Nombre_Cliente)}</b><div class="text-xs text-slate-400">${esc(c.ID_Cliente)}</div></td>
+      <td>${esc(nameOf(c.Usuario))}</td>
+      <td class="whitespace-nowrap">${fmtDT(c.Fecha_Estado)}<div class="text-xs ${h >= 24 ? 'text-amber-700 font-semibold' : 'text-slate-500'}">${haceTxt(h)}</div></td>
+      <td>${c.Pend_ID ? `<span class="badge bg-sky-100 text-sky-700">↩ Reasignada a ${esc(nameOf(c.Pend_Usuario))}</span>${c.Pend_Programada ? `<div class="text-[10px] text-slate-500 mt-0.5">📅 ${fmtDT(c.Pend_Programada)}</div>` : ''}` : '<span class="badge bg-amber-100 text-amber-800">Sin revisar</span>'}</td></tr>`; }).join('')}</tbody></table></div>
+    ${list.length > rows.length ? `<div class="p-3 text-center"><button class="btn btn-ghost" data-more="rev">Mostrar más (${n0(list.length - rows.length)})</button></div>` : ''}`
+    : `<div class="p-6 text-center text-sm text-slate-500">${all.length ? 'No hay tiendas con ese filtro.' : '✅ No hay tiendas cerradas pendientes.'}</div>`}</div>
+    <div id="revBar" class="sticky bottom-3 mt-3 z-10"></div>`;
+  updateRevBar();
+}
+function updateRevBar() {
+  const R = S.rev, n = R.sel.size, bar = $('#revBar'); if (!bar) return;
+  const c = $('#revCnt'); if (c) c.textContent = `${n0((S.revList || []).length)} tiendas${n ? ` · ${n0(n)} seleccionadas` : ''}`;
+  const tecs = orderedUsers();
+  bar.innerHTML = n ? `<div class="card p-3 shadow-xl border-blue-300 space-y-2"><div class="flex flex-wrap items-center gap-2"><b class="text-sm">${n0(n)} seleccionadas</b><button class="btn btn-ghost ml-auto" data-revact="limpiar">Limpiar</button></div>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
+      <div class="rounded-xl border border-emerald-200 bg-emerald-50 p-2.5 flex flex-wrap items-center gap-2"><div class="text-sm font-semibold text-emerald-800 w-full">✅ Ya están activas (no necesitan visita)</div>
+        <select id="revSt" class="inp !w-auto"><option ${R.status === 'Activa Validada' ? 'selected' : ''}>Activa Validada</option><option ${R.status === 'Activa Sin Validación' ? 'selected' : ''}>Activa Sin Validación</option></select>
+        <button class="btn btn-primary" data-revact="activa">Marcar activas (${n0(n)})</button></div>
+      <div class="rounded-xl border border-sky-200 bg-sky-50 p-2.5 flex flex-wrap items-center gap-2"><div class="text-sm font-semibold text-sky-800 w-full">🔁 Siguen cerradas → volver a asignar</div>
+        <select id="revUsr" class="inp !w-auto"><option value="">Elige técnico o supervisor…</option>${tecs.map(u => `<option value="${esc(u.Usuario)}" ${R.usuario === u.Usuario ? 'selected' : ''}>${esc(u.Nombre_Apellido)}${u.Rol === 'Supervisor' ? ' (Supervisor)' : ''}</option>`).join('')}</select>
+        <input id="revProg" type="datetime-local" class="inp !w-auto" value="${esc(R.prog)}" title="Fecha y hora programada (opcional)">
+        <select id="revEtq" class="inp !w-auto"><option value="">Sin etiqueta</option>${ETIQUETAS.map(e => `<option ${R.etq === e ? 'selected' : ''}>${e}</option>`).join('')}</select>
+        <button class="btn btn-primary" data-revact="reasignar">Reasignar (${n0(n)})</button></div></div></div>` : '';
+}
+async function revAction(kind) {
+  const R = S.rev;
+  if (kind === 'limpiar') { R.sel.clear(); return updateRev(); }
+  const ids = [...R.sel]; if (!ids.length) return;
+  let data;
+  if (kind === 'activa') {
+    if (!confirm(`¿Marcar ${ids.length} tienda(s) como “${R.status}”?\n\nSe registra un seguimiento remoto (la visita original no se modifica) y se retira la visita pendiente si ya la habías reasignado.`)) return;
+    data = { accion: 'activa', status: R.status };
+  } else {
+    if (!R.usuario) return toast('Elige a quién se reasigna', 'warn');
+    if (!confirm(`¿Reasignar ${ids.length} tienda(s) a ${nameOf(R.usuario)}?`)) return;
+    data = { accion: 'reasignar', usuario: R.usuario, etiqueta: R.etq, programada: R.prog };
+  }
+  showLoading(true, 'Procesando…'); let ok = 0; const om = [];
+  try {
+    for (const lote of chunk(ids, 100)) { const r = await api('revisarCerradas', { ...data, items: lote.map(idCliente => ({ idCliente })) }); ok += r.ok; om.push(...(r.omitidas || [])); }
+    toast(`${ok} tienda(s) ${kind === 'activa' ? 'marcadas como activas' : 'reasignadas'}${om.length ? ` · ${om.length} omitidas: ${om.slice(0, 2).map(x => x.motivo).join('; ')}` : ''}`, om.length ? 'warn' : 'ok');
+    R.sel.clear();
+  } catch (e) { toast(`${e.message} (hechas: ${ok})`, 'error'); }
+  await loadData(true); showLoading(false);
+}
+
 
 const hoverPtr = (e, els) => { if (e && e.native && e.native.target) e.native.target.style.cursor = els.length ? 'pointer' : 'default'; };
 
@@ -719,7 +903,7 @@ function setDrill(d) {
   S.drill = d; S.drillPage = 1; renderDrill(true);
 }
 function renderDrill(scroll) {
-  const box = $('#drillBox'); if (!box) return;
+  const box = $(S.view === 'inc' ? '#drillBoxI' : '#drillBox'); if (!box) return;
   if (!S.drill) { box.innerHTML = '<div class="text-center text-sm text-slate-400 py-6">Toca una tarjeta, un gráfico o una fila para ver el detalle de las visitas.</div>'; return; }
   const { res } = sets(true), d = S.drill;
   S.drillList = applyDrill(res, d).sort((a, b) => String(b.Fecha_Resolucion).localeCompare(String(a.Fecha_Resolucion)));
@@ -741,7 +925,7 @@ function tableHTML(list, page, key) {
       <td>${esc(nameOf(v.Usuario_Asignado))}${v.Es_Fuera_De_Ruta === 'SI' ? ' <span class="badge bg-amber-100 text-amber-700">Fuera de ruta</span>' : ''}${v.Seguimiento_De ? ' <span class="badge bg-sky-100 text-sky-700" title="Recupera la visita ' + esc(v.Seguimiento_De) + '">Seguimiento</span>' : ''}</td>
       <td><b>${esc(v.Nombre_Cliente)}</b><div class="text-xs text-slate-400">${esc(v.ID_Cliente)}</div>${v.Etiqueta ? `<div class="mt-0.5">${etqBadge(v)}</div>` : ''}</td>
       <td>${tipoBadge(v.Tipo_Visita)}</td>
-      <td><span class="badge" style="background:${col(v.Status_Tienda)}1a;color:${col(v.Status_Tienda)}">${esc(v.Status_Tienda || '—')}</span>${v.Recuperada ? `<div class="text-[10px] text-slate-400 mt-0.5">↪ se encontró ${esc(v.Status_Inicial || 'No visitado')}</div>` : ''}${v.Retiro_Equipos ? `<div class="mt-1"><span class="badge" style="background:#ffedd5;color:#c2410c">📦 ${esc(v.Retiro_Equipos)}</span></div>` : ''}${v.Reinstalacion_Equipo ? `<div class="mt-1"><span class="badge" style="background:#d1fae5;color:#047857">🔁 Reinstaló ${esc(v.Reinstalacion_Equipo)}</span></div>` : ''}${v.USB_Monitor === 'SI' ? `<div class="mt-1"><span class="badge" style="background:#e0e7ff;color:#4338ca">💾 USB</span></div>` : ''}${v.Mantenimiento === 'SI' ? `<div class="mt-1"><span class="badge" style="background:#e2e8f0;color:#334155">🛠️ Mantenimiento</span></div>` : ''}</td>
+      <td><span class="badge" style="background:${col(v.Status_Tienda)}1a;color:${col(v.Status_Tienda)}">${esc(v.Status_Tienda || '—')}</span>${v.Recuperada ? `<div class="text-[10px] text-slate-400 mt-0.5">↪ se encontró ${esc(v.Status_Inicial || 'No visitado')}</div>` : ''}${v.Retiro_Equipos ? `<div class="mt-1"><span class="badge" style="background:#ffedd5;color:#c2410c">📦 ${esc(v.Retiro_Equipos)}</span></div>` : ''}${v.Reinstalacion_Equipo ? `<div class="mt-1"><span class="badge" style="background:#d1fae5;color:#047857">🔁 Reinstaló ${esc(v.Reinstalacion_Equipo)}</span></div>` : ''}${v.USB_Monitor === 'SI' ? `<div class="mt-1"><span class="badge" style="background:#e0e7ff;color:#4338ca">💾 USB</span></div>` : ''}${v.Mantenimiento === 'SI' ? `<div class="mt-1"><span class="badge" style="background:#e2e8f0;color:#334155">🛠️ Mantenimiento</span></div>` : ''}${v.No_Recogio === 'SI' ? `<div class="mt-1"><span class="badge" style="background:#fee2e2;color:#b91c1c">🚫 No se recogió</span></div>` : ''}${v.Se_Retira === 'SI' ? `<div class="mt-1"><span class="badge" style="background:#ede9fe;color:#6d28d9">📦 Se retira ${esc(v.Retiro_Equipos)} → Laboratorio</span></div>` : ''}${v.Incidencia ? `<div class="mt-1"><span class="badge" style="background:#e0e7ff;color:#4338ca">${v.Incidencia === 'Mudanza de tienda' ? '📦' : '🚚'} ${esc(v.Incidencia)}</span></div>` : ''}${v.Perifericos === 'SI' ? `<div class="mt-1"><span class="badge" style="background:#cffafe;color:#0e7490">🔌 Revisar periféricos</span></div>` : ''}${v.Perif_Resuelto ? `<div class="mt-1"><span class="badge" style="background:${v.Perif_Resuelto === 'SI' ? '#dcfce7;color:#15803d' : '#fef3c7;color:#b45309'}">🔌 Periféricos ${v.Perif_Resuelto === 'SI' ? 'solucionados' : 'siguen pendientes'}</span></div>` : ''}</td>
       <td class="whitespace-nowrap">${isNum(v.Distancia_Metros) ? Math.round(v.Distancia_Metros) + ' m' : '—'}</td>
       <td class="whitespace-nowrap">${v.URL_Foto_Fachada ? `<a class="text-blue-600" target="_blank" rel="noopener" href="${esc(v.URL_Foto_Fachada)}">Fachada</a>` : ''} ${v.URL_Foto_Monitor ? `<a class="text-blue-600" target="_blank" rel="noopener" href="${esc(v.URL_Foto_Monitor)}">Monitor</a>` : ''}${!v.URL_Foto_Fachada && !v.URL_Foto_Monitor ? '—' : ''}</td>
       <td class="min-w-[160px] max-w-[320px] text-slate-600">${esc(v.Observacion)}</td></tr>`).join('')}</tbody></table></div>
@@ -1261,6 +1445,7 @@ const origenTxt = o => o === 'Importado' ? 'base anterior' : o === 'Visita' ? 'v
 const RETIRADA_DIAS = 90;
 const TFILTROS = [['', 'Todas las tiendas'],
   ['enlinea', 'Estado: En Línea'], ['pendiente', 'Estado: Pendiente'], ['averia', 'Estado: Avería'], ['cerrada', 'Estado: Tienda Cerrada'], ['solret', 'Estado: Solicitud de Retiro'], ['retirado', 'Estado: Retirado'], ['ret90', `Retiradas hace más de ${RETIRADA_DIAS} días`], ['cersinseg', 'Cerradas sin seguimiento'], ['sinestado', 'Estado: sin dato'],
+  ['reub', 'Incidencia: Solicita reubicación'], ['mud', 'Incidencia: Mudanza de tienda'], ['perif', 'Incidencia: Revisar periféricos'], ['incab', 'Con alguna incidencia abierta'],
   ['pend', 'Equipo pendiente de reinstalar'], ['sinval', 'Instalado sin validar'], ['usb', 'Con USB en monitor'], ['usbret', 'USB por retirar (Supervisor)'], ['nuc', 'Tiene NUC'], ['rb', 'Tiene RB'], ['sineq', 'Equipo sin dato'],
   ['sinvisita', 'Sin visitas'], ['atras', 'Sin visita hace más de 30 días'], ['sinmant', 'Sin mantenimiento registrado'], ['sincontacto', 'Sin contacto'], ['sindistrito', 'Sin distrito']];
 let CSS = new Set();       // tiendas cerradas sin seguimiento (según el umbral del aviso)
@@ -1277,6 +1462,10 @@ const TPRED = {
   ret90: t => { if (t.Estado_Tienda !== 'Retirado') return false; const d = diasDesde(t.Retirada_Fecha); return d !== null && d > RETIRADA_DIAS; },
   cersinseg: t => t.Estado_Tienda === 'Tienda Cerrada' && CSS.has(t.ID_Cliente),
   sinestado: t => !t.Estado_Tienda,
+  reub: t => t.Inc_Reubicacion === 'SI',
+  mud: t => t.Inc_Mudanza === 'SI',
+  perif: t => t.Inc_Perifericos === 'SI',
+  incab: t => !!t.Incidencias_Abiertas,
   pend: t => actv(t) && !!t.Equipo_Pendiente_Reinstalar,
   sinval: t => actv(t) && t.Estado_Equipo === 'Instalado sin validar',
   usb: t => t.Tiene_USB === 'SI',
@@ -1296,6 +1485,9 @@ const diasTxt = d => d === null ? 'sin visitas' : d === 0 ? 'hoy' : d === 1 ? 'a
 const fmtTel = s => { s = String(s || ''); return s.length === 9 ? s.replace(/(\d{3})(\d{3})(\d{3})/, '$1 $2 $3') : s; };
 const telLink = s => !s ? '' : `<a class="text-blue-600" href="tel:+51${esc(s)}">${esc(fmtTel(s))}</a>${/^9\d{8}$/.test(s) ? ` <a class="text-green-600 text-xs font-semibold" target="_blank" rel="noopener" href="https://wa.me/51${esc(s)}">WhatsApp</a>` : ''}`;
 const tBadges = t => t.Estado_Tienda === 'Retirado' ? '' : [
+  t.Inc_Reubicacion === 'SI' ? '<span class="badge bg-indigo-100 text-indigo-700">🚚 Reubicación</span>' : '',
+  t.Inc_Mudanza === 'SI' ? '<span class="badge bg-orange-100 text-orange-700">📦 Mudanza</span>' : '',
+  t.Inc_Perifericos === 'SI' ? '<span class="badge bg-cyan-100 text-cyan-700">🔌 Periféricos</span>' : '',
   t.Equipo_Pendiente_Reinstalar ? `<span class="badge bg-amber-100 text-amber-800">⚠ Reinstalar ${esc(t.Equipo_Pendiente_Reinstalar)}</span>` : '',
   t.Estado_Equipo === 'Instalado sin validar' ? '<span class="badge bg-orange-100 text-orange-700">🔧 Sin validar</span>' : '',
   t.USB_Por_Retirar === 'SI' ? '<span class="badge bg-red-100 text-red-700">💾 USB por retirar</span>' : (t.Tiene_USB === 'SI' ? '<span class="badge bg-indigo-100 text-indigo-700">💾 USB</span>' : '')
@@ -1358,8 +1550,9 @@ function updateTiendas(soloLista) {
   if (T.filtro === 'cersinseg') $('#tWarn').innerHTML += `<div class="card p-3 mb-3 text-sm bg-amber-50 border-amber-200 text-amber-900">Tiendas cuya última visita fue <b>Tienda Cerrada</b> y llevan <b>${esc(segTxt(segUmbral()))}</b> o más sin actualizarse (el umbral se cambia en el aviso del Dashboard). Ordenadas de la más antigua a la más reciente.</div>`;
   refreshDistritos();
   const chips = [['', 'Total tiendas'], ['enlinea', 'En Línea'], ['pendiente', 'Pendiente'], ['averia', 'Avería'], ['cerrada', 'Tienda Cerrada'], ['cersinseg', 'Cerradas sin seguimiento'], ['solret', 'Solicitud de Retiro'], ['retirado', 'Retirado'], ['ret90', `Retiradas +${RETIRADA_DIAS} días`], ['sinvisita', 'Sin visitas'], ['atras', '+30 días sin visita'],
+    ['reub', 'Solicita reubicación'], ['mud', 'Mudanza de tienda'], ['perif', 'Revisar periféricos'],
     ['nuc', 'Con NUC'], ['rb', 'Con RB'], ['sineq', 'Equipo sin dato'], ['pend', 'Pend. reinstalar'], ['sinval', 'Sin validar'], ['usb', 'Con USB'], ['usbret', 'USB por retirar']];
-  const chipCol = { enlinea: 'text-green-600', pendiente: 'text-amber-600', averia: 'text-red-600', cerrada: 'text-slate-600', solret: 'text-violet-700', retirado: 'text-slate-500', ret90: 'text-red-600', cersinseg: 'text-amber-600', pend: 'text-amber-600', usb: 'text-indigo-600', usbret: 'text-red-600' };
+  const chipCol = { enlinea: 'text-green-600', pendiente: 'text-amber-600', averia: 'text-red-600', cerrada: 'text-slate-600', solret: 'text-violet-700', retirado: 'text-slate-500', ret90: 'text-red-600', cersinseg: 'text-amber-600', reub: 'text-indigo-600', mud: 'text-orange-600', perif: 'text-cyan-700', pend: 'text-amber-600', usb: 'text-indigo-600', usbret: 'text-red-600' };
   $('#tChips').innerHTML = chips.map(([k, l]) => `<button data-tchip="${k}" class="card kpi !p-2.5 ${T.filtro === k ? 'ring-2 ring-blue-500' : ''}"><div class="text-[11px] font-semibold text-slate-500 leading-tight">${l}</div><div class="text-2xl font-bold ${chipCol[k] || 'text-slate-800'}">${n0(data.filter(TPRED[k]).length)}</div></button>`).join('');
   const list = tiendaFiltrada();
   S.tiendaList = list;
@@ -1427,6 +1620,9 @@ function tiendaDetailHTML(t, modal) {
     ${kv('Status', t.Ultimo_Status ? esc(t.Ultimo_Status) : '')}
     ${t.Ultima_Observacion ? `<div class="mt-2 text-sm bg-slate-50 rounded-lg p-2.5 text-slate-700 whitespace-pre-wrap">${esc(t.Ultima_Observacion)}</div>` : ''}
     ${kv('Última visita física', dt(t.Ultima_Visita_Fisica))}
+
+    ${sub('Incidencias')}
+    ${kv('Incidencias abiertas', t.Incidencias_Abiertas ? `<b class="text-amber-700">${esc(t.Incidencias_Abiertas)}</b>` : 'Ninguna')}
 
     ${sub('Equipos')}
     ${kv('Componente actual', `<b>${esc(compTxt(t))}</b>`)}
@@ -1923,6 +2119,12 @@ function bindEvents() {
       S.rango = { preset: 'custom', desde: d, hasta: h }; S.drill = null; return loadData(false);
     }
     if ((el = t.closest('[data-di]'))) { const d = DR[+el.dataset.di]; if (d) setDrill(d); return; }
+    if ((el = t.closest('[data-ikpi]'))) { const I = S.incv; I.tipo = el.dataset.ikpi; I.estado = 'Abierta'; I.page = 1; updateIncList(); const b = $('#incBox'); if (b) b.scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
+    if ((el = t.closest('[data-itipo]'))) { S.incv.tipo = el.dataset.itipo; S.incv.page = 1; return updateIncList(); }
+    if ((el = t.closest('[data-iestado]'))) { S.incv.estado = el.dataset.iestado; S.incv.page = 1; return updateIncList(); }
+    if ((el = t.closest('[data-iact]'))) return incAction(el.dataset.iact);
+    if ((el = t.closest('[data-revf]'))) { S.rev.f = el.dataset.revf; S.rev.page = 1; return updateRev(); }
+    if ((el = t.closest('[data-revact]'))) return revAction(el.dataset.revact);
     if ((el = t.closest('[data-cssel]'))) { S.tienda.sel = el.dataset.cssel; S.tienda.filtro = 'cersinseg'; S.tienda.page = 1; return go('tiendas'); }
     if ((el = t.closest('[data-tgofilter]'))) { S.tienda.filtro = el.dataset.tgofilter; S.tienda.page = 1; return go('tiendas'); }
     if ((el = t.closest('[data-go]'))) { if (el.dataset.go === 'pend') S.pend.tec = S.filtroTec; return go(el.dataset.go); }
@@ -1937,6 +2139,7 @@ function bindEvents() {
       if (k === 'drill') { S.drillPage++; renderDrill(false); } else if (k === 'hist') { S.hist.page++; updateHist(); }
       else if (k === 'tienda') { S.tienda.page++; updateTiendas(true); }
       else if (k === 'lab') { S.labv.page++; updateLab(); }
+      else if (k === 'inc') { S.incv.page++; updateIncList(); } else if (k === 'rev') { S.rev.page++; updateRev(); }
       else if (k === 'pend') { S.pend.page++; updatePend(); } else if (k === 'asig') { S.asig.page++; updateAsigList(); }
       return;
     }
@@ -1980,6 +2183,9 @@ function bindEvents() {
     else if (id === 'tQ') { S.tienda.q = e.target.value; S.tienda.page = 1; updateTiendas(true); }
     else if (id === 'aQ') { S.asig.q = e.target.value; S.asig.page = 1; updateAsigList(); }
     else if (id === 'lQ') { S.labv.q = e.target.value; S.labv.page = 1; updateLab(); }
+    else if (id === 'iQ') { S.incv.q = e.target.value; S.incv.page = 1; updateIncList(); const q = $('#iQ'); if (q) { q.focus(); q.setSelectionRange(q.value.length, q.value.length); } }
+    else if (id === 'revQ') { S.rev.q = e.target.value; S.rev.page = 1; updateRev(); const q = $('#revQ'); if (q) { q.focus(); q.setSelectionRange(q.value.length, q.value.length); } }
+    else if (id === 'iNota') { S.incv.nota = e.target.value; }
     else if (id === 'lDestSet') { S.labv.ldest = e.target.value; }
   });
 
@@ -2000,6 +2206,14 @@ function bindEvents() {
     else if (id === 'lEstado') { S.labv.estado = t.value; S.labv.page = 1; buildLab(true); }
     else if (id === 'lEquipo') { S.labv.equipo = t.value; S.labv.page = 1; updateLab(); }
     else if (id === 'lEdad') { S.labv.edad = t.value; S.labv.page = 1; updateLab(); }
+    else if (id === 'iAll') { const l = S.incList || []; if (t.checked) l.forEach(r => S.incv.sel.add(r.ID_Inc)); else l.forEach(r => S.incv.sel.delete(r.ID_Inc)); updateIncList(); }
+    else if (t.dataset.ick) { t.checked ? S.incv.sel.add(t.dataset.ick) : S.incv.sel.delete(t.dataset.ick); updateIncBar(); }
+    else if (id === 'revAll') { const l = S.revList || []; if (t.checked) l.forEach(c => S.rev.sel.add(c.ID_Cliente)); else l.forEach(c => S.rev.sel.delete(c.ID_Cliente)); updateRev(); }
+    else if (t.dataset.revck) { t.checked ? S.rev.sel.add(t.dataset.revck) : S.rev.sel.delete(t.dataset.revck); updateRevBar(); }
+    else if (id === 'revSt') { S.rev.status = t.value; }
+    else if (id === 'revUsr') { S.rev.usuario = t.value; }
+    else if (id === 'revProg') { S.rev.prog = t.value; }
+    else if (id === 'revEtq') { S.rev.etq = t.value; }
     else if (id === 'lEstSet') { S.labv.lest = t.value; }
     else if (id === 'lDestSet') { S.labv.ldest = t.value; }
     else if (t.dataset.lid) { t.checked ? S.labv.sel.add(t.dataset.lid) : S.labv.sel.delete(t.dataset.lid); updateLabBar(); }
