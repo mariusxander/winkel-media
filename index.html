@@ -174,7 +174,8 @@ const CONFIG = {
 };
 
 const TIPOS = ['Visita Física', 'Visita Remota', 'No Visitado'];
-const STATUS = ['Activa Validada', 'Activa Sin Validación', 'Avería ISP', 'Avería NUC/RB', 'Avería CAM', 'Avería Otros', 'Tienda Cerrada', 'Solicitud de Retiro'];
+const STATUS = ['Activa Validada', 'Activa Sin Validación', 'Avería ISP', 'Avería NUC/RB', 'Avería Otros', 'Tienda Cerrada', 'Solicitud de Retiro'];   // Avería CAM ya no existe (queda solo en el historial)
+const INC_STATUS = ['Activa Validada', 'Activa Sin Validación', 'Avería ISP', 'Avería NUC/RB', 'Avería Otros'];   // status donde aparece el menú de incidencias (debe coincidir con Code.gs)
 const ETIQUETAS = ['Avería', 'Mantenimiento', 'Reubicación', 'Instalación', 'Retiro', 'Fotografía'];
 const ETQ_ICON = { 'Avería': '🔧', 'Mantenimiento': '🛠️', 'Reubicación': '🚚', 'Instalación': '➕', 'Retiro': '📦', 'Fotografía': '📷' };
 const ETQ_COLOR = { 'Avería': 'bg-red-100 text-red-700', 'Mantenimiento': 'bg-slate-200 text-slate-700', 'Reubicación': 'bg-indigo-100 text-indigo-700', 'Instalación': 'bg-emerald-100 text-emerald-700', 'Retiro': 'bg-orange-100 text-orange-700', 'Fotografía': 'bg-sky-100 text-sky-700' };
@@ -889,10 +890,11 @@ function openVisita(arg) {
       <select id="fStatus" class="inp"><option value="">Selecciona…</option>${STATUS.filter(t => !v._seg || (t !== 'Tienda Cerrada' && t !== v._segStatus)).map(t => `<option>${t}</option>`).join('')}</select>
     </div>
     <div id="fRetiroBox" class="hidden rounded-xl border border-orange-200 bg-orange-50 p-3 space-y-2.5">
-      <div class="text-sm font-semibold text-orange-800">Equipo que se retira de la tienda</div>
+      <div class="text-sm font-semibold text-orange-800">Equipo que se retira de la tienda <span class="text-red-600">*</span></div>
       <label class="flex items-center gap-3 text-sm font-medium text-slate-800"><input id="fRetNuc" type="checkbox" class="w-5 h-5 accent-orange-600"> Se recoge NUC</label>
       <label class="flex items-center gap-3 text-sm font-medium text-slate-800"><input id="fRetRb" type="checkbox" class="w-5 h-5 accent-orange-600"> Se recoge RB</label>
-      <p class="text-xs text-orange-700">Solo se puede recoger uno: NUC o RB. Si no se recoge ninguno, deja ambas casillas vacías y explica el motivo en Observación.</p>
+      <label class="flex items-center gap-3 text-sm font-medium text-slate-800"><input id="fRetNo" type="checkbox" class="w-5 h-5 accent-orange-600"> No se recogió</label>
+      <p class="text-xs text-orange-700">Obligatorio: elige una opción. Si recoges NUC o RB pasa solo al Laboratorio. Si marcas “No se recogió”, explica el motivo en Observación.</p>
     </div>
     <div id="fReinstBox" class="hidden rounded-xl border border-emerald-200 bg-emerald-50 p-3 space-y-2.5">
       <div class="text-sm font-semibold text-emerald-800">Equipo que se reinstala</div>
@@ -902,21 +904,55 @@ function openVisita(arg) {
       <p class="text-xs text-emerald-700">Solo se puede reinstalar uno: NUC o RB (puede ser distinto al que se retiró). Si no se reinstala ninguno, deja ambas vacías.</p>
     </div>
     <div id="fEqBox" class="hidden rounded-xl border border-sky-200 bg-sky-50 p-3 space-y-1.5">
-      <label class="lbl !mb-0" for="fConfEq">Equipo que hay en la tienda (confirmar)</label>
-      <select id="fConfEq" class="inp"><option value="">No indicar</option><option value="NUC">NUC</option><option value="RB">RB</option><option value="NINGUNO">Ninguno</option></select>
-      <p class="text-xs text-sky-700">Opcional. Confírmalo para que la tienda quede registrada con su equipo actual.</p>
+      <label class="lbl !mb-0" for="fConfEq">Equipo que hay en la tienda (confirmar) <span class="text-red-600">*</span></label>
+      <select id="fConfEq" class="inp"><option value="">Selecciona…</option><option value="NUC">NUC</option><option value="RB">RB</option><option value="NINGUNO">Ninguno</option></select>
+      <p class="text-xs text-sky-700">Obligatorio: aún no tenemos el equipo de esta tienda. Una vez guardado no se vuelve a preguntar ni se puede cambiar, salvo que se retire y se reinstale.</p>
+    </div>
+    <div id="fSolBox" class="hidden rounded-xl border border-red-200 bg-red-50 p-3 space-y-2">
+      <div class="text-sm font-semibold text-red-800">Se retira este equipo <span id="fSolEq" class="font-bold"></span> <span class="text-red-600">*</span></div>
+      <div class="grid grid-cols-2 gap-2">
+        <label class="flex items-center gap-2 text-sm font-medium text-slate-800 bg-white border rounded-xl p-2"><input type="radio" name="fSolRet" id="fSolSi" class="w-5 h-5 accent-red-600"> Sí</label>
+        <label class="flex items-center gap-2 text-sm font-medium text-slate-800 bg-white border rounded-xl p-2"><input type="radio" name="fSolRet" id="fSolNo" class="w-5 h-5 accent-red-600"> No</label>
+      </div>
+      <p class="text-xs text-red-700">Si respondes Sí, el equipo pasa automáticamente al Laboratorio.</p>
     </div>
     <div id="fUsbBox" class="hidden rounded-xl border border-indigo-200 bg-indigo-50 p-3 space-y-2.5">
-      <div class="text-sm font-semibold text-indigo-800">USB en el monitor</div>
+      <div class="text-sm font-semibold text-indigo-800" id="fUsbTit">USB en el monitor</div>
       ${avisoUsbRet(v)}
       <div id="fUsbRow"><label class="flex items-center gap-3 text-sm font-medium text-slate-800"><input id="fUsb" type="checkbox" class="w-5 h-5 accent-indigo-600"> Instalado USB en Monitor</label>
         <p class="text-xs text-indigo-700 mt-1">Marca esta casilla si dejaste un USB en el monitor como salvaguarda.</p></div>
-      <label class="flex items-center gap-3 text-sm font-medium text-slate-800"><input id="fUsbEx" type="checkbox" class="w-5 h-5 accent-indigo-600"> Ya había un USB en el monitor</label>
+      <div id="fUsbExRow"><label class="flex items-center gap-3 text-sm font-medium text-slate-800"><input id="fUsbEx" type="checkbox" class="w-5 h-5 accent-indigo-600"> Sí, ya había un USB en el monitor</label></div>
+      <div id="fUsbNoRow"><label class="flex items-center gap-3 text-sm font-medium text-slate-800"><input id="fUsbNo" type="checkbox" class="w-5 h-5 accent-indigo-600"> No hay USB en el monitor</label>
+        <p class="text-xs text-indigo-700 mt-1">Obligatorio responder: aún no sabemos si esta tienda tiene USB. Una vez guardado no se vuelve a preguntar.</p></div>
       <div id="fUsbRetRow" class="hidden"><label class="flex items-center gap-3 text-sm font-medium text-slate-800"><input id="fUsbRet" type="checkbox" class="w-5 h-5 accent-red-600"> Se retira el USB del monitor <span class="badge bg-purple-100 text-purple-700">Supervisor</span></label></div>
     </div>
-    <div id="fMantBox" class="hidden rounded-xl border border-slate-200 bg-slate-50 p-3">
-      <label class="flex items-center gap-3 text-sm font-medium text-slate-800"><input id="fMant" type="checkbox" class="w-5 h-5 accent-slate-700"> Mantenimiento realizado a los equipos</label>
+    <div id="fPerBox" class="hidden rounded-xl border-2 border-amber-400 bg-amber-50 p-3 space-y-2">
+      <div class="text-sm font-semibold text-amber-900">🔌 Esta tienda tiene “Revisar periféricos” pendiente</div>
+      <div class="text-sm font-medium text-slate-800">¿Se solucionó el problema de los periféricos? <span class="text-red-600">*</span></div>
+      <div class="grid grid-cols-2 gap-2">
+        <label class="flex items-center gap-2 text-sm font-medium text-slate-800 bg-white border rounded-xl p-2"><input type="radio" name="fPerSol" id="fPerSi" class="w-5 h-5 accent-emerald-600"> Sí</label>
+        <label class="flex items-center gap-2 text-sm font-medium text-slate-800 bg-white border rounded-xl p-2"><input type="radio" name="fPerSol" id="fPerNo" class="w-5 h-5 accent-amber-600"> No</label>
+      </div>
+      <p class="text-xs text-amber-800">Mientras no se resuelva, esta pregunta aparecerá en cada visita a la tienda.</p>
     </div>
+    <details id="fIncBox" class="hidden rounded-xl border border-violet-200 bg-violet-50 p-3">
+      <summary class="text-sm font-semibold text-violet-900 cursor-pointer select-none">⚠️ Incidencias <span class="font-normal text-violet-700">(opcional)</span></summary>
+      <div class="space-y-3 mt-3">
+        <div>
+          <label class="flex items-center gap-3 text-sm font-medium text-slate-800"><input id="fIncReub" type="checkbox" class="w-5 h-5 accent-violet-600"> Solicita reubicación</label>
+          <p class="text-xs text-violet-700 mt-1 ml-8">Mover la pantalla instalada de una zona a otra, ordenar cables, bajar los equipos para que sean más fáciles de manipular, etc.</p>
+        </div>
+        <div>
+          <label class="flex items-center gap-3 text-sm font-medium text-slate-800"><input id="fIncMud" type="checkbox" class="w-5 h-5 accent-violet-600"> Mudanza de tienda</label>
+          <p class="text-xs text-violet-700 mt-1 ml-8">La tienda cambió de dirección y hay que reubicar todos los equipos.</p>
+        </div>
+        <p class="text-xs text-slate-500">Solo se puede marcar una de las dos anteriores.</p>
+        <div>
+          <label class="flex items-center gap-3 text-sm font-medium text-slate-800"><input id="fIncPer" type="checkbox" class="w-5 h-5 accent-violet-600"> Revisar periféricos</label>
+          <p class="text-xs text-violet-700 mt-1 ml-8">Cambiar un cable UTP o HDMI, cambiar la cámara IP, etc. Se puede marcar junto con cualquiera de las anteriores. En la siguiente visita se preguntará si se solucionó.</p>
+        </div>
+      </div>
+    </details>
     <div><label class="lbl">Observación *</label><textarea id="fObs" rows="3" class="inp" placeholder="Comentarios adicionales…"></textarea></div>
 
     <div id="fErr" class="hidden text-sm text-red-700 bg-red-50 border border-red-200 rounded-xl p-2"></div>
@@ -954,14 +990,17 @@ function openVisita(arg) {
     }
   });
   // NUC y RB son excluyentes: al marcar una se desmarca la otra
-  $('#fRetNuc').addEventListener('change', e => { if (e.target.checked) $('#fRetRb').checked = false; });
-  $('#fRetRb').addEventListener('change', e => { if (e.target.checked) $('#fRetNuc').checked = false; });
+  [['#fRetNuc', ['#fRetRb', '#fRetNo']], ['#fRetRb', ['#fRetNuc', '#fRetNo']], ['#fRetNo', ['#fRetNuc', '#fRetRb']]].forEach(([c, otros]) =>
+    $(c).addEventListener('change', e => { if (e.target.checked) otros.forEach(o => { $(o).checked = false; }); }));
+  // reubicación y mudanza son excluyentes (periféricos se combina con cualquiera)
+  $('#fIncReub').addEventListener('change', e => { if (e.target.checked) $('#fIncMud').checked = false; });
+  $('#fIncMud').addEventListener('change', e => { if (e.target.checked) $('#fIncReub').checked = false; });
   $('#fReNuc').addEventListener('change', e => { if (e.target.checked) $('#fReRb').checked = false; });
   $('#fReRb').addEventListener('change', e => { if (e.target.checked) $('#fReNuc').checked = false; });
-  // las tres opciones de USB son excluyentes
-  [['#fUsb', ['#fUsbEx', '#fUsbRet']], ['#fUsbEx', ['#fUsb', '#fUsbRet']], ['#fUsbRet', ['#fUsb', '#fUsbEx']]].forEach(([c, otros]) =>
+  // las opciones de USB son excluyentes
+  [['#fUsb', ['#fUsbEx', '#fUsbNo', '#fUsbRet']], ['#fUsbEx', ['#fUsb', '#fUsbNo', '#fUsbRet']], ['#fUsbNo', ['#fUsb', '#fUsbEx', '#fUsbRet']], ['#fUsbRet', ['#fUsb', '#fUsbEx', '#fUsbNo']]].forEach(([c, otros]) =>
     $(c).addEventListener('change', e => { if (e.target.checked) otros.forEach(o => { $(o).checked = false; }); }));
-  ['#fRetNuc', '#fRetRb', '#fReNuc', '#fReRb'].forEach(c => $(c).addEventListener('change', syncExtras));
+  ['#fRetNuc', '#fRetRb', '#fRetNo', '#fReNuc', '#fReRb', '#fConfEq'].forEach(c => $(c).addEventListener('change', syncExtras));
   $('#fTipo').addEventListener('change', syncExtras);
   $('#fStatus').addEventListener('change', syncExtras);
   $('#fFachada').addEventListener('change', e => onFoto('fachada', e.target, 'prevFachada', false));
@@ -975,32 +1014,50 @@ function openVisita(arg) {
     try { await api('planVisitas', { idVisita: vv.ID_Visita, etiqueta: val }); vv.Etiqueta = val; saveCache(); toast('Etiqueta actualizada', 'ok'); }
     catch (er) { e.target.value = vv.Etiqueta || ''; toast(er.message, 'error'); }
   });
-  if (v._seg) syncExtras();
+  syncExtras();
   startGps();
 }
 
 /* Campos que dependen del tipo y del status: checklist de retiro (Física + Avería NUC/RB) y observación obligatoria */
 function esFisica() { return $('#fTipo').value === 'Visita Física'; }
 function cerradaFisica() { return esFisica() && $('#fStatus').value === 'Tienda Cerrada'; }
+function eqInfo() { return (F && (S.equipos || {})[F.v.ID_Cliente]) || {}; }
 function retiroAplica() { return esFisica() && $('#fStatus').value === 'Avería NUC/RB'; }
-function reinstAplica() { const st = $('#fStatus').value; return esFisica() && (st === 'Activa Validada' || st === 'Activa Sin Validación'); }
-function usbAplica() { return esFisica() && $('#fStatus').value === 'Activa Sin Validación'; }      // "se deja USB"
-function mantAplica() { const st = $('#fStatus').value; return esFisica() && !!st && st !== 'Tienda Cerrada'; }
-function confAplica() { const st = $('#fStatus').value; return esFisica() && !!st && st !== 'Tienda Cerrada'; }  // confirmar equipo / USB
-function usbRetAplica() { return confAplica() && isSup() && !!F && !!((S.equipos || {})[F.v.ID_Cliente] || {}).usb; }   // solo Supervisor, solo si la tienda tiene USB registrado
-function eqConfAplica() { return confAplica() && !(retiroAplica() && ($('#fRetNuc').checked || $('#fRetRb').checked)) && !(reinstAplica() && ($('#fReNuc').checked || $('#fReRb').checked)); }
+function compConocido() { return !!eqInfo().comp; }                      // la tienda ya tiene un equipo registrado: no se puede instalar otro sin retirarlo
+function reinstAplica() { const st = $('#fStatus').value; return esFisica() && (st === 'Activa Validada' || st === 'Activa Sin Validación') && !compConocido(); }
+function usbAplica() { return esFisica() && $('#fStatus').value === 'Activa Sin Validación' && !eqInfo().usb; }      // "se deja USB"
+function confAplica() { const st = $('#fStatus').value; return esFisica() && !!st && st !== 'Tienda Cerrada'; }  // equipo / USB de la tienda
+function sinEq() { return !!eqInfo().sinEq; }
+function sinUsb() { return !!eqInfo().sinUsb; }
+function usbRetAplica() { return confAplica() && isSup() && !!eqInfo().usb; }   // solo Supervisor, solo si la tienda tiene USB registrado
+function eqConfAplica() { return confAplica() && sinEq() && !(retiroAplica() && ($('#fRetNuc').checked || $('#fRetRb').checked)) && !(reinstAplica() && ($('#fReNuc').checked || $('#fReRb').checked)); }
+function solAplica() { return confAplica() && $('#fStatus').value === 'Solicitud de Retiro' && !!solEquipo(); }
+function solEquipo() { const c = eqInfo().comp; if (c === 'NUC' || c === 'RB') return c; if (sinEq()) { const x = $('#fConfEq').value; return x === 'NUC' || x === 'RB' ? x : ''; } return ''; }
+function incAplica() { return esFisica() && INC_STATUS.includes($('#fStatus').value); }
+function perAplica() { return incAplica() && !!eqInfo().perif; }
+function usbPreguntaAplica() { return confAplica() && sinUsb(); }          // "¿hay USB en el monitor?" obligatorio mientras no haya dato
 function syncExtras() {
-  [['#fRetiroBox', retiroAplica(), ['#fRetNuc', '#fRetRb']], ['#fReinstBox', reinstAplica(), ['#fReNuc', '#fReRb']],
-   ['#fUsbBox', confAplica(), ['#fUsb', '#fUsbEx', '#fUsbRet']], ['#fMantBox', mantAplica(), ['#fMant']]].forEach(([box, on, checks]) => {
+  [['#fRetiroBox', retiroAplica(), ['#fRetNuc', '#fRetRb', '#fRetNo']], ['#fReinstBox', reinstAplica(), ['#fReNuc', '#fReRb']],
+   ['#fPerBox', perAplica(), ['#fPerSi', '#fPerNo']]].forEach(([box, on, checks]) => {
     $(box).classList.toggle('hidden', !on);
     if (!on) checks.forEach(c => { $(c).checked = false; });   // al ocultarse se descartan las marcas
   });
-  // dentro de la caja USB: "se deja" solo con Activa Sin Validación; "se retira" solo Supervisor y si la tienda tiene USB
-  $('#fUsbRow').classList.toggle('hidden', !usbAplica()); if (!usbAplica()) $('#fUsb').checked = false;
-  $('#fUsbRetRow').classList.toggle('hidden', !usbRetAplica()); if (!usbRetAplica()) $('#fUsbRet').checked = false;
-  // equipo confirmado: no se combina con un retiro o una reinstalación (esos movimientos ya definen el equipo)
+  // incidencias (menú opcional): solo en status donde aplica; al ocultarse se descartan
+  const incOn = incAplica();
+  $('#fIncBox').classList.toggle('hidden', !incOn);
+  if (!incOn) ['#fIncReub', '#fIncMud', '#fIncPer'].forEach(c => { $(c).checked = false; });
+  // USB: "se deja" solo con Activa Sin Validación (y sin USB); "ya había / no hay" solo mientras no haya dato; "se retira" solo Supervisor y si la tienda tiene USB
+  const rows = [['#fUsbRow', usbAplica(), '#fUsb'], ['#fUsbExRow', usbPreguntaAplica(), '#fUsbEx'], ['#fUsbNoRow', usbPreguntaAplica(), '#fUsbNo'], ['#fUsbRetRow', usbRetAplica(), '#fUsbRet']];
+  rows.forEach(([row, on, chk]) => { $(row).classList.toggle('hidden', !on); if (!on) $(chk).checked = false; });
+  $('#fUsbBox').classList.toggle('hidden', !rows.some(r => r[1]) && !(confAplica() && eqInfo().usb));
+  $('#fUsbTit').innerHTML = usbPreguntaAplica() ? '¿Hay USB en el monitor? <span class="text-red-600">*</span>' : 'USB en el monitor';
+  // equipo confirmado: obligatorio mientras no haya dato; no se combina con un retiro o una reinstalación (esos movimientos ya definen el equipo)
   const eqOn = eqConfAplica();
   $('#fEqBox').classList.toggle('hidden', !eqOn); if (!eqOn) $('#fConfEq').value = '';
+  // Solicitud de retiro con NUC/RB: ¿se retira este equipo?
+  const solOn = solAplica();
+  $('#fSolBox').classList.toggle('hidden', !solOn);
+  if (!solOn) { $('#fSolSi').checked = false; $('#fSolNo').checked = false; } else $('#fSolEq').textContent = '(' + solEquipo() + ')';
   // fotos: con la tienda cerrada en visita física solo se pide la FACHADA (el monitor no es accesible y no se muestra)
   const cerrada = cerradaFisica();
   $('#fMonBox').classList.toggle('hidden', cerrada);
@@ -1024,6 +1081,7 @@ function avisoEquipos(v) {
   if (eq.pend) l.push(`⚠️ <b>Equipo pendiente de reinstalar:</b> ${esc(eq.pend)}${f(eq.retiro)}`);
   if (eq.estado === 'Instalado sin validar') l.push(`🔧 ${esc(eq.comp || 'Equipo')} instalado en la visita anterior, <b>sin validar</b>`);
   if (eq.lab) l.push(`🧪 <b>Laboratorio:</b> ${esc(eq.lab)}`);
+  if (eq.perif) l.push('🔌 <b>Periféricos pendientes de revisar</b> (incidencia abierta): en esta visita responde si se solucionó');
   if (eq.usb) l.push(eq.usbRet ? '💾 <b>USB pendiente de retiro</b> en el monitor (lo retira un Supervisor)' : '💾 Esta tienda tiene un <b>USB en el monitor</b>');
   return l.length ? `<div class="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 space-y-1">${l.map(x => `<div>${x}</div>`).join('')}</div>` : '';
 }
@@ -1242,6 +1300,13 @@ async function guardarVisita() {
     if (status === 'Tienda Cerrada') { if (!F.fachada) return fErr('Con la tienda cerrada debes adjuntar la foto de la fachada.'); }
     else if (CONFIG.MONITOR_OBLIGATORIO_FISICA && !F.monitor) return fErr('Para una Visita Física debes adjuntar la foto del monitor.');
   }
+  if (tipo === 'Visita Física' && status !== 'Tienda Cerrada') {
+    if (retiroAplica() && !$('#fRetNuc').checked && !$('#fRetRb').checked && !$('#fRetNo').checked) return fErr('Indica el equipo que se retira de la tienda: NUC, RB o “No se recogió”.');
+    if (eqConfAplica() && !$('#fConfEq').value) return fErr('Indica qué equipo hay en la tienda (NUC, RB o Ninguno).');
+    if (solAplica() && !$('#fSolSi').checked && !$('#fSolNo').checked) return fErr('Indica si se retira este equipo (Sí / No).');
+    if (usbPreguntaAplica() && !$('#fUsb').checked && !$('#fUsbEx').checked && !$('#fUsbNo').checked && !$('#fUsbRet').checked) return fErr('Indica si hay USB en el monitor (Sí / No).');
+    if (perAplica() && !$('#fPerSi').checked && !$('#fPerNo').checked) return fErr('Responde si se solucionó el problema de los periféricos (Sí / No).');
+  }
   const v = F.v;
   const btn = $('#btnGuardar'); btn.disabled = true; btn.textContent = 'Guardando…';
   showLoading(true);
@@ -1266,8 +1331,14 @@ async function guardarVisita() {
       usbMonitor: usbAplica() && $('#fUsb').checked,
       confirmaUsb: confAplica() && $('#fUsbEx').checked,
       retiroUsb: usbRetAplica() && $('#fUsbRet').checked,
+      usbNo: confAplica() && $('#fUsbNo').checked,
       confirmaEquipo: eqConfAplica() ? $('#fConfEq').value : '',
-      mantenimiento: mantAplica() && $('#fMant').checked
+      noRecogio: retiroAplica() && $('#fRetNo').checked,
+      seRetira: solAplica() ? $('#fSolSi').checked : '',
+      solicitaReubicacion: incAplica() && $('#fIncReub').checked,
+      mudanzaTienda: incAplica() && $('#fIncMud').checked,
+      revisarPerifericos: incAplica() && $('#fIncPer').checked,
+      perifSolucionado: perAplica() ? $('#fPerSi').checked : ''
     });
     toast('Visita guardada correctamente', 'ok');
     closeModal();
