@@ -153,7 +153,7 @@ const COLOR = {
   'Visita Física': '#2563eb', 'Visita Remota': '#8b5cf6', 'No Visitado': '#94a3b8',
   'Activa Validada': '#16a34a', 'Activa Sin Validación': '#84cc16',
   'Avería ISP': '#dc2626', 'Avería NUC/RB': '#ea580c', 'Avería Otros': '#be185d',
-  'Tienda Cerrada': '#475569', 'Solicitud de Retiro': '#7c3aed'
+  'Tienda Cerrada': '#475569', 'Solicitud de Retiro': '#7c3aed', 'Tienda Retirada': '#be123c'
 };
 const VCOLS = ['ID_Visita', 'Fecha_Asignacion', 'Usuario_Asignado', 'ID_Cliente', 'Nombre_Cliente', 'Latitud_Tienda', 'Longitud_Tienda', 'Estado_Tarea', 'Tipo_Visita', 'Status_Tienda', 'URL_Foto_Fachada', 'URL_Foto_Monitor', 'Observacion', 'Fecha_Resolucion', 'Lat_Real_Tecnico', 'Lng_Real_Tecnico', 'Distancia_Metros', 'Es_Fuera_De_Ruta', 'Retiro_Equipos', 'Reinstalacion_Equipo', 'USB_Monitor', 'Mantenimiento', 'Confirma_Equipo', 'Confirma_USB', 'Retiro_USB', 'Seguimiento_De', 'Fecha_Programada', 'Etiqueta', 'Incidencia', 'Perifericos', 'Perif_Resuelto', 'Se_Retira', 'No_Recogio', 'USB_Respuesta'];
 
@@ -276,6 +276,7 @@ const S = {
   lab: null, incs: null, cerradas: null,
   incv: { tipo: '', estado: 'Abierta', q: '', sel: new Set(), page: 1, nota: '' },
   rev: { f: 'prev', q: '', sel: new Set(), page: 1, status: 'Activa Validada', usuario: '', prog: '', etq: '' },
+  sol: { f: 'todas', q: '', sel: new Set(), page: 1, usuario: '', prog: '', etq: 'Retiro', nota: '', st: 'Activa Sin Validación' },
   hist: { q: '', tipo: '', status: '', fuera: false, page: 1 },
   tienda: { q: '', filtro: '', distrito: '', sel: '', page: 1, data: null, hoja: true, setup: false, hist: {}, chk: new Set() },
   logs: [], logsFiltro: '', timer: null
@@ -356,9 +357,9 @@ async function loadData(silent) {
   try {
     if (!silent) showLoading(true);
     const d = await api('adminData', { desde: S.rango.desde, hasta: S.rango.hasta });
-    S.usuarios = d.usuarios || []; S.clientes = d.clientes || []; S.visitas = d.visitas || []; S.segs = d.segs || []; S.cerradas = d.cerradas || null; S.incs = d.incs || null; S.lab = d.lab || null; S.updated = new Date();
+    S.usuarios = d.usuarios || []; S.clientes = d.clientes || []; S.visitas = d.visitas || []; S.segs = d.segs || []; S.cerradas = d.cerradas || null; S.solic = d.solic || null; S.incs = d.incs || null; S.lab = d.lab || null; S.updated = new Date();
     S.visitas.forEach(v => { if (v.Status_Tienda === 'Avería CAM') v.Status_Tienda = 'Avería Otros'; });   // Avería CAM ya no existe: el historial antiguo cuenta como Avería Otros
-    { const ids = new Set((S.incs || []).map(r => r.ID_Inc)); S.incv.sel = new Set([...S.incv.sel].filter(id => ids.has(id))); const cs = new Set((S.cerradas || []).map(c => c.ID_Cliente)); S.rev.sel = new Set([...S.rev.sel].filter(id => cs.has(id))); }
+    { const ids = new Set((S.incs || []).map(r => r.ID_Inc)); S.incv.sel = new Set([...S.incv.sel].filter(id => ids.has(id))); const cs = new Set((S.cerradas || []).map(c => c.ID_Cliente)); S.rev.sel = new Set([...S.rev.sel].filter(id => cs.has(id))); const so = new Set((S.solic || []).map(c => c.ID_Cliente)); S.sol.sel = new Set([...S.sol.sel].filter(id => so.has(id))); }
     indexData();
     $('#updated').textContent = 'Actualizado ' + S.updated.toLocaleTimeString('es-PE');
     renderCurrent(silent);
@@ -376,7 +377,7 @@ function orderedUsers() { return [...S.usuarios].sort((a, b) => (a.Rol === b.Rol
  * ===================================================================== */
 function renderNav() {
   const n = S.visitas.filter(v => v.Estado_Tarea === 'Pendiente').length;
-  $('#nav').innerHTML = NAV.map(([k, l, i]) => `<button class="navb ${S.view === k ? 'on' : ''}" data-nav="${k}">${ico(i)}<span class="flex-1">${l}</span>${k === 'pend' && n ? `<span class="badge bg-red-600 text-white">${n}</span>` : ''}${k === 'inc' && S.incs && S.incs.filter(r => r.Estado === 'Abierta').length ? `<span class="badge bg-amber-500 text-white">${S.incs.filter(r => r.Estado === 'Abierta').length}</span>` : ''}${k === 'lab' && S.lab && S.lab.abiertos ? `<span class="badge bg-sky-600 text-white">${S.lab.abiertos}</span>` : ''}</button>`).join('');
+  $('#nav').innerHTML = NAV.map(([k, l, i]) => `<button class="navb ${S.view === k ? 'on' : ''}" data-nav="${k}">${ico(i)}<span class="flex-1">${l}</span>${k === 'pend' && n ? `<span class="badge bg-red-600 text-white">${n}</span>` : ''}${k === 'inc' && ((S.incs ? S.incs.filter(r => r.Estado === 'Abierta').length : 0) + (S.solic ? S.solic.length : 0)) ? `<span class="badge bg-amber-500 text-white">${(S.incs ? S.incs.filter(r => r.Estado === 'Abierta').length : 0) + (S.solic ? S.solic.length : 0)}</span>` : ''}${k === 'lab' && S.lab && S.lab.abiertos ? `<span class="badge bg-sky-600 text-white">${S.lab.abiertos}</span>` : ''}</button>`).join('');
 }
 function openDrawer(b) { $('#sidebar').classList.toggle('-translate-x-full', !b); $('#backdrop').classList.toggle('hidden', !b); }
 
@@ -453,15 +454,18 @@ function sets(final) {
   const inR = s => { const d = dOf(s); return d >= desde && d <= hasta; };
   if (!final) return {
     res: S.visitas.filter(v => v.Estado_Tarea === 'Resuelta' && ok(v) && inR(v.Fecha_Resolucion)),
+    ret: [],
     pend: S.visitas.filter(v => v.Estado_Tarea === 'Pendiente' && ok(v)),
     asig: S.visitas.filter(v => ok(v) && inR(v.Fecha_Asignacion))
   };
   const sm = segMap();
   const finalOf = id => { let x = sm[id], last = null, n = 0; while (x && n++ < 20) { last = x; x = sm[x.ID_Visita]; } return last; };   // última visita de la cadena de seguimientos
+  const todas = S.visitas.filter(v => v.Estado_Tarea === 'Resuelta' && !v.Seguimiento_De && ok(v) && inR(v.Fecha_Resolucion))
+    .map(v => { const f = (SEG_STATUS.includes(v.Status_Tienda) || v.Tipo_Visita === 'No Visitado') ? finalOf(v.ID_Visita) : null;
+      return f ? Object.assign({}, v, { Status_Tienda: f.Status_Tienda, Status_Inicial: v.Status_Tienda || '', Recuperada: true }) : v; });
   return {
-    res: S.visitas.filter(v => v.Estado_Tarea === 'Resuelta' && !v.Seguimiento_De && ok(v) && inR(v.Fecha_Resolucion))
-      .map(v => { const f = (SEG_STATUS.includes(v.Status_Tienda) || v.Tipo_Visita === 'No Visitado') ? finalOf(v.ID_Visita) : null;
-        return f ? Object.assign({}, v, { Status_Tienda: f.Status_Tienda, Status_Inicial: v.Status_Tienda || '', Recuperada: true }) : v; }),
+    res: todas.filter(v => v.Status_Tienda !== 'Tienda Retirada'),      // "Tienda Retirada" tiene su propio indicador: no suma en Resueltas ni en Activa Validada
+    ret: todas.filter(v => v.Status_Tienda === 'Tienda Retirada'),
     pend: S.visitas.filter(v => v.Estado_Tarea === 'Pendiente' && ok(v)),
     asig: S.visitas.filter(v => !v.Seguimiento_De && ok(v) && inR(v.Fecha_Asignacion))
   };
@@ -535,12 +539,12 @@ function avisoSegHTML() {
 }
 
 function applyDrill(list, d) {
-  return list.filter(v => (!d.recup || (d.recup === 'cerrada' ? v.Recuperada && v.Status_Inicial === 'Tienda Cerrada' : d.recup === 'otras' ? v.Recuperada && v.Status_Inicial !== 'Tienda Cerrada' : !!v.Recuperada)) && (!d.sinrec || v.Status_Tienda === 'Tienda Cerrada') && (!d.tec || v.Usuario_Asignado === d.tec) && (!d.tipo || v.Tipo_Visita === d.tipo) && (!d.status || d.status.includes(v.Status_Tienda)) && (!d.bucket || bucketKey(v) === d.bucket) && (!d.fuera || v.Es_Fuera_De_Ruta === 'SI') && (!d.retiro || d.retiro.includes(v.Retiro_Equipos || '')) && (!d.reinst || d.reinst.includes(v.Reinstalacion_Equipo || '')) && (!d.usb || v.USB_Monitor === 'SI') && (!d.usbret || !!v.Retiro_USB) && (!d.mant || v.Mantenimiento === 'SI') && (!d.norec || v.No_Recogio === 'SI') && (!d.sinNoRec || v.No_Recogio !== 'SI') && (!d.seret || v.Se_Retira === 'SI'));
+  return list.filter(v => (!d.recup || (d.recup === 'cerrada' ? v.Recuperada && v.Status_Inicial === 'Tienda Cerrada' : d.recup === 'otras' ? v.Recuperada && v.Status_Inicial !== 'Tienda Cerrada' : !!v.Recuperada)) && (!d.sinrec || v.Status_Tienda === 'Tienda Cerrada') && (!d.tec || v.Usuario_Asignado === d.tec) && (!d.tipo || v.Tipo_Visita === d.tipo) && (!d.status || d.status.includes(v.Status_Tienda)) && (!d.bucket || bucketKey(v) === d.bucket) && (!d.fuera || v.Es_Fuera_De_Ruta === 'SI') && (!d.retiro || d.retiro.includes(v.Retiro_Equipos || '')) && (!d.reinst || d.reinst.includes(v.Reinstalacion_Equipo || '')) && (!d.usb || v.USB_Monitor === 'SI') && (!d.usbret || !!v.Retiro_USB) && (!d.retreal || v.Retiro_Realizado === 'SI') && (!d.sigsi || v.Sigue_Proyecto === 'SI') && (!d.signo || v.Sigue_Proyecto === 'NO') && (!d.mant || v.Mantenimiento === 'SI') && (!d.norec || v.No_Recogio === 'SI') && (!d.sinNoRec || v.No_Recogio !== 'SI') && (!d.seret || v.Se_Retira === 'SI'));
 }
 
 function renderDash() {
   destroyCharts(); DR = []; CQ = [];
-  const { res, pend, asig } = sets(true);
+  const { res, pend, asig, ret: retL } = sets(true);
   const total = res.length, c = fn => res.filter(fn).length;
   const fis = c(v => v.Tipo_Visita === 'Visita Física'), rem = c(v => v.Tipo_Visita === 'Visita Remota'), nov = c(v => v.Tipo_Visita === 'No Visitado');
   const st = {}; INC.forEach(s => { st[s] = c(v => v.Status_Tienda === s); });
@@ -574,7 +578,7 @@ function renderDash() {
   const sinSeg = cerradasSinSeg(S.filtroTec);
   const incAbN = (S.incs || []).filter(r => r.Estado === 'Abierta' && (!S.filtroTec || r.Tecnico === S.filtroTec)).length, porRev = (S.cerradas || []).filter(x => (!S.filtroTec || x.Usuario === S.filtroTec) && dOf(x.Fecha_Estado) < hoyLima() && !x.Pend_ID).length;
   $('#v-dash').innerHTML = `${filterBar()}
-  <button class="card p-3 mt-3 w-full text-left flex flex-wrap items-center gap-2 ${incAbN || sinSeg.length || porRev ? 'border-amber-300 bg-amber-50' : ''}" data-go="inc"><span class="font-semibold text-sm">⚠️ Incidencias</span><span class="badge bg-amber-200 text-amber-900">${n0(incAbN)} abiertas</span><span class="badge bg-slate-200 text-slate-700">${n0(porRev)} tiendas cerradas por revisar</span><span class="badge bg-slate-200 text-slate-700">${n0(S.lab ? S.lab.abiertos : 0)} equipos en laboratorio</span><span class="ml-auto text-xs text-blue-600 font-semibold">Ir a Incidencias →</span></button>
+  <button class="card p-3 mt-3 w-full text-left flex flex-wrap items-center gap-2 ${incAbN || sinSeg.length || porRev ? 'border-amber-300 bg-amber-50' : ''}" data-go="inc"><span class="font-semibold text-sm">⚠️ Incidencias</span><span class="badge bg-amber-200 text-amber-900">${n0(incAbN)} abiertas</span><span class="badge bg-red-100 text-red-700">${n0((S.solic || []).filter(x => !S.filtroTec || x.Usuario === S.filtroTec).length)} solicitudes de retiro</span><span class="badge bg-slate-200 text-slate-700">${n0(porRev)} tiendas cerradas por revisar</span><span class="badge bg-slate-200 text-slate-700">${n0(S.lab ? S.lab.abiertos : 0)} equipos en laboratorio</span><span class="ml-auto text-xs text-blue-600 font-semibold">Ir a Incidencias →</span></button>
   ${!total && !pend.length ? `<div class="card p-4 mt-3 text-sm text-slate-500">No hay visitas para el rango y técnico seleccionados.</div>` : ''}
   <div class="sec">Volumen de visitas</div>
   <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -600,6 +604,7 @@ function renderDash() {
     ${group('Total averías', ave, 'text-red-600', AV, { status: AV, label: 'Total de averías' })}
     ${kpi('Tienda cerrada', n0(cer), { color: 'text-slate-700', dot: COLOR['Tienda Cerrada'], d: { status: ['Tienda Cerrada'], label: 'Tiendas cerradas' }, sub: `${pct(cer, total)}% · incidencia única` })}
     ${kpi('Solicitud de retiro', n0(ret), { color: 'text-violet-600', dot: COLOR['Solicitud de Retiro'], d: { status: ['Solicitud de Retiro'], label: 'Solicitudes de retiro' }, sub: `${pct(ret, total)}% · otra incidencia` })}
+    ${kpi('Tiendas retiradas', n0(retL.length), { color: 'text-rose-700', dot: COLOR['Tienda Retirada'], d: { retirada: true, label: 'Tiendas retiradas (no cuentan en Resueltas)' }, sub: 'estado propio · fuera de Resueltas' })}
   </div>
 
   <div class="sec">Distribución y tendencia</div>
@@ -672,12 +677,12 @@ const kpiH = (label, val, o = {}) => `<button class="card kpi" ${o.d !== undefin
 
 function renderInc() {
   destroyCharts(); DR = [];
-  const { res } = sets(true), c = fn => res.filter(fn).length;
+  const { res, ret: retL } = sets(true), c = fn => res.filter(fn).length;
   const fis = c(v => v.Tipo_Visita === 'Visita Física');
   const nr = res.filter(v => v.Status_Tienda === 'Avería NUC/RB');
   const rc = k => nr.filter(v => (v.Retiro_Equipos || '') === k).length;
   const rNuc = rc(RET.nuc), rRb = rc(RET.rb), rCon = rNuc + rRb, rNo = nr.filter(v => v.No_Recogio === 'SI').length, rSin = Math.max(0, nr.length - rCon - rNo);
-  const seRet = c(v => v.Se_Retira === 'SI');
+  const seRet = c(v => v.Se_Retira === 'SI') + retL.filter(v => v.Se_Retira === 'SI').length;
   const rein = res.filter(v => v.Reinstalacion_Equipo), reN = rein.filter(v => v.Reinstalacion_Equipo === 'NUC'), reR = rein.filter(v => v.Reinstalacion_Equipo === 'RB');
   const okv = a => a.filter(v => v.Status_Tienda === 'Activa Validada').length;
   const usbN = c(v => v.USB_Monitor === 'SI'), usbRetN = c(v => !!v.Retiro_USB), mantN = c(v => v.Mantenimiento === 'SI');
@@ -686,12 +691,24 @@ function renderInc() {
   const sinSeg = cerradasSinSeg(S.filtroTec);
   const incKpi = ([t, ic, color, ayuda]) => { const s = incStats(t); return kpiH(`${ic} ${t}`, n0(s.ab), { color: s.ab ? '' : 'text-green-600', dot: color, raw: `data-ikpi="${esc(t)}"`, sub: `abiertas · ${n0(s.rep)} reportadas en el periodo · ${n0(s.res)} resueltas${s.viejas ? ` · <b class="text-red-600">${n0(s.viejas)} con +7 días</b>` : ''}`, extra: `<div class="text-[11px] text-slate-400 mt-1">${esc(ayuda)}</div>` }); };
   const totAb = incsF().filter(incAb).length;
+  const solA = solFiltrada();
   $('#v-inc').innerHTML = `${filterBar()}
   ${avisoSegHTML()}
 
   <div class="sec">Incidencias marcadas en las visitas <span class="normal-case font-normal text-slate-400">· el técnico las marca (opcional) en Visita Física; ${n0(totAb)} abiertas ahora</span></div>
   <div class="grid grid-cols-1 md:grid-cols-3 gap-3">${INC_TIPOS.map(incKpi).join('')}</div>
   <div id="incBox" class="mt-3"></div>
+
+  <div class="sec">Solicitudes de retiro <span class="normal-case font-normal text-slate-400">· la tienda sigue con la etiqueta hasta que se retiren los equipos o el cliente decida continuar</span></div>
+  <div class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
+    ${kpiH('Solicitudes abiertas', n0(solA.length), { color: solA.length ? 'text-red-600' : 'text-green-600', dot: '#dc2626', raw: 'data-solf="todas"', sub: `${n0(solA.filter(x => !x.Pend_ID).length)} sin visita asignada · ${n0(solA.filter(x => x.Pend_ID).length)} con visita asignada` })}
+    ${kpiH('El cliente dijo que no', n0(solA.filter(x => x.Intentos > 0).length), { color: 'text-amber-700', dot: '#d97706', raw: 'data-solf="no"', sub: 'ya se le preguntó y no desea seguir' })}
+    ${kpiH('+15 días abiertas', n0(solA.filter(x => diasDesde(x.Solicitud_Fecha) !== null && diasDesde(x.Solicitud_Fecha) >= 15).length), { color: 'text-red-600', dot: '#b91c1c', raw: 'data-solf="old"', sub: 'las más antiguas primero' })}
+    ${kpiH('Tiendas retiradas', n0(retL.length), { color: 'text-rose-700', dot: COLOR['Tienda Retirada'], d: { retirada: true, label: 'Tiendas retiradas · el equipo pasó al Laboratorio y la tienda quedó Retirada' }, sub: 'visitas del periodo · fuera de Resueltas' })}
+    ${kpiH('Cliente continúa', n0(c(v => v.Sigue_Proyecto === 'SI')), { color: 'text-emerald-600', dot: '#059669', d: { sigsi: true, label: 'Solicitud de retiro cerrada · el cliente continúa en el proyecto' }, sub: 'visitas del periodo · formulario de siempre' })}
+    ${kpiH('Respuestas "no desea seguir"', n0(c(v => v.Sigue_Proyecto === 'NO')), { color: 'text-slate-700', dot: '#64748b', d: { signo: true, label: 'Solicitud de retiro · el cliente respondió que no desea seguir' }, sub: 'visitas del periodo' })}
+  </div>
+  <div id="solBox" class="mt-3"></div>
 
   <div class="sec">Tienda cerrada · seguimiento <span class="normal-case font-normal text-slate-400">· cerradas del periodo que luego se activaron</span></div>
   <div class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
@@ -730,7 +747,7 @@ function renderInc() {
   </div>
 
   <div id="drillBoxI" class="mt-5"></div>`;
-  updateIncList(); updateRev(); renderDrill(false);
+  updateIncList(); updateSol(); updateRev(); renderDrill(false);
 }
 
 /* ---- Lista de incidencias (reubicación, mudanza, periféricos) ---- */
@@ -786,6 +803,78 @@ async function incAction(kind) {
   showLoading(true, 'Actualizando…'); let ok = 0;
   try { for (const lote of chunk(ids, 100)) { const r = await api('updateInc', { ids: lote, accion, detalle: I.nota }); ok += r.actualizadas; } toast(`${ok} incidencia(s) ${accion === 'resolver' ? 'resueltas' : 'reabiertas'}`, 'ok'); I.sel.clear(); I.nota = ''; }
   catch (e) { toast(`${e.message} (actualizadas: ${ok})`, 'error'); }
+  await loadData(true); showLoading(false);
+}
+
+/* ---- Solicitudes de retiro (tiendas con la solicitud abierta) ---- */
+const SOL_FILTROS = [['todas', 'Todas'], ['sin', 'Sin visita asignada'], ['asig', 'Con visita asignada'], ['no', 'El cliente dijo que no'], ['old', '+15 días']];
+function solFiltrada() { return (S.solic || []).filter(x => !S.filtroTec || x.Usuario === S.filtroTec); }
+const solPred = { todas: () => true, sin: x => !x.Pend_ID, asig: x => !!x.Pend_ID, no: x => x.Intentos > 0, old: x => { const d = diasDesde(x.Solicitud_Fecha); return d !== null && d >= 15; } };
+function solList() {
+  const O = S.sol, q = norm(O.q.trim());
+  return solFiltrada().filter(x => (solPred[O.f] || solPred.todas)(x) && (!q || norm(x.Nombre_Cliente).includes(q) || norm(x.ID_Cliente).includes(q) || norm(x.Distrito || '').includes(q)))
+    .sort((a, b) => String(a.Solicitud_Fecha || '9').localeCompare(String(b.Solicitud_Fecha || '9')));
+}
+function updateSol() {
+  const box = $('#solBox'); if (!box) return;
+  if (S.solic === null) { box.innerHTML = `<div class="card p-3 text-xs text-amber-700">Actualiza <b>Code.gs</b> y publica una nueva versión para activar las solicitudes de retiro.</div>`; return; }
+  const O = S.sol, all = solFiltrada(), list = solList(); S.solList = list;
+  const rows = list.slice(0, O.page * CONFIG.PAGE);
+  box.innerHTML = `<div class="card overflow-hidden"><div class="p-3 border-b border-slate-100">
+      <div class="font-semibold text-sm">📦 Tiendas con Solicitud de Retiro abierta</div>
+      <div class="text-xs text-slate-500 mt-0.5">Se cierran solas cuando una visita responde <b>“se retiraron los equipos”</b> o <b>“el cliente desea seguir”</b>. Aquí puedes <b>asignar la próxima visita</b> o cerrarlas a mano. “No Visitado” y “Tienda Cerrada” no las cierran.</div>
+      <div class="flex flex-wrap items-center gap-1.5 mt-2">${SOL_FILTROS.map(([k, l]) => `<button class="chip ${O.f === k ? 'chip-on' : ''}" data-solf="${k}">${l} (${n0(all.filter(solPred[k]).length)})</button>`).join('')}
+        <input id="solQ" type="search" class="inp !w-48 ml-auto" placeholder="Buscar tienda o distrito" value="${esc(O.q)}"></div></div>
+    ${rows.length ? `<label class="flex items-center gap-3 p-3 border-b border-slate-100 cursor-pointer text-sm font-medium"><input id="solAll" type="checkbox" ${list.every(x => O.sel.has(x.ID_Cliente)) ? 'checked' : ''}><span id="solCnt">${n0(list.length)} tiendas</span></label>
+    <div class="overflow-x-auto"><table class="t"><thead><tr><th></th><th>Tienda</th><th>Abierta desde</th><th>Última visita</th><th>Equipo</th><th>Situación</th></tr></thead><tbody>
+    ${rows.map(x => { const d = diasDesde(x.Solicitud_Fecha); return `<tr><td><input type="checkbox" data-solck="${esc(x.ID_Cliente)}" ${O.sel.has(x.ID_Cliente) ? 'checked' : ''}></td>
+      <td><b>${esc(x.Nombre_Cliente)}</b><div class="text-xs text-slate-400">${esc(x.ID_Cliente)}${x.Distrito ? ' · ' + esc(x.Distrito) : ''}</div></td>
+      <td class="whitespace-nowrap">${x.Solicitud_Fecha ? fmtDT(x.Solicitud_Fecha) : '—'}${d !== null ? `<div class="text-xs ${d >= 15 ? 'text-red-700 font-semibold' : 'text-slate-500'}">hace ${n0(d)} día(s)</div>` : ''}</td>
+      <td><div class="text-xs"><span class="badge bg-slate-100 text-slate-700">${esc(x.Ultimo_Tipo_Visita || '—')}${x.Ultimo_Status ? ' · ' + esc(x.Ultimo_Status) : ''}</span> ${esc(nameOf(x.Usuario))}</div><div class="text-xs text-slate-500 mt-0.5 max-w-xs truncate" title="${esc(x.Observacion)}">${esc(x.Observacion || '')}</div></td>
+      <td class="text-xs">${x.Estado_Equipo === 'Equipo retirado' ? '<span class="badge bg-violet-100 text-violet-700">Equipo retirado</span>' : x.Componente_Actual ? esc(x.Componente_Actual) : '<span class="text-slate-400">—</span>'}</td>
+      <td>${x.Pend_ID ? `<span class="badge bg-sky-100 text-sky-700">📅 Asignada a ${esc(nameOf(x.Pend_Usuario))}</span>${x.Pend_Programada ? `<div class="text-[10px] text-slate-500 mt-0.5">${fmtDT(x.Pend_Programada)}</div>` : ''}` : '<span class="badge bg-amber-100 text-amber-800">Sin visita asignada</span>'}${x.Intentos ? `<div class="text-[10px] text-amber-700 mt-0.5">El cliente dijo que no (${n0(x.Intentos)}×)</div>` : ''}</td></tr>`; }).join('')}</tbody></table></div>
+    ${list.length > rows.length ? `<div class="p-3 text-center"><button class="btn btn-ghost" data-more="sol">Mostrar más (${n0(list.length - rows.length)})</button></div>` : ''}`
+    : `<div class="p-6 text-center text-sm text-slate-500">${all.length ? 'No hay tiendas con ese filtro.' : '✅ No hay solicitudes de retiro abiertas.'}</div>`}</div>
+    <div id="solBar" class="sticky bottom-3 mt-3 z-10"></div>`;
+  updateSolBar();
+}
+function updateSolBar() {
+  const O = S.sol, n = O.sel.size, bar = $('#solBar'); if (!bar) return;
+  const c = $('#solCnt'); if (c) c.textContent = `${n0((S.solList || []).length)} tiendas${n ? ` · ${n0(n)} seleccionadas` : ''}`;
+  const tecs = orderedUsers();
+  bar.innerHTML = n ? `<div class="card p-3 shadow-xl border-blue-300 space-y-2"><div class="flex flex-wrap items-center gap-2"><b class="text-sm">${n0(n)} seleccionadas</b><button class="btn btn-ghost ml-auto" data-solact="limpiar">Limpiar</button></div>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
+      <div class="rounded-xl border border-sky-200 bg-sky-50 p-2.5 flex flex-wrap items-center gap-2"><div class="text-sm font-semibold text-sky-800 w-full">📅 Asignar la próxima visita</div>
+        <select id="solUsr" class="inp !w-auto"><option value="">Elige técnico o supervisor…</option>${tecs.map(u => `<option value="${esc(u.Usuario)}" ${O.usuario === u.Usuario ? 'selected' : ''}>${esc(u.Nombre_Apellido)}${u.Rol === 'Supervisor' ? ' (Supervisor)' : ''}</option>`).join('')}</select>
+        <input id="solProg" type="datetime-local" class="inp !w-auto" value="${esc(O.prog)}" title="Fecha y hora programada (opcional)">
+        <select id="solEtq" class="inp !w-auto"><option value="">Sin etiqueta</option>${ETIQUETAS.map(e => `<option ${O.etq === e ? 'selected' : ''}>${e}</option>`).join('')}</select>
+        <button class="btn btn-primary" data-solact="asignar">Asignar (${n0(n)})</button></div>
+      <div class="rounded-xl border border-emerald-200 bg-emerald-50 p-2.5 flex flex-wrap items-center gap-2"><div class="text-sm font-semibold text-emerald-800 w-full">✅ Cerrar sin visita (queda registrado como visita remota tuya)</div>
+        <input id="solNota" class="inp !w-64" maxlength="200" placeholder="Nota obligatoria (qué pasó)" value="${esc(O.nota)}">
+        <button class="btn btn-outline" data-solact="retirada" title="La visita queda como Tienda Retirada, la tienda pasa a Retirada y el equipo al Laboratorio">📤 Tienda retirada</button>
+        <select id="solSt" class="inp !w-auto" title="Status con el que queda la visita si el cliente continúa"><option ${O.st === 'Activa Validada' ? 'selected' : ''}>Activa Validada</option><option ${O.st === 'Activa Sin Validación' ? 'selected' : ''}>Activa Sin Validación</option></select>
+        <button class="btn btn-outline" data-solact="continua">✅ El cliente continúa</button></div></div></div>` : '';
+}
+async function solAction(kind) {
+  const O = S.sol;
+  if (kind === 'limpiar') { O.sel.clear(); return updateSol(); }
+  const ids = [...O.sel]; if (!ids.length) return;
+  let ruta, data;
+  if (kind === 'asignar') {
+    if (!O.usuario) return toast('Elige a quién se asigna', 'warn');
+    if (!confirm(`¿Asignar una visita a ${nameOf(O.usuario)} para ${ids.length} tienda(s)?`)) return;
+    ruta = 'asignarSolicitudes'; data = { usuario: O.usuario, etiqueta: O.etq, programada: O.prog };
+  } else {
+    if (!O.nota.trim()) return toast('Escribe una nota: explica por qué se cierra la solicitud', 'warn');
+    if (!confirm(kind === 'retirada' ? `¿Cerrar ${ids.length} solicitud(es) como TIENDA RETIRADA?\n\nLa visita queda como “Tienda Retirada” (no suma en Resueltas), la tienda pasa a Retirada, se cancelan sus visitas pendientes y el equipo registrado pasa al Laboratorio. Puedes reactivar la tienda en Información de Tienda.` : `¿Cerrar ${ids.length} solicitud(es) porque el cliente continúa en el proyecto?\n\nLa visita queda como ${O.st}. Si el equipo ya se había retirado, queda pendiente de reinstalar.`)) return;
+    ruta = 'cerrarSolicitudes'; data = { accion: kind, nota: O.nota.trim(), status: O.st };
+  }
+  showLoading(true, 'Procesando…'); let ok = 0; const om = [];
+  try {
+    for (const lote of chunk(ids, 100)) { const r = await api(ruta, { ...data, items: lote.map(idCliente => ({ idCliente })) }); ok += r.ok; om.push(...(r.omitidas || [])); }
+    toast(`${ok} tienda(s) ${kind === 'asignar' ? 'asignadas' : 'cerradas'}${om.length ? ` · ${om.length} omitidas: ${om.slice(0, 2).map(x => x.motivo).join('; ')}` : ''}`, om.length ? 'warn' : 'ok');
+    O.sel.clear(); if (kind !== 'asignar') O.nota = '';
+  } catch (e) { toast(`${e.message} (hechas: ${ok})`, 'error'); }
   await loadData(true); showLoading(false);
 }
 
@@ -905,8 +994,8 @@ function setDrill(d) {
 function renderDrill(scroll) {
   const box = $(S.view === 'inc' ? '#drillBoxI' : '#drillBox'); if (!box) return;
   if (!S.drill) { box.innerHTML = '<div class="text-center text-sm text-slate-400 py-6">Toca una tarjeta, un gráfico o una fila para ver el detalle de las visitas.</div>'; return; }
-  const { res } = sets(true), d = S.drill;
-  S.drillList = applyDrill(res, d).sort((a, b) => String(b.Fecha_Resolucion).localeCompare(String(a.Fecha_Resolucion)));
+  const { res, ret: retL } = sets(true), d = S.drill;
+  S.drillList = applyDrill(d.retirada ? retL : res, d).sort((a, b) => String(b.Fecha_Resolucion).localeCompare(String(a.Fecha_Resolucion)));
   box.innerHTML = `<div class="card overflow-hidden"><div class="p-3 flex flex-wrap items-center gap-2 border-b border-slate-100">
       <div class="font-semibold">Detalle: ${esc(d.label || 'Visitas')}</div><span class="badge bg-blue-100 text-blue-700">${n0(S.drillList.length)} visitas</span>
       ${d.tec ? `<span class="badge bg-slate-100 text-slate-700">${esc(nameOf(d.tec))}</span>` : ''}
@@ -950,7 +1039,7 @@ function buildHist() {
     <div class="card p-3 mt-3 flex flex-wrap gap-2 items-center">
       <input id="hQ" type="search" class="inp flex-1 min-w-[180px]" placeholder="Buscar tienda, ID, técnico u observación" value="${esc(h.q)}">
       <select id="hTipo" class="inp !w-auto"><option value="">Todos los tipos</option>${TIPOS.map(t => `<option ${h.tipo === t ? 'selected' : ''}>${t}</option>`).join('')}</select>
-      <select id="hStatus" class="inp !w-auto"><option value="">Todos los status</option>${INC.map(t => `<option ${h.status === t ? 'selected' : ''}>${t}</option>`).join('')}</select>
+      <select id="hStatus" class="inp !w-auto"><option value="">Todos los status</option>${[...INC, 'Tienda Retirada'].map(t => `<option ${h.status === t ? 'selected' : ''}>${t}</option>`).join('')}</select>
       <label class="flex items-center gap-2 text-sm"><input id="hFuera" type="checkbox" ${h.fuera ? 'checked' : ''}> Solo fuera de ruta</label>
       <button class="btn btn-outline" data-csv="hist">Exportar CSV</button>
     </div>
@@ -1444,7 +1533,7 @@ const origenTxt = o => o === 'Importado' ? 'base anterior' : o === 'Visita' ? 'v
 // Una tienda Retirada pasa a la vista "Retiradas +90 días" (candidatas a eliminar de la base)
 const RETIRADA_DIAS = 90;
 const TFILTROS = [['', 'Todas las tiendas'],
-  ['enlinea', 'Estado: En Línea'], ['pendiente', 'Estado: Pendiente'], ['averia', 'Estado: Avería'], ['cerrada', 'Estado: Tienda Cerrada'], ['solret', 'Estado: Solicitud de Retiro'], ['retirado', 'Estado: Retirado'], ['ret90', `Retiradas hace más de ${RETIRADA_DIAS} días`], ['cersinseg', 'Cerradas sin seguimiento'], ['sinestado', 'Estado: sin dato'],
+  ['enlinea', 'Estado: En Línea'], ['pendiente', 'Estado: Pendiente'], ['averia', 'Estado: Avería'], ['cerrada', 'Estado: Tienda Cerrada'], ['solret', 'Solicitud de Retiro abierta'], ['retirado', 'Estado: Retirado'], ['ret90', `Retiradas hace más de ${RETIRADA_DIAS} días`], ['cersinseg', 'Cerradas sin seguimiento'], ['sinestado', 'Estado: sin dato'],
   ['reub', 'Incidencia: Solicita reubicación'], ['mud', 'Incidencia: Mudanza de tienda'], ['perif', 'Incidencia: Revisar periféricos'], ['incab', 'Con alguna incidencia abierta'],
   ['pend', 'Equipo pendiente de reinstalar'], ['sinval', 'Instalado sin validar'], ['usb', 'Con USB en monitor'], ['usbret', 'USB por retirar (Supervisor)'], ['nuc', 'Tiene NUC'], ['rb', 'Tiene RB'], ['sineq', 'Equipo sin dato'],
   ['sinvisita', 'Sin visitas'], ['atras', 'Sin visita hace más de 30 días'], ['sinmant', 'Sin mantenimiento registrado'], ['sincontacto', 'Sin contacto'], ['sindistrito', 'Sin distrito']];
@@ -1457,7 +1546,7 @@ const TPRED = {
   pendiente: t => t.Estado_Tienda === 'Pendiente',
   averia: t => t.Estado_Tienda === 'Avería',
   cerrada: t => t.Estado_Tienda === 'Tienda Cerrada',
-  solret: t => t.Estado_Tienda === 'Solicitud de Retiro',
+  solret: t => t.Estado_Tienda !== 'Retirado' && t.Solicitud_Retiro === 'SI',
   retirado: t => t.Estado_Tienda === 'Retirado',
   ret90: t => { if (t.Estado_Tienda !== 'Retirado') return false; const d = diasDesde(t.Retirada_Fecha); return d !== null && d > RETIRADA_DIAS; },
   cersinseg: t => t.Estado_Tienda === 'Tienda Cerrada' && CSS.has(t.ID_Cliente),
@@ -1485,6 +1574,7 @@ const diasTxt = d => d === null ? 'sin visitas' : d === 0 ? 'hoy' : d === 1 ? 'a
 const fmtTel = s => { s = String(s || ''); return s.length === 9 ? s.replace(/(\d{3})(\d{3})(\d{3})/, '$1 $2 $3') : s; };
 const telLink = s => !s ? '' : `<a class="text-blue-600" href="tel:+51${esc(s)}">${esc(fmtTel(s))}</a>${/^9\d{8}$/.test(s) ? ` <a class="text-green-600 text-xs font-semibold" target="_blank" rel="noopener" href="https://wa.me/51${esc(s)}">WhatsApp</a>` : ''}`;
 const tBadges = t => t.Estado_Tienda === 'Retirado' ? '' : [
+  t.Solicitud_Retiro === 'SI' ? '<span class="badge bg-red-100 text-red-700">📤 Solicitud de retiro</span>' : '',
   t.Inc_Reubicacion === 'SI' ? '<span class="badge bg-indigo-100 text-indigo-700">🚚 Reubicación</span>' : '',
   t.Inc_Mudanza === 'SI' ? '<span class="badge bg-orange-100 text-orange-700">📦 Mudanza</span>' : '',
   t.Inc_Perifericos === 'SI' ? '<span class="badge bg-cyan-100 text-cyan-700">🔌 Periféricos</span>' : '',
@@ -1622,6 +1712,7 @@ function tiendaDetailHTML(t, modal) {
     ${kv('Última visita física', dt(t.Ultima_Visita_Fisica))}
 
     ${sub('Incidencias')}
+    ${kv('Solicitud de retiro', t.Solicitud_Retiro === 'SI' ? `<b class="text-red-700">Abierta</b>${t.Solicitud_Fecha ? ' desde ' + esc(fmtDT(t.Solicitud_Fecha)) : ''}` : (t.Solicitud_Resultado ? `Cerrada: ${esc(t.Solicitud_Resultado)}${t.Solicitud_Cierre ? ' (' + esc(fmtDT(t.Solicitud_Cierre)) + ')' : ''}` : 'Ninguna'))}
     ${kv('Incidencias abiertas', t.Incidencias_Abiertas ? `<b class="text-amber-700">${esc(t.Incidencias_Abiertas)}</b>` : 'Ninguna')}
 
     ${sub('Equipos')}
@@ -2123,6 +2214,8 @@ function bindEvents() {
     if ((el = t.closest('[data-itipo]'))) { S.incv.tipo = el.dataset.itipo; S.incv.page = 1; return updateIncList(); }
     if ((el = t.closest('[data-iestado]'))) { S.incv.estado = el.dataset.iestado; S.incv.page = 1; return updateIncList(); }
     if ((el = t.closest('[data-iact]'))) return incAction(el.dataset.iact);
+    if ((el = t.closest('[data-solf]'))) { S.sol.f = el.dataset.solf; S.sol.page = 1; updateSol(); const b = $('#solBox'); if (b) b.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); return; }
+    if ((el = t.closest('[data-solact]'))) return solAction(el.dataset.solact);
     if ((el = t.closest('[data-revf]'))) { S.rev.f = el.dataset.revf; S.rev.page = 1; return updateRev(); }
     if ((el = t.closest('[data-revact]'))) return revAction(el.dataset.revact);
     if ((el = t.closest('[data-cssel]'))) { S.tienda.sel = el.dataset.cssel; S.tienda.filtro = 'cersinseg'; S.tienda.page = 1; return go('tiendas'); }
@@ -2139,7 +2232,7 @@ function bindEvents() {
       if (k === 'drill') { S.drillPage++; renderDrill(false); } else if (k === 'hist') { S.hist.page++; updateHist(); }
       else if (k === 'tienda') { S.tienda.page++; updateTiendas(true); }
       else if (k === 'lab') { S.labv.page++; updateLab(); }
-      else if (k === 'inc') { S.incv.page++; updateIncList(); } else if (k === 'rev') { S.rev.page++; updateRev(); }
+      else if (k === 'inc') { S.incv.page++; updateIncList(); } else if (k === 'rev') { S.rev.page++; updateRev(); } else if (k === 'sol') { S.sol.page++; updateSol(); }
       else if (k === 'pend') { S.pend.page++; updatePend(); } else if (k === 'asig') { S.asig.page++; updateAsigList(); }
       return;
     }
@@ -2186,6 +2279,8 @@ function bindEvents() {
     else if (id === 'iQ') { S.incv.q = e.target.value; S.incv.page = 1; updateIncList(); const q = $('#iQ'); if (q) { q.focus(); q.setSelectionRange(q.value.length, q.value.length); } }
     else if (id === 'revQ') { S.rev.q = e.target.value; S.rev.page = 1; updateRev(); const q = $('#revQ'); if (q) { q.focus(); q.setSelectionRange(q.value.length, q.value.length); } }
     else if (id === 'iNota') { S.incv.nota = e.target.value; }
+    else if (id === 'solQ') { S.sol.q = e.target.value; S.sol.page = 1; updateSol(); const q = $('#solQ'); if (q) { q.focus(); q.setSelectionRange(q.value.length, q.value.length); } }
+    else if (id === 'solNota') { S.sol.nota = e.target.value; }
     else if (id === 'lDestSet') { S.labv.ldest = e.target.value; }
   });
 
@@ -2210,6 +2305,12 @@ function bindEvents() {
     else if (t.dataset.ick) { t.checked ? S.incv.sel.add(t.dataset.ick) : S.incv.sel.delete(t.dataset.ick); updateIncBar(); }
     else if (id === 'revAll') { const l = S.revList || []; if (t.checked) l.forEach(c => S.rev.sel.add(c.ID_Cliente)); else l.forEach(c => S.rev.sel.delete(c.ID_Cliente)); updateRev(); }
     else if (t.dataset.revck) { t.checked ? S.rev.sel.add(t.dataset.revck) : S.rev.sel.delete(t.dataset.revck); updateRevBar(); }
+    else if (id === 'solAll') { const l = S.solList || []; if (t.checked) l.forEach(c => S.sol.sel.add(c.ID_Cliente)); else l.forEach(c => S.sol.sel.delete(c.ID_Cliente)); updateSol(); }
+    else if (t.dataset.solck) { t.checked ? S.sol.sel.add(t.dataset.solck) : S.sol.sel.delete(t.dataset.solck); updateSolBar(); }
+    else if (id === 'solUsr') { S.sol.usuario = t.value; }
+    else if (id === 'solProg') { S.sol.prog = t.value; }
+    else if (id === 'solEtq') { S.sol.etq = t.value; }
+    else if (id === 'solSt') { S.sol.st = t.value; }
     else if (id === 'revSt') { S.rev.status = t.value; }
     else if (id === 'revUsr') { S.rev.usuario = t.value; }
     else if (id === 'revProg') { S.rev.prog = t.value; }
