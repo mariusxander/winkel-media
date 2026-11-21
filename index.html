@@ -188,7 +188,8 @@ const STATUS_COLOR = {
   'Avería CAM': 'bg-orange-100 text-orange-700',
   'Avería Otros': 'bg-orange-100 text-orange-700',
   'Tienda Cerrada': 'bg-slate-200 text-slate-700',
-  'Solicitud de Retiro': 'bg-purple-100 text-purple-700'
+  'Solicitud de Retiro': 'bg-purple-100 text-purple-700',
+  'Tienda Retirada': 'bg-rose-100 text-rose-700'
 };
 
 /* =====================================================================
@@ -568,7 +569,7 @@ function renderPendientes() {
         </div>
         <div class="flex flex-col items-end gap-1"><span class="badge bg-blue-100 text-blue-700 self-start">Pendiente</span>${antiguedadBadge(v)}</div>
       </div>
-      ${(v.Etiqueta || v.Fecha_Programada) ? `<div class="mt-2 flex flex-wrap gap-1.5 text-xs">${etiquetaBadge(v)}${progBadge(v)}</div>` : ''}
+      ${(v.Etiqueta || v.Fecha_Programada || ((S.equipos || {})[v.ID_Cliente] || {}).solRet) ? `<div class="mt-2 flex flex-wrap gap-1.5 text-xs">${etiquetaBadge(v)}${progBadge(v)}${((S.equipos || {})[v.ID_Cliente] || {}).solRet ? '<span class="badge bg-red-100 text-red-700">📦 Solicitud de retiro</span>' : ''}</div>` : ''}
       ${isSup() ? `<div class="mt-2 flex items-center justify-between text-xs"><span class="text-slate-600">👤 ${esc(techName(v.Usuario_Asignado))}</span><span><button class="text-blue-600 font-semibold px-2 py-1" data-plan="${esc(v.ID_Visita)}">${v.Etiqueta || v.Fecha_Programada ? '✏️ Programar / etiqueta' : '📅 Programar / etiqueta'}</button><button class="text-blue-600 font-semibold px-2 py-1" data-reasignar="${esc(v.ID_Visita)}">Reasignar</button></span></div>`
         : ''}
     </div>`).join('') : `<div class="text-center text-slate-500 py-10 text-sm">${S.filtroEtq ? 'No hay visitas con este filtro.' : 'No hay tareas pendientes 🎉'}</div>`;
@@ -885,9 +886,28 @@ function openVisita(arg) {
       </div>
     </div>
 
+    <div id="fSegBox" class="hidden rounded-xl border-2 border-red-400 bg-red-50 p-3 space-y-3">
+      <div class="text-sm font-semibold text-red-900">📦 Esta tienda tiene una <b>Solicitud de Retiro</b> abierta <span id="fSegDesde" class="font-normal text-red-700"></span></div>
+      <div id="fSegQ1" class="space-y-1.5">
+        <div class="text-sm font-medium text-slate-800">¿Se retiraron los equipos? <span class="text-red-600">*</span></div>
+        <div class="grid grid-cols-2 gap-2">
+          <label class="flex items-center gap-2 text-sm font-medium text-slate-800 bg-white border rounded-xl p-2"><input type="radio" name="fSegRet" id="fSegRetSi" class="w-5 h-5 accent-red-600"> Sí</label>
+          <label class="flex items-center gap-2 text-sm font-medium text-slate-800 bg-white border rounded-xl p-2"><input type="radio" name="fSegRet" id="fSegRetNo" class="w-5 h-5 accent-red-600"> No</label>
+        </div>
+      </div>
+      <div id="fSegQ2" class="space-y-1.5">
+        <div class="text-sm font-medium text-slate-800">¿El cliente desea seguir en el proyecto? <span class="text-red-600">*</span></div>
+        <div class="grid grid-cols-2 gap-2">
+          <label class="flex items-center gap-2 text-sm font-medium text-slate-800 bg-white border rounded-xl p-2"><input type="radio" name="fSegSig" id="fSegSigSi" class="w-5 h-5 accent-emerald-600"> Sí</label>
+          <label class="flex items-center gap-2 text-sm font-medium text-slate-800 bg-white border rounded-xl p-2"><input type="radio" name="fSegSig" id="fSegSigNo" class="w-5 h-5 accent-red-600"> No</label>
+        </div>
+      </div>
+      <label id="fSegCerRow" class="flex items-center gap-3 text-xs font-medium text-slate-700"><input id="fSegCer" type="checkbox" class="w-4 h-4 accent-slate-600"> La tienda está cerrada (solo foto de la fachada; la solicitud sigue abierta)</label>
+      <div id="fSegRes" class="text-xs rounded-lg p-2 bg-white border text-slate-700"></div>
+    </div>
     <div id="fStatusBox">
       <label class="lbl">Status *</label>
-      <select id="fStatus" class="inp"><option value="">Selecciona…</option>${STATUS.filter(t => !v._seg || (t !== 'Tienda Cerrada' && t !== v._segStatus)).map(t => `<option>${t}</option>`).join('')}</select>
+      <select id="fStatus" class="inp"><option value="">Selecciona…</option>${STATUS.filter(t => !v._seg || (t !== 'Tienda Cerrada' && t !== v._segStatus)).map(t => `<option>${t}</option>`).join('')}<option value="Tienda Retirada" hidden disabled>Tienda Retirada</option></select>
     </div>
     <div id="fRetiroBox" class="hidden rounded-xl border border-orange-200 bg-orange-50 p-3 space-y-2.5">
       <div class="text-sm font-semibold text-orange-800">Equipo que se retira de la tienda <span class="text-red-600">*</span></div>
@@ -1000,7 +1020,7 @@ function openVisita(arg) {
   // las opciones de USB son excluyentes
   [['#fUsb', ['#fUsbEx', '#fUsbNo', '#fUsbRet']], ['#fUsbEx', ['#fUsb', '#fUsbNo', '#fUsbRet']], ['#fUsbNo', ['#fUsb', '#fUsbEx', '#fUsbRet']], ['#fUsbRet', ['#fUsb', '#fUsbEx', '#fUsbNo']]].forEach(([c, otros]) =>
     $(c).addEventListener('change', e => { if (e.target.checked) otros.forEach(o => { $(o).checked = false; }); }));
-  ['#fRetNuc', '#fRetRb', '#fRetNo', '#fReNuc', '#fReRb', '#fConfEq'].forEach(c => $(c).addEventListener('change', syncExtras));
+  ['#fRetNuc', '#fRetRb', '#fRetNo', '#fReNuc', '#fReRb', '#fConfEq', '#fSegRetSi', '#fSegRetNo', '#fSegSigSi', '#fSegSigNo', '#fSegCer'].forEach(c => $(c).addEventListener('change', syncExtras));
   $('#fTipo').addEventListener('change', syncExtras);
   $('#fStatus').addEventListener('change', syncExtras);
   $('#fFachada').addEventListener('change', e => onFoto('fachada', e.target, 'prevFachada', false));
@@ -1024,19 +1044,82 @@ function cerradaFisica() { return esFisica() && $('#fStatus').value === 'Tienda 
 function eqInfo() { return (F && (S.equipos || {})[F.v.ID_Cliente]) || {}; }
 function retiroAplica() { return esFisica() && $('#fStatus').value === 'Avería NUC/RB'; }
 function compConocido() { return !!eqInfo().comp; }                      // la tienda ya tiene un equipo registrado: no se puede instalar otro sin retirarlo
-function reinstAplica() { const st = $('#fStatus').value; return esFisica() && (st === 'Activa Validada' || st === 'Activa Sin Validación') && !compConocido(); }
+function reinstAplica() { const st = $('#fStatus').value; return esFisica() && (st === 'Activa Validada' || st === 'Activa Sin Validación') && !compConocido() && !segRetSi(); }
 function usbAplica() { return esFisica() && $('#fStatus').value === 'Activa Sin Validación' && !eqInfo().usb; }      // "se deja USB"
 function confAplica() { const st = $('#fStatus').value; return esFisica() && !!st && st !== 'Tienda Cerrada'; }  // equipo / USB de la tienda
 function sinEq() { return !!eqInfo().sinEq; }
 function sinUsb() { return !!eqInfo().sinUsb; }
-function usbRetAplica() { return confAplica() && isSup() && !!eqInfo().usb; }   // solo Supervisor, solo si la tienda tiene USB registrado
+function saleDelProyecto() { return $('#fStatus').value === 'Tienda Retirada'; }
+function usbRetAplica() { return confAplica() && !saleDelProyecto() && isSup() && !!eqInfo().usb; }   // solo Supervisor, solo si la tienda tiene USB registrado
 function eqConfAplica() { return confAplica() && sinEq() && !(retiroAplica() && ($('#fRetNuc').checked || $('#fRetRb').checked)) && !(reinstAplica() && ($('#fReNuc').checked || $('#fReRb').checked)); }
-function solAplica() { return confAplica() && $('#fStatus').value === 'Solicitud de Retiro' && !!solEquipo(); }
+/* Solicitud de Retiro abierta en la tienda: la visita (física o remota) responde qué pasó y de ahí sale el Status */
+function segSolAplica() { const t = $('#fTipo').value; return !!F && !F.v._seg && (t === 'Visita Física' || t === 'Visita Remota') && !!eqInfo().solRet; }
+function segCerrada() { return segSolAplica() && esFisica() && $('#fSegCer').checked; }
+function segYaRetirado() { return !!eqInfo().solRetirado; }                          // el equipo ya se retiró en una visita anterior (está en el laboratorio)
+function segQ1Aplica() { return segSolAplica() && esFisica() && !segCerrada() && !segYaRetirado(); }   // "¿se retiraron los equipos?" solo en física y si el equipo aún está en la tienda
+function segRetSi() { return segQ1Aplica() && $('#fSegRetSi').checked; }
+function segQ2Aplica() { return segSolAplica() && !segCerrada() && !segRetSi() && (!segQ1Aplica() || $('#fSegRetNo').checked); }
+function segSigSi() { return segQ2Aplica() && $('#fSegSigSi').checked; }
+function segStatus() {      // Status que resulta de las respuestas: '' = falta responder; 'ELEGIR' = el cliente continúa y elige el Status de siempre
+  if (!segSolAplica()) return null;
+  if (segCerrada()) return 'Tienda Cerrada';
+  if (segQ1Aplica()) { if (!$('#fSegRetSi').checked && !$('#fSegRetNo').checked) return ''; if ($('#fSegRetSi').checked) return 'Tienda Retirada'; }
+  if (!$('#fSegSigSi').checked && !$('#fSegSigNo').checked) return '';
+  if ($('#fSegSigSi').checked) return 'ELEGIR';
+  return segYaRetirado() ? 'Tienda Retirada' : 'Solicitud de Retiro';
+}
+const SEG_ELEGIR_OCULTAS = ['Solicitud de Retiro', 'Tienda Cerrada'];
+function solAplica() { return confAplica() && $('#fStatus').value === 'Solicitud de Retiro' && !eqInfo().solRet && !!solEquipo(); }
 function solEquipo() { const c = eqInfo().comp; if (c === 'NUC' || c === 'RB') return c; if (sinEq()) { const x = $('#fConfEq').value; return x === 'NUC' || x === 'RB' ? x : ''; } return ''; }
 function incAplica() { return esFisica() && INC_STATUS.includes($('#fStatus').value); }
 function perAplica() { return incAplica() && !!eqInfo().perif; }
-function usbPreguntaAplica() { return confAplica() && sinUsb(); }          // "¿hay USB en el monitor?" obligatorio mientras no haya dato
+function usbPreguntaAplica() { return confAplica() && !saleDelProyecto() && sinUsb(); }          // "¿hay USB en el monitor?" obligatorio mientras no haya dato
+function syncSeg() {
+  const on = segSolAplica(), fis = esFisica();
+  $('#fSegBox').classList.toggle('hidden', !on);
+  const nv = $('#fTipo').value === 'No Visitado';
+  const sel = $('#fStatus');
+  const ocultar = (vals, oculto) => [...sel.options].forEach(o => { if (vals.includes(o.value)) { o.hidden = oculto; o.disabled = oculto; } });
+  if (!on) {
+    ['#fSegRetSi', '#fSegRetNo', '#fSegSigSi', '#fSegSigNo', '#fSegCer'].forEach(c => { $(c).checked = false; });
+    ocultar(SEG_ELEGIR_OCULTAS, false);
+    $('#fStatusBox').classList.toggle('hidden', nv);
+    if (F && F._segModo) { F._segModo = ''; sel.value = ''; }
+    return;
+  }
+  const cer = segCerrada();
+  $('#fSegCerRow').classList.toggle('hidden', !fis);
+  if (!fis) $('#fSegCer').checked = false;
+  const q1 = segQ1Aplica();
+  $('#fSegQ1').classList.toggle('hidden', !q1);
+  if (!q1) { $('#fSegRetSi').checked = false; $('#fSegRetNo').checked = false; }
+  const q2 = segQ2Aplica();
+  $('#fSegQ2').classList.toggle('hidden', !q2);
+  if (!q2) { $('#fSegSigSi').checked = false; $('#fSegSigNo').checked = false; }
+  const e = eqInfo();
+  $('#fSegDesde').textContent = e.solFecha ? '(desde el ' + e.solFecha.slice(8, 10) + '/' + e.solFecha.slice(5, 7) + ')' : '';
+  const st = segStatus();
+  const modo = st === 'ELEGIR' ? 'elegir' : 'fijo';
+  if (modo === 'elegir') {
+    // el cliente continúa: Status de siempre (sin Solicitud de Retiro ni Tienda Cerrada)
+    if (F._segModo !== 'elegir') sel.value = '';
+    ocultar(SEG_ELEGIR_OCULTAS, true);
+    $('#fStatusBox').classList.remove('hidden');
+  } else {
+    ocultar(SEG_ELEGIR_OCULTAS, false);
+    sel.value = st || '';
+    $('#fStatusBox').classList.add('hidden');
+  }
+  F._segModo = modo;
+  const eq = e.comp ? ` El equipo (${e.comp}) pasa al Laboratorio.` : '';
+  const pendTxt = e.solRetirado ? ' Si no vuelves a instalar el equipo en esta visita, queda <b>pendiente de reinstalar</b> para la siguiente.' : '';
+  $('#fSegRes').innerHTML = st === 'Tienda Retirada' ? (segRetSi() ? '📤 La visita se registra como <b>Tienda Retirada</b>: la tienda pasa a Retirada y ya no cuenta en Resueltas.' + eq : '📤 El cliente no continúa: la visita se registra como <b>Tienda Retirada</b> y la tienda pasa a Retirada (ya no cuenta en Resueltas).')
+    : st === 'ELEGIR' ? '✅ El cliente continúa: elige el <b>Status</b> y llena el formulario de siempre. La solicitud se cierra como “Cliente continúa”.' + (fis ? (e.solRetirado ? ' Si todavía tienes el NUC o RB, instálalo y márcalo abajo.' + pendTxt : '') : (e.solRetirado ? pendTxt : ''))
+    : st === 'Solicitud de Retiro' ? '📌 La tienda <b>sigue como Solicitud de Retiro</b>: escribe el detalle en Observación y queda pendiente de una próxima asignación.'
+    : st === 'Tienda Cerrada' ? '🔒 La tienda sigue con la solicitud de retiro abierta.' : 'Responde para continuar.';
+}
 function syncExtras() {
+  syncSeg();
   [['#fRetiroBox', retiroAplica(), ['#fRetNuc', '#fRetRb', '#fRetNo']], ['#fReinstBox', reinstAplica(), ['#fReNuc', '#fReRb']],
    ['#fPerBox', perAplica(), ['#fPerSi', '#fPerNo']]].forEach(([box, on, checks]) => {
     $(box).classList.toggle('hidden', !on);
@@ -1049,7 +1132,7 @@ function syncExtras() {
   // USB: "se deja" solo con Activa Sin Validación (y sin USB); "ya había / no hay" solo mientras no haya dato; "se retira" solo Supervisor y si la tienda tiene USB
   const rows = [['#fUsbRow', usbAplica(), '#fUsb'], ['#fUsbExRow', usbPreguntaAplica(), '#fUsbEx'], ['#fUsbNoRow', usbPreguntaAplica(), '#fUsbNo'], ['#fUsbRetRow', usbRetAplica(), '#fUsbRet']];
   rows.forEach(([row, on, chk]) => { $(row).classList.toggle('hidden', !on); if (!on) $(chk).checked = false; });
-  $('#fUsbBox').classList.toggle('hidden', !rows.some(r => r[1]) && !(confAplica() && eqInfo().usb));
+  $('#fUsbBox').classList.toggle('hidden', !rows.some(r => r[1]) && !(confAplica() && !saleDelProyecto() && eqInfo().usb));
   $('#fUsbTit').innerHTML = usbPreguntaAplica() ? '¿Hay USB en el monitor? <span class="text-red-600">*</span>' : 'USB en el monitor';
   // equipo confirmado: obligatorio mientras no haya dato; no se combina con un retiro o una reinstalación (esos movimientos ya definen el equipo)
   const eqOn = eqConfAplica();
@@ -1081,6 +1164,7 @@ function avisoEquipos(v) {
   if (eq.pend) l.push(`⚠️ <b>Equipo pendiente de reinstalar:</b> ${esc(eq.pend)}${f(eq.retiro)}`);
   if (eq.estado === 'Instalado sin validar') l.push(`🔧 ${esc(eq.comp || 'Equipo')} instalado en la visita anterior, <b>sin validar</b>`);
   if (eq.lab) l.push(`🧪 <b>Laboratorio:</b> ${esc(eq.lab)}`);
+  if (eq.solRet) l.push('📦 <b>Solicitud de Retiro abierta</b>' + (eq.solFecha ? ` (desde el ${eq.solFecha.slice(8, 10)}/${eq.solFecha.slice(5, 7)})` : '') + (eq.solRetirado ? ' · el equipo ya se retiró (está en el laboratorio)' : '') + ': responde qué pasó en esta visita');
   if (eq.perif) l.push('🔌 <b>Periféricos pendientes de revisar</b> (incidencia abierta): en esta visita responde si se solucionó');
   if (eq.usb) l.push(eq.usbRet ? '💾 <b>USB pendiente de retiro</b> en el monitor (lo retira un Supervisor)' : '💾 Esta tienda tiene un <b>USB en el monitor</b>');
   return l.length ? `<div class="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 space-y-1">${l.map(x => `<div>${x}</div>`).join('')}</div>` : '';
@@ -1291,6 +1375,10 @@ async function guardarVisita() {
   $('#fErr').classList.add('hidden');
   const tipo = $('#fTipo').value, status = $('#fStatus').value, obs = $('#fObs').value.trim();
   if (!tipo) return fErr('Selecciona el tipo de visita.');
+  if (segSolAplica() && !segCerrada()) {
+    if (segQ1Aplica() && !$('#fSegRetSi').checked && !$('#fSegRetNo').checked) return fErr('Indica si se retiraron los equipos (Sí / No).');
+    if (segQ2Aplica() && !$('#fSegSigSi').checked && !$('#fSegSigNo').checked) return fErr('Indica si el cliente desea seguir en el proyecto (Sí / No).');
+  }
   if (tipo !== 'No Visitado' && !status) return fErr('Selecciona el Status de la tienda.');
   if (!obs) return fErr('La Observación es obligatoria. Escribe el detalle de la visita.');
   if (tipo !== 'Visita Remota' && (F.galF || F.galM)) return fErr('Las fotos de galería solo se permiten en Visita Remota.');
@@ -1335,6 +1423,8 @@ async function guardarVisita() {
       confirmaEquipo: eqConfAplica() ? $('#fConfEq').value : '',
       noRecogio: retiroAplica() && $('#fRetNo').checked,
       seRetira: solAplica() ? $('#fSolSi').checked : '',
+      retiroRealizado: segQ1Aplica() ? $('#fSegRetSi').checked : '',
+      sigueProyecto: segQ2Aplica() ? $('#fSegSigSi').checked : '',
       solicitaReubicacion: incAplica() && $('#fIncReub').checked,
       mudanzaTienda: incAplica() && $('#fIncMud').checked,
       revisarPerifericos: incAplica() && $('#fIncPer').checked,
