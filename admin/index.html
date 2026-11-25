@@ -157,9 +157,9 @@ const COLOR = {
 };
 const VCOLS = ['ID_Visita', 'Fecha_Asignacion', 'Usuario_Asignado', 'ID_Cliente', 'Nombre_Cliente', 'Latitud_Tienda', 'Longitud_Tienda', 'Estado_Tarea', 'Tipo_Visita', 'Status_Tienda', 'URL_Foto_Fachada', 'URL_Foto_Monitor', 'Observacion', 'Fecha_Resolucion', 'Lat_Real_Tecnico', 'Lng_Real_Tecnico', 'Distancia_Metros', 'Es_Fuera_De_Ruta', 'Retiro_Equipos', 'Reinstalacion_Equipo', 'USB_Monitor', 'Mantenimiento', 'Confirma_Equipo', 'Confirma_USB', 'Retiro_USB', 'Seguimiento_De', 'Fecha_Programada', 'Etiqueta', 'Incidencia', 'Perifericos', 'Perif_Resuelto', 'Se_Retira', 'No_Recogio', 'USB_Respuesta', 'Instalacion_Equipo', 'Cambio_Tecnologia'];
 
-const ETIQUETAS = ['Avería', 'Mantenimiento', 'Reubicación', 'Instalación', 'Retiro', 'Fotografía'];
-const ETQ_ICON = { 'Avería': '🔧', 'Mantenimiento': '🛠️', 'Reubicación': '🚚', 'Instalación': '➕', 'Retiro': '📦', 'Fotografía': '📷' };
-const ETQ_COL = { 'Avería': ['#fee2e2', '#b91c1c'], 'Mantenimiento': ['#e2e8f0', '#334155'], 'Reubicación': ['#e0e7ff', '#4338ca'], 'Instalación': ['#d1fae5', '#047857'], 'Retiro': ['#ffedd5', '#c2410c'], 'Fotografía': ['#e0f2fe', '#0369a1'] };
+const ETIQUETAS = ['Avería', 'Mantenimiento', 'Reubicación', 'Instalación', 'Retiro', 'Fotografía', 'Mudanza'];
+const ETQ_ICON = { 'Avería': '🔧', 'Mantenimiento': '🛠️', 'Reubicación': '🚚', 'Instalación': '➕', 'Retiro': '📦', 'Fotografía': '📷', 'Mudanza': '🏠' };
+const ETQ_COL = { 'Avería': ['#fee2e2', '#b91c1c'], 'Mantenimiento': ['#e2e8f0', '#334155'], 'Reubicación': ['#e0e7ff', '#4338ca'], 'Instalación': ['#d1fae5', '#047857'], 'Retiro': ['#ffedd5', '#c2410c'], 'Fotografía': ['#e0f2fe', '#0369a1'], 'Mudanza': ['#ede9fe', '#6d28d9'] };
 const SEG_STATUS = ['Tienda Cerrada', 'Activa Sin Validación', 'Activa Validada', 'Avería ISP', 'Avería Otros'];   // visitas que se pueden "recuperar" (igual que en Code.gs)
 const LAB_ESTADOS = ['Por recibir', 'En laboratorio', 'Reparado', 'Reemplazo', 'Enviado a tienda', 'Entregado', 'Baja'];
 const LAB_CERRADOS = ['Entregado', 'Baja'];
@@ -276,6 +276,7 @@ const S = {
   lab: null, incs: null, cerradas: null,
   incv: { tipo: '', estado: 'Abierta', q: '', sel: new Set(), page: 1, nota: '' },
   rev: { f: 'prev', q: '', sel: new Set(), page: 1, status: 'Activa Validada', usuario: '', prog: '', etq: '' },
+  mud: { f: 'todas', q: '', sel: new Set(), page: 1, usuario: '', prog: '' },
   sol: { f: 'todas', q: '', sel: new Set(), page: 1, usuario: '', prog: '', etq: 'Retiro', nota: '', st: 'Activa Sin Validación' },
   hist: { q: '', tipo: '', status: '', fuera: false, page: 1 },
   tienda: { q: '', filtro: '', distrito: '', sel: '', page: 1, data: null, hoja: true, setup: false, hist: {}, chk: new Set() },
@@ -357,7 +358,7 @@ async function loadData(silent) {
   try {
     if (!silent) showLoading(true);
     const d = await api('adminData', { desde: S.rango.desde, hasta: S.rango.hasta });
-    S.usuarios = d.usuarios || []; S.clientes = d.clientes || []; S.visitas = d.visitas || []; S.segs = d.segs || []; S.cerradas = d.cerradas || null; S.solic = d.solic || null; S.incs = d.incs || null; S.lab = d.lab || null; S.updated = new Date();
+    S.usuarios = d.usuarios || []; S.clientes = d.clientes || []; S.visitas = d.visitas || []; S.segs = d.segs || []; S.cerradas = d.cerradas || null; S.solic = d.solic || null; S.mudan = d.mudan || null; S.incs = d.incs || null; S.lab = d.lab || null; S.updated = new Date();
     S.visitas.forEach(v => { if (v.Status_Tienda === 'Avería CAM') v.Status_Tienda = 'Avería Otros'; });   // Avería CAM ya no existe: el historial antiguo cuenta como Avería Otros
     { const ids = new Set((S.incs || []).map(r => r.ID_Inc)); S.incv.sel = new Set([...S.incv.sel].filter(id => ids.has(id))); const cs = new Set((S.cerradas || []).map(c => c.ID_Cliente)); S.rev.sel = new Set([...S.rev.sel].filter(id => cs.has(id))); const so = new Set((S.solic || []).map(c => c.ID_Cliente)); S.sol.sel = new Set([...S.sol.sel].filter(id => so.has(id))); }
     indexData();
@@ -695,12 +696,22 @@ function renderInc() {
   const incKpi = ([t, ic, color, ayuda]) => { const s = incStats(t); return kpiH(`${ic} ${t}`, n0(s.ab), { color: s.ab ? '' : 'text-green-600', dot: color, raw: `data-ikpi="${esc(t)}"`, sub: `abiertas · ${n0(s.rep)} reportadas en el periodo · ${n0(s.res)} resueltas${s.viejas ? ` · <b class="text-red-600">${n0(s.viejas)} con +7 días</b>` : ''}`, extra: `<div class="text-[11px] text-slate-400 mt-1">${esc(ayuda)}</div>` }); };
   const totAb = incsF().filter(incAb).length;
   const solA = solFiltrada();
+  const mudA = mudFiltrada();
   $('#v-inc').innerHTML = `${filterBar()}
   ${avisoSegHTML()}
 
   <div class="sec">Incidencias marcadas en las visitas <span class="normal-case font-normal text-slate-400">· el técnico las marca (opcional) en Visita Física; ${n0(totAb)} abiertas ahora</span></div>
   <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">${INC_TIPOS.map(incKpi).join('')}</div>
   <div id="incBox" class="mt-3"></div>
+
+  <div class="sec">🏠 Mudanzas de tienda en curso <span class="normal-case font-normal text-slate-400">· la tienda sigue activa hasta que se mude; se cierran solas al reinstalar el equipo y validar</span></div>
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+    ${kpiH('Mudanzas en curso', n0(mudA.length), { color: mudA.length ? 'text-violet-700' : 'text-green-600', dot: '#6d28d9', raw: 'data-mudf="todas"', sub: 'incidencias “Mudanza de tienda” abiertas' })}
+    ${kpiH('Equipo retirado', n0(mudA.filter(x => x.Etapa === 'Equipo retirado').length), { color: 'text-violet-700', dot: '#7c3aed', raw: 'data-mudf="ret"', sub: 'pendiente de reinstalar en el local nuevo' })}
+    ${kpiH('Equipo aún en la tienda', n0(mudA.filter(x => x.Etapa !== 'Equipo retirado').length), { color: 'text-slate-700', dot: '#64748b', raw: 'data-mudf="sol"', sub: 'sigue operando en la dirección antigua' })}
+    ${kpiH('Sin visita asignada', n0(mudA.filter(x => !x.Pend_ID).length), { color: mudA.some(x => !x.Pend_ID) ? 'text-amber-700' : 'text-green-600', dot: '#d97706', raw: 'data-mudf="sin"', sub: 'falta programar la visita' })}
+  </div>
+  <div id="mudBox" class="mt-3"></div>
 
   <div class="sec">Solicitudes de retiro <span class="normal-case font-normal text-slate-400">· la tienda sigue con la etiqueta hasta que se retiren los equipos o el cliente decida continuar</span></div>
   <div class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
@@ -758,7 +769,7 @@ function renderInc() {
   </div>
 
   <div id="drillBoxI" class="mt-5"></div>`;
-  updateIncList(); updateSol(); updateRev(); renderDrill(false);
+  updateIncList(); updateMud(); updateSol(); updateRev(); renderDrill(false);
 }
 
 /* ---- Lista de incidencias (reubicación, mudanza, periféricos) ---- */
@@ -814,6 +825,70 @@ async function incAction(kind) {
   showLoading(true, 'Actualizando…'); let ok = 0;
   try { for (const lote of chunk(ids, 100)) { const r = await api('updateInc', { ids: lote, accion, detalle: I.nota }); ok += r.actualizadas; } toast(`${ok} incidencia(s) ${accion === 'resolver' ? 'resueltas' : 'reabiertas'}`, 'ok'); I.sel.clear(); I.nota = ''; }
   catch (e) { toast(`${e.message} (actualizadas: ${ok})`, 'error'); }
+  await loadData(true); showLoading(false);
+}
+
+/* ---- Mudanzas de tienda en curso ---- */
+const MUD_FILTROS = [['todas', 'Todas'], ['ret', 'Equipo retirado'], ['sol', 'Equipo aún en la tienda'], ['sin', 'Sin visita asignada'], ['asig', 'Con visita asignada']];
+function mudFiltrada() { return (S.mudan || []).filter(x => !S.filtroTec || x.Pend_Usuario === S.filtroTec || x.Usuario === S.filtroTec); }
+const mudPred = { todas: () => true, ret: x => x.Etapa === 'Equipo retirado', sol: x => x.Etapa !== 'Equipo retirado', sin: x => !x.Pend_ID, asig: x => !!x.Pend_ID };
+function mudList() {
+  const O = S.mud, q = norm(O.q.trim());
+  return mudFiltrada().filter(x => (mudPred[O.f] || mudPred.todas)(x) && (!q || norm(x.Nombre_Cliente).includes(q) || norm(x.ID_Cliente).includes(q) || norm(x.Distrito || '').includes(q)))
+    .sort((a, b) => String(a.Fecha || '9').localeCompare(String(b.Fecha || '9')));
+}
+function updateMud() {
+  const box = $('#mudBox'); if (!box) return;
+  if (S.mudan === null) { box.innerHTML = `<div class="card p-3 text-xs text-amber-700">Actualiza <b>Code.gs</b> y publica una nueva versión para activar el seguimiento de mudanzas.</div>`; return; }
+  const O = S.mud, all = mudFiltrada(), list = mudList(); S.mudList = list;
+  const rows = list.slice(0, O.page * CONFIG.PAGE);
+  box.innerHTML = `<div class="card overflow-hidden"><div class="p-3 border-b border-slate-100">
+      <div class="font-semibold text-sm">🏠 Tiendas en mudanza</div>
+      <div class="text-xs text-slate-500 mt-0.5">1) El técnico marca la mudanza y dice si <b>retira el equipo</b> (si lo retira queda “Pendiente de reinstalar” y se crea sola una visita pendiente). 2) <b>Programa y asigna</b> la visita de instalación aquí. 3) Registra la <b>nueva dirección y coordenadas</b> en Información de Tienda (✏️ Editar): las visitas pendientes toman las coordenadas nuevas. 4) Al reinstalar y validar (“Activa Validada”) la mudanza se cierra sola.</div>
+      <div class="flex flex-wrap items-center gap-1.5 mt-2">${MUD_FILTROS.map(([k, l]) => `<button class="chip ${O.f === k ? 'chip-on' : ''}" data-mudf="${k}">${l} (${n0(all.filter(mudPred[k]).length)})</button>`).join('')}
+        <button class="btn btn-outline !py-1 !px-2.5 text-xs" data-tgofilter="mud" title="Información de Tienda filtrada por Mudanza: ahí editas la dirección y las coordenadas">📍 Nueva dirección en Tiendas →</button>
+        <input id="mudQ" type="search" class="inp !w-48 ml-auto" placeholder="Buscar tienda o distrito" value="${esc(O.q)}"></div></div>
+    ${rows.length ? `<label class="flex items-center gap-3 p-3 border-b border-slate-100 cursor-pointer text-sm font-medium"><input id="mudAll" type="checkbox" ${list.every(x => O.sel.has(x.ID_Cliente)) ? 'checked' : ''}><span id="mudCnt">${n0(list.length)} tiendas</span></label>
+    <div class="overflow-x-auto"><table class="t"><thead><tr><th></th><th>Tienda</th><th>Mudanza desde</th><th>Etapa / equipo</th><th>Visita</th></tr></thead><tbody>
+    ${rows.map(x => { const d = diasDesde(x.Fecha); return `<tr><td><input type="checkbox" data-mudck="${esc(x.ID_Cliente)}" ${O.sel.has(x.ID_Cliente) ? 'checked' : ''}></td>
+      <td><b>${esc(x.Nombre_Cliente)}</b><div class="text-xs text-slate-400">${esc(x.ID_Cliente)}${x.Distrito ? ' · ' + esc(x.Distrito) : ''}</div>${x.Direccion ? `<div class="text-xs text-slate-500 max-w-xs truncate" title="${esc(x.Direccion)}">${esc(x.Direccion)}</div>` : ''}</td>
+      <td class="whitespace-nowrap">${x.Fecha ? fmtDT(x.Fecha) : '—'}${d !== null ? `<div class="text-xs ${d >= 15 ? 'text-red-700 font-semibold' : 'text-slate-500'}">hace ${n0(d)} día(s)</div>` : ''}<div class="text-xs text-slate-500">${esc(nameOf(x.Usuario))}</div></td>
+      <td class="text-xs">${x.Etapa === 'Equipo retirado' ? `<span class="badge bg-violet-100 text-violet-700">Equipo retirado${x.Equipo_Pendiente ? ' · ' + esc(x.Equipo_Pendiente) : ''}</span><div class="text-[10px] text-slate-500 mt-0.5">pendiente de reinstalar</div>` : `<span class="badge bg-slate-100 text-slate-700">Aún en la tienda${x.Componente_Actual ? ' · ' + esc(x.Componente_Actual) : ''}</span>`}${x.USB_Por_Retirar === 'SI' ? '<div class="text-[10px] text-amber-700 font-semibold mt-0.5">💾 USB por retirar (Supervisor)</div>' : ''}</td>
+      <td>${x.Pend_ID ? `<span class="badge bg-sky-100 text-sky-700">📅 ${esc(nameOf(x.Pend_Usuario))}</span>${x.Pend_Programada ? `<div class="text-[10px] text-slate-500 mt-0.5">${fmtDT(x.Pend_Programada)}</div>` : '<div class="text-[10px] text-amber-700 mt-0.5">sin programar</div>'}` : '<span class="badge bg-amber-100 text-amber-800">Sin visita</span>'}</td></tr>`; }).join('')}
+    </tbody></table></div>
+    ${list.length > rows.length ? `<div class="p-3 text-center"><button class="btn btn-ghost" data-more="mud">Mostrar más (${n0(list.length - rows.length)})</button></div>` : ''}`
+    : `<div class="p-6 text-center text-sm text-slate-500">${all.length ? 'No hay tiendas con ese filtro.' : '✅ No hay mudanzas en curso.'}</div>`}</div>
+    <div id="mudBar" class="sticky bottom-3 mt-3 z-10"></div>`;
+  updateMudBar();
+}
+function updateMudBar() {
+  const O = S.mud, n = O.sel.size, bar = $('#mudBar'); if (!bar) return;
+  const c = $('#mudCnt'); if (c) c.textContent = `${n0((S.mudList || []).length)} tiendas${n ? ` · ${n0(n)} seleccionadas` : ''}`;
+  bar.innerHTML = n ? `<div class="card p-3 shadow-xl border-violet-300 space-y-2"><div class="flex flex-wrap items-center gap-2"><b class="text-sm">${n0(n)} seleccionadas</b><button class="btn btn-ghost ml-auto" data-mudact="limpiar">Limpiar</button></div>
+    <div class="rounded-xl border border-violet-200 bg-violet-50 p-2.5 flex flex-wrap items-center gap-2"><div class="text-sm font-semibold text-violet-800 w-full">📅 Asignar y programar la visita de instalación</div>
+      <select id="mudUsr" class="inp !w-auto"><option value="">Elige técnico o supervisor…</option>${orderedUsers().map(u => `<option value="${esc(u.Usuario)}" ${O.usuario === u.Usuario ? 'selected' : ''}>${esc(u.Nombre_Apellido)}${u.Rol === 'Supervisor' ? ' (Supervisor)' : ''}</option>`).join('')}</select>
+      <input id="mudProg" type="datetime-local" class="inp !w-auto" value="${esc(O.prog)}" title="Fecha y hora programada (opcional)">
+      <button class="btn btn-primary" data-mudact="asignar">Asignar (${n0(n)})</button></div>
+    <div class="text-[11px] text-slate-500">Si la tienda ya tiene la visita pendiente (se crea sola al retirar el equipo) se reasigna y se programa; si no la tiene, se crea con la etiqueta “Mudanza”.</div></div>` : '';
+}
+async function mudAction(kind) {
+  const O = S.mud;
+  if (kind === 'limpiar') { O.sel.clear(); return updateMud(); }
+  const ids = [...O.sel]; if (!ids.length) return;
+  if (!O.usuario) return toast('Elige a quién se asigna', 'warn');
+  if (!confirm(`¿Asignar la visita de mudanza a ${nameOf(O.usuario)} para ${ids.length} tienda(s)?`)) return;
+  const byId = {}; (S.mudan || []).forEach(x => { byId[x.ID_Cliente] = x; });
+  const conVisita = ids.filter(id => byId[id] && byId[id].Pend_ID), sinVisita = ids.filter(id => !(byId[id] && byId[id].Pend_ID));
+  showLoading(true, 'Procesando…'); let ok = 0; const om = [];
+  try {
+    for (const lote of chunk(conVisita.map(id => byId[id].Pend_ID), 100)) {
+      const r = await api('reassignVisitsBulk', { idsVisita: lote, usuario: O.usuario }); ok += r.reasignadas;
+      if (O.prog) await api('planVisitas', { idsVisita: lote, programada: O.prog });
+    }
+    for (const lote of chunk(sinVisita, 100)) { const r = await api('asignarSolicitudes', { usuario: O.usuario, motivo: 'mudanza', programada: O.prog, items: lote.map(idCliente => ({ idCliente })) }); ok += r.ok; om.push(...(r.omitidas || [])); }
+    toast(`${ok} tienda(s) asignadas${om.length ? ` · ${om.length} omitidas: ${om.slice(0, 2).map(x => x.motivo).join('; ')}` : ''}`, om.length ? 'warn' : 'ok');
+    O.sel.clear();
+  } catch (e) { toast(`${e.message} (hechas: ${ok})`, 'error'); }
   await loadData(true); showLoading(false);
 }
 
@@ -1595,7 +1670,7 @@ const telLink = s => !s ? '' : `<a class="text-blue-600" href="tel:+51${esc(s)}"
 const tBadges = t => t.Estado_Tienda === 'Retirado' ? '' : [
   t.Solicitud_Retiro === 'SI' ? '<span class="badge bg-red-100 text-red-700">📤 Solicitud de retiro</span>' : '',
   t.Inc_Reubicacion === 'SI' ? '<span class="badge bg-indigo-100 text-indigo-700">🚚 Reubicación</span>' : '',
-  t.Inc_Mudanza === 'SI' ? '<span class="badge bg-orange-100 text-orange-700">📦 Mudanza</span>' : '',
+  t.Inc_Mudanza === 'SI' ? `<span class="badge bg-orange-100 text-orange-700">📦 Mudanza${t.Mudanza_Etapa === 'Equipo retirado' ? ' · equipo retirado' : ''}</span>` : '',
   t.Inc_Perifericos === 'SI' ? '<span class="badge bg-cyan-100 text-cyan-700">🔌 Periféricos</span>' : '',
   t.Inc_Tecnologia === 'SI' ? '<span class="badge bg-sky-100 text-sky-700">🌐 Cambio de tecnología</span>' : '',
   t.Estado_Equipo === 'Por instalar' && !t.Componente_Actual ? '<span class="badge bg-teal-100 text-teal-700">🆕 Por instalar</span>' : '',
@@ -2276,6 +2351,8 @@ function bindEvents() {
     if ((el = t.closest('[data-iestado]'))) { S.incv.estado = el.dataset.iestado; S.incv.page = 1; return updateIncList(); }
     if ((el = t.closest('[data-iact]'))) return incAction(el.dataset.iact);
     if ((el = t.closest('[data-solf]'))) { S.sol.f = el.dataset.solf; S.sol.page = 1; updateSol(); const b = $('#solBox'); if (b) b.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); return; }
+    if ((el = t.closest('[data-mudf]'))) { S.mud.f = el.dataset.mudf; S.mud.page = 1; updateMud(); const b = $('#mudBox'); if (b) b.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); return; }
+    if ((el = t.closest('[data-mudact]'))) return mudAction(el.dataset.mudact);
     if ((el = t.closest('[data-solact]'))) return solAction(el.dataset.solact);
     if ((el = t.closest('[data-revf]'))) { S.rev.f = el.dataset.revf; S.rev.page = 1; return updateRev(); }
     if ((el = t.closest('[data-revact]'))) return revAction(el.dataset.revact);
@@ -2293,7 +2370,7 @@ function bindEvents() {
       if (k === 'drill') { S.drillPage++; renderDrill(false); } else if (k === 'hist') { S.hist.page++; updateHist(); }
       else if (k === 'tienda') { S.tienda.page++; updateTiendas(true); }
       else if (k === 'lab') { S.labv.page++; updateLab(); }
-      else if (k === 'inc') { S.incv.page++; updateIncList(); } else if (k === 'rev') { S.rev.page++; updateRev(); } else if (k === 'sol') { S.sol.page++; updateSol(); }
+      else if (k === 'inc') { S.incv.page++; updateIncList(); } else if (k === 'rev') { S.rev.page++; updateRev(); } else if (k === 'sol') { S.sol.page++; updateSol(); } else if (k === 'mud') { S.mud.page++; updateMud(); }
       else if (k === 'pend') { S.pend.page++; updatePend(); } else if (k === 'asig') { S.asig.page++; updateAsigList(); }
       return;
     }
@@ -2341,6 +2418,7 @@ function bindEvents() {
     else if (id === 'revQ') { S.rev.q = e.target.value; S.rev.page = 1; updateRev(); const q = $('#revQ'); if (q) { q.focus(); q.setSelectionRange(q.value.length, q.value.length); } }
     else if (id === 'iNota') { S.incv.nota = e.target.value; }
     else if (id === 'solQ') { S.sol.q = e.target.value; S.sol.page = 1; updateSol(); const q = $('#solQ'); if (q) { q.focus(); q.setSelectionRange(q.value.length, q.value.length); } }
+    else if (id === 'mudQ') { S.mud.q = e.target.value; S.mud.page = 1; updateMud(); const q = $('#mudQ'); if (q) { q.focus(); q.setSelectionRange(q.value.length, q.value.length); } }
     else if (id === 'solNota') { S.sol.nota = e.target.value; }
     else if (id === 'lDestSet') { S.labv.ldest = e.target.value; }
   });
@@ -2366,6 +2444,10 @@ function bindEvents() {
     else if (t.dataset.ick) { t.checked ? S.incv.sel.add(t.dataset.ick) : S.incv.sel.delete(t.dataset.ick); updateIncBar(); }
     else if (id === 'revAll') { const l = S.revList || []; if (t.checked) l.forEach(c => S.rev.sel.add(c.ID_Cliente)); else l.forEach(c => S.rev.sel.delete(c.ID_Cliente)); updateRev(); }
     else if (t.dataset.revck) { t.checked ? S.rev.sel.add(t.dataset.revck) : S.rev.sel.delete(t.dataset.revck); updateRevBar(); }
+    else if (id === 'mudAll') { const l = S.mudList || []; if (t.checked) l.forEach(c => S.mud.sel.add(c.ID_Cliente)); else l.forEach(c => S.mud.sel.delete(c.ID_Cliente)); updateMud(); }
+    else if (t.dataset.mudck) { t.checked ? S.mud.sel.add(t.dataset.mudck) : S.mud.sel.delete(t.dataset.mudck); updateMudBar(); }
+    else if (id === 'mudUsr') { S.mud.usuario = t.value; }
+    else if (id === 'mudProg') { S.mud.prog = t.value; }
     else if (id === 'solAll') { const l = S.solList || []; if (t.checked) l.forEach(c => S.sol.sel.add(c.ID_Cliente)); else l.forEach(c => S.sol.sel.delete(c.ID_Cliente)); updateSol(); }
     else if (t.dataset.solck) { t.checked ? S.sol.sel.add(t.dataset.solck) : S.sol.sel.delete(t.dataset.solck); updateSolBar(); }
     else if (id === 'solUsr') { S.sol.usuario = t.value; }
