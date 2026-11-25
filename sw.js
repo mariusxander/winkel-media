@@ -1,5 +1,5 @@
 /* Service Worker — Visitas Técnicas PWA */
-const VERSION = 'vt-v14';
+const VERSION = 'vt-v15';
 const SHELL_CACHE = 'vt-shell-' + VERSION;
 const TILE_CACHE = 'vt-tiles-v1';
 const MAX_TILES = 400;
