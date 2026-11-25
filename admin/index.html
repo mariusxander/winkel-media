@@ -136,7 +136,7 @@
  *  CONFIGURACIÓN — usa la MISMA URL /exec que en index.html
  * ===================================================================== */
 const CONFIG = {
-  API_URL: 'https://script.google.com/macros/s/AKfycbxIezb0_xich82oQaUuiMuDDDvLWgpCyvcYVIcA84BwPLmMjoVBOwb3sbLi9NmKh7QXxA/exec',
+  API_URL: 'AKfycbxIezb0_xich82oQaUuiMuDDDvLWgpCyvcYVIcA84BwPLmMjoVBOwb3sbLi9NmKh7QXxA',
   SESION_KEY: 'vta_sesion',
   AUTO_REFRESH_MS: 60000,
   LOTE_ASIGNAR: 300,
@@ -155,19 +155,19 @@ const COLOR = {
   'Avería ISP': '#dc2626', 'Avería NUC/RB': '#ea580c', 'Avería Otros': '#be185d',
   'Tienda Cerrada': '#475569', 'Solicitud de Retiro': '#7c3aed', 'Tienda Retirada': '#be123c'
 };
-const VCOLS = ['ID_Visita', 'Fecha_Asignacion', 'Usuario_Asignado', 'ID_Cliente', 'Nombre_Cliente', 'Latitud_Tienda', 'Longitud_Tienda', 'Estado_Tarea', 'Tipo_Visita', 'Status_Tienda', 'URL_Foto_Fachada', 'URL_Foto_Monitor', 'Observacion', 'Fecha_Resolucion', 'Lat_Real_Tecnico', 'Lng_Real_Tecnico', 'Distancia_Metros', 'Es_Fuera_De_Ruta', 'Retiro_Equipos', 'Reinstalacion_Equipo', 'USB_Monitor', 'Mantenimiento', 'Confirma_Equipo', 'Confirma_USB', 'Retiro_USB', 'Seguimiento_De', 'Fecha_Programada', 'Etiqueta', 'Incidencia', 'Perifericos', 'Perif_Resuelto', 'Se_Retira', 'No_Recogio', 'USB_Respuesta'];
+const VCOLS = ['ID_Visita', 'Fecha_Asignacion', 'Usuario_Asignado', 'ID_Cliente', 'Nombre_Cliente', 'Latitud_Tienda', 'Longitud_Tienda', 'Estado_Tarea', 'Tipo_Visita', 'Status_Tienda', 'URL_Foto_Fachada', 'URL_Foto_Monitor', 'Observacion', 'Fecha_Resolucion', 'Lat_Real_Tecnico', 'Lng_Real_Tecnico', 'Distancia_Metros', 'Es_Fuera_De_Ruta', 'Retiro_Equipos', 'Reinstalacion_Equipo', 'USB_Monitor', 'Mantenimiento', 'Confirma_Equipo', 'Confirma_USB', 'Retiro_USB', 'Seguimiento_De', 'Fecha_Programada', 'Etiqueta', 'Incidencia', 'Perifericos', 'Perif_Resuelto', 'Se_Retira', 'No_Recogio', 'USB_Respuesta', 'Instalacion_Equipo', 'Cambio_Tecnologia'];
 
 const ETIQUETAS = ['Avería', 'Mantenimiento', 'Reubicación', 'Instalación', 'Retiro', 'Fotografía'];
 const ETQ_ICON = { 'Avería': '🔧', 'Mantenimiento': '🛠️', 'Reubicación': '🚚', 'Instalación': '➕', 'Retiro': '📦', 'Fotografía': '📷' };
 const ETQ_COL = { 'Avería': ['#fee2e2', '#b91c1c'], 'Mantenimiento': ['#e2e8f0', '#334155'], 'Reubicación': ['#e0e7ff', '#4338ca'], 'Instalación': ['#d1fae5', '#047857'], 'Retiro': ['#ffedd5', '#c2410c'], 'Fotografía': ['#e0f2fe', '#0369a1'] };
-const SEG_STATUS = ['Tienda Cerrada', 'Activa Sin Validación', 'Avería ISP', 'Avería Otros'];   // visitas que se pueden "recuperar" (igual que en Code.gs)
+const SEG_STATUS = ['Tienda Cerrada', 'Activa Sin Validación', 'Activa Validada', 'Avería ISP', 'Avería Otros'];   // visitas que se pueden "recuperar" (igual que en Code.gs)
 const LAB_ESTADOS = ['Por recibir', 'En laboratorio', 'Reparado', 'Reemplazo', 'Enviado a tienda', 'Entregado', 'Baja'];
 const LAB_CERRADOS = ['Entregado', 'Baja'];
 const LAB_COL = { 'Por recibir': ['#fef3c7', '#b45309'], 'En laboratorio': ['#dbeafe', '#1d4ed8'], 'Reparado': ['#dcfce7', '#15803d'], 'Reemplazo': ['#ede9fe', '#6d28d9'], 'Enviado a tienda': ['#cffafe', '#0e7490'], 'Entregado': ['#f1f5f9', '#475569'], 'Baja': ['#fee2e2', '#b91c1c'] };
 
 // Retiro de equipos (solo Visita Física + Avería NUC/RB). '' = sin retiro
 const RET = { nuc: 'NUC', rb: 'RB' };   // solo se recoge uno por visita
-const REI_COLOR = { 'NUC': '#059669', 'RB': '#34d399', usb: '#6366f1', mant: '#64748b' };
+const REI_COLOR = { 'NUC': '#059669', 'RB': '#34d399', usb: '#6366f1', mant: '#64748b', iNUC: '#0f766e', iRB: '#5eead4' };
 const RET_COLOR = { 'NUC': '#0ea5e9', 'RB': '#8b5cf6', '': '#94a3b8' };
 
 const ICONS = {
@@ -462,7 +462,7 @@ function sets(final) {
   const finalOf = id => { let x = sm[id], last = null, n = 0; while (x && n++ < 20) { last = x; x = sm[x.ID_Visita]; } return last; };   // última visita de la cadena de seguimientos
   const todas = S.visitas.filter(v => v.Estado_Tarea === 'Resuelta' && !v.Seguimiento_De && ok(v) && inR(v.Fecha_Resolucion))
     .map(v => { const f = (SEG_STATUS.includes(v.Status_Tienda) || v.Tipo_Visita === 'No Visitado') ? finalOf(v.ID_Visita) : null;
-      return f ? Object.assign({}, v, { Status_Tienda: f.Status_Tienda, Status_Inicial: v.Status_Tienda || '', Recuperada: true }) : v; });
+      return f ? Object.assign({}, v, { Status_Tienda: f.Status_Tienda, Status_Inicial: v.Status_Tienda || '', Recuperada: true, Corregida: v.Status_Tienda === 'Activa Validada' }) : v; });
   return {
     res: todas.filter(v => v.Status_Tienda !== 'Tienda Retirada'),      // "Tienda Retirada" tiene su propio indicador: no suma en Resueltas ni en Activa Validada
     ret: todas.filter(v => v.Status_Tienda === 'Tienda Retirada'),
@@ -539,7 +539,7 @@ function avisoSegHTML() {
 }
 
 function applyDrill(list, d) {
-  return list.filter(v => (!d.recup || (d.recup === 'cerrada' ? v.Recuperada && v.Status_Inicial === 'Tienda Cerrada' : d.recup === 'otras' ? v.Recuperada && v.Status_Inicial !== 'Tienda Cerrada' : !!v.Recuperada)) && (!d.sinrec || v.Status_Tienda === 'Tienda Cerrada') && (!d.tec || v.Usuario_Asignado === d.tec) && (!d.tipo || v.Tipo_Visita === d.tipo) && (!d.status || d.status.includes(v.Status_Tienda)) && (!d.bucket || bucketKey(v) === d.bucket) && (!d.fuera || v.Es_Fuera_De_Ruta === 'SI') && (!d.retiro || d.retiro.includes(v.Retiro_Equipos || '')) && (!d.reinst || d.reinst.includes(v.Reinstalacion_Equipo || '')) && (!d.usb || v.USB_Monitor === 'SI') && (!d.usbret || !!v.Retiro_USB) && (!d.retreal || v.Retiro_Realizado === 'SI') && (!d.sigsi || v.Sigue_Proyecto === 'SI') && (!d.signo || v.Sigue_Proyecto === 'NO') && (!d.mant || v.Mantenimiento === 'SI') && (!d.norec || v.No_Recogio === 'SI') && (!d.sinNoRec || v.No_Recogio !== 'SI') && (!d.seret || v.Se_Retira === 'SI'));
+  return list.filter(v => (!d.recup || (d.recup === 'cerrada' ? v.Recuperada && v.Status_Inicial === 'Tienda Cerrada' : d.recup === 'otras' ? v.Recuperada && !v.Corregida && v.Status_Inicial !== 'Tienda Cerrada' : d.recup === 'corr' ? !!v.Corregida : !!v.Recuperada)) && (!d.sinrec || v.Status_Tienda === 'Tienda Cerrada') && (!d.tec || v.Usuario_Asignado === d.tec) && (!d.tipo || v.Tipo_Visita === d.tipo) && (!d.status || d.status.includes(v.Status_Tienda)) && (!d.bucket || bucketKey(v) === d.bucket) && (!d.fuera || v.Es_Fuera_De_Ruta === 'SI') && (!d.retiro || d.retiro.includes(v.Retiro_Equipos || '')) && (!d.reinst || d.reinst.includes(v.Reinstalacion_Equipo || '')) && (!d.instal || d.instal.includes(v.Instalacion_Equipo || '')) && (!d.tecno || v.Cambio_Tecnologia === 'SI') && (!d.usb || v.USB_Monitor === 'SI') && (!d.usbret || !!v.Retiro_USB) && (!d.retreal || v.Retiro_Realizado === 'SI') && (!d.sigsi || v.Sigue_Proyecto === 'SI') && (!d.signo || v.Sigue_Proyecto === 'NO') && (!d.mant || v.Mantenimiento === 'SI') && (!d.norec || v.No_Recogio === 'SI') && (!d.sinNoRec || v.No_Recogio !== 'SI') && (!d.seret || v.Se_Retira === 'SI'));
 }
 
 function renderDash() {
@@ -573,7 +573,7 @@ function renderDash() {
       <div class="text-xs text-slate-400">${pct(tot, total)}% de las visitas resueltas</div></button>
       <div class="mt-2 divide-y divide-slate-100 text-sm">${rows.map(s => `<button class="w-full flex items-center justify-between py-1.5 hover:bg-slate-50 rounded" data-di="${D({ status: [s], label: s })}"><span class="flex items-center gap-2"><i class="dot" style="background:${col(s)}"></i>${s}</span><b>${st[s]}</b></button>`).join('')}</div></div>`;
 
-  const sm = segMap(), esCer = v => v.Recuperada && v.Status_Inicial === 'Tienda Cerrada', cerR = res.filter(v => v.Status_Tienda === 'Tienda Cerrada' || esCer(v)), recup = cerR.filter(esCer), otras = res.filter(v => v.Recuperada && !esCer(v));
+  const sm = segMap(), esCer = v => v.Recuperada && v.Status_Inicial === 'Tienda Cerrada', cerR = res.filter(v => v.Status_Tienda === 'Tienda Cerrada' || esCer(v)), recup = cerR.filter(esCer), otras = res.filter(v => v.Recuperada && !v.Corregida && !esCer(v)), corr = res.filter(v => v.Corregida);
   const recH = recup.length ? recup.reduce((a, v) => a + (tsMs(sm[v.ID_Visita].Fecha_Resolucion) - tsMs(v.Fecha_Resolucion)) / 3600000, 0) / recup.length : null;
   const sinSeg = cerradasSinSeg(S.filtroTec);
   const incAbN = (S.incs || []).filter(r => r.Estado === 'Abierta' && (!S.filtroTec || r.Tecnico === S.filtroTec)).length, porRev = (S.cerradas || []).filter(x => (!S.filtroTec || x.Usuario === S.filtroTec) && dOf(x.Fecha_Estado) < hoyLima() && !x.Pend_ID).length;
@@ -598,7 +598,7 @@ function renderDash() {
     ${kpi('Fuera de ruta', n0(fuera), { color: 'text-amber-600', d: { fuera: true, label: 'Visitas fuera de ruta' }, sub: 'agregadas por el técnico' })}
   </div>
 
-  <div class="sec">Incidencias del periodo <span class="normal-case font-normal text-slate-400">· resultado final: si una tienda cerrada luego se activó, cuenta con su estado final y el seguimiento no se suma como visita aparte</span></div>
+  <div class="sec">Incidencias del periodo <span class="normal-case font-normal text-slate-400">· resultado final: si una tienda cerrada luego se activó (o se corrigió una Activa Validada), cuenta con su estado final y el seguimiento no se suma como visita aparte</span></div>
   <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
     ${group('Visitas activas', act, 'text-green-600', ACT, { status: ACT, label: 'Visitas activas (validada + sin validación)' })}
     ${group('Total averías', ave, 'text-red-600', AV, { status: AV, label: 'Total de averías' })}
@@ -620,7 +620,9 @@ function renderDash() {
     ${techCard('ch-t2', 'Visitas activas por técnico', techs, res, ACT.map(s => ({ label: s, color: COLOR[s], match: v => v.Status_Tienda === s, drill: { status: [s] } })))}
     ${techCard('ch-t3', 'Averías por técnico', techs, res, AV.map(s => ({ label: s, color: COLOR[s], match: v => v.Status_Tienda === s, drill: { status: [s] } })))}
     ${techCard('ch-t5', 'Retiro de equipos por técnico (Avería NUC/RB)', techs, res, [RET.nuc, RET.rb].map(k => ({ label: 'Se recogió ' + k, color: RET_COLOR[k], match: v => v.Status_Tienda === 'Avería NUC/RB' && v.Retiro_Equipos === k, drill: { status: ['Avería NUC/RB'], retiro: [k] } })))}
-    ${techCard('ch-t6', 'Reinstalación y USB por técnico', techs, res, [
+    ${techCard('ch-t6', 'Instalación, reinstalación y USB por técnico', techs, res, [
+      { label: 'Instaló NUC', color: REI_COLOR['iNUC'], match: v => v.Instalacion_Equipo === 'NUC', drill: { instal: ['NUC'] } },
+      { label: 'Instaló RB', color: REI_COLOR['iRB'], match: v => v.Instalacion_Equipo === 'RB', drill: { instal: ['RB'] } },
       { label: 'Reinstaló NUC', color: REI_COLOR['NUC'], match: v => v.Reinstalacion_Equipo === 'NUC', drill: { reinst: ['NUC'] } },
       { label: 'Reinstaló RB', color: REI_COLOR['RB'], match: v => v.Reinstalacion_Equipo === 'RB', drill: { reinst: ['RB'] } },
       { label: 'USB en monitor', color: REI_COLOR.usb, match: v => v.USB_Monitor === 'SI', drill: { usb: true } },
@@ -662,7 +664,7 @@ function renderDash() {
  *  Reúne lo que requiere seguimiento: tiendas cerradas, laboratorio, retiro de equipos, reinstalaciones/USB y las incidencias que marca el técnico
  *  en la visita física (Solicita reubicación, Mudanza de tienda, Revisar periféricos). Es interactivo igual que el Dashboard (rango, técnico, tarjetas con detalle).
  * ===================================================================== */
-const INC_TIPOS = [['Solicita reubicación', '🚚', '#4338ca', 'Mover la pantalla de zona, ordenar cables, bajar equipos…'], ['Mudanza de tienda', '📦', '#b45309', 'La tienda cambió de dirección: reubicar todos los equipos'], ['Revisar periféricos', '🔌', '#0e7490', 'Cable UTP / HDMI, cámara IP… se confirma en la siguiente visita']];
+const INC_TIPOS = [['Solicita reubicación', '🚚', '#4338ca', 'Mover la pantalla de zona, ordenar cables, bajar equipos…'], ['Mudanza de tienda', '📦', '#b45309', 'La tienda cambió de dirección: reubicar todos los equipos'], ['Revisar periféricos', '🔌', '#0e7490', 'Cable UTP / HDMI, cámara IP… se confirma en la siguiente visita'], ['Solicita cambio de tecnología de Internet', '🌐', '#0891b2', 'De coaxial a fibra óptica · el avance se ve en Información de tiendas']];
 const incTipoInfo = t => INC_TIPOS.find(x => x[0] === t) || [t, '⚠️', '#475569', ''];
 const incAb = r => r.Estado === 'Abierta';
 const incsF = () => (S.incs || []).filter(r => !S.filtroTec || r.Tecnico === S.filtroTec);
@@ -684,9 +686,10 @@ function renderInc() {
   const rNuc = rc(RET.nuc), rRb = rc(RET.rb), rCon = rNuc + rRb, rNo = nr.filter(v => v.No_Recogio === 'SI').length, rSin = Math.max(0, nr.length - rCon - rNo);
   const seRet = c(v => v.Se_Retira === 'SI') + retL.filter(v => v.Se_Retira === 'SI').length;
   const rein = res.filter(v => v.Reinstalacion_Equipo), reN = rein.filter(v => v.Reinstalacion_Equipo === 'NUC'), reR = rein.filter(v => v.Reinstalacion_Equipo === 'RB');
+  const inst = res.filter(v => v.Instalacion_Equipo), insN = inst.filter(v => v.Instalacion_Equipo === 'NUC'), insR = inst.filter(v => v.Instalacion_Equipo === 'RB');
   const okv = a => a.filter(v => v.Status_Tienda === 'Activa Validada').length;
   const usbN = c(v => v.USB_Monitor === 'SI'), usbRetN = c(v => !!v.Retiro_USB), mantN = c(v => v.Mantenimiento === 'SI');
-  const sm = segMap(), esCer = v => v.Recuperada && v.Status_Inicial === 'Tienda Cerrada', cerR = res.filter(v => v.Status_Tienda === 'Tienda Cerrada' || esCer(v)), recup = cerR.filter(esCer), otras = res.filter(v => v.Recuperada && !esCer(v));
+  const sm = segMap(), esCer = v => v.Recuperada && v.Status_Inicial === 'Tienda Cerrada', cerR = res.filter(v => v.Status_Tienda === 'Tienda Cerrada' || esCer(v)), recup = cerR.filter(esCer), otras = res.filter(v => v.Recuperada && !v.Corregida && !esCer(v)), corr = res.filter(v => v.Corregida);
   const recH = recup.length ? recup.reduce((a, v) => a + (tsMs(sm[v.ID_Visita].Fecha_Resolucion) - tsMs(v.Fecha_Resolucion)) / 3600000, 0) / recup.length : null;
   const sinSeg = cerradasSinSeg(S.filtroTec);
   const incKpi = ([t, ic, color, ayuda]) => { const s = incStats(t); return kpiH(`${ic} ${t}`, n0(s.ab), { color: s.ab ? '' : 'text-green-600', dot: color, raw: `data-ikpi="${esc(t)}"`, sub: `abiertas · ${n0(s.rep)} reportadas en el periodo · ${n0(s.res)} resueltas${s.viejas ? ` · <b class="text-red-600">${n0(s.viejas)} con +7 días</b>` : ''}`, extra: `<div class="text-[11px] text-slate-400 mt-1">${esc(ayuda)}</div>` }); };
@@ -696,7 +699,7 @@ function renderInc() {
   ${avisoSegHTML()}
 
   <div class="sec">Incidencias marcadas en las visitas <span class="normal-case font-normal text-slate-400">· el técnico las marca (opcional) en Visita Física; ${n0(totAb)} abiertas ahora</span></div>
-  <div class="grid grid-cols-1 md:grid-cols-3 gap-3">${INC_TIPOS.map(incKpi).join('')}</div>
+  <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">${INC_TIPOS.map(incKpi).join('')}</div>
   <div id="incBox" class="mt-3"></div>
 
   <div class="sec">Solicitudes de retiro <span class="normal-case font-normal text-slate-400">· la tienda sigue con la etiqueta hasta que se retiren los equipos o el cliente decida continuar</span></div>
@@ -711,12 +714,13 @@ function renderInc() {
   <div id="solBox" class="mt-3"></div>
 
   <div class="sec">Tienda cerrada · seguimiento <span class="normal-case font-normal text-slate-400">· cerradas del periodo que luego se activaron</span></div>
-  <div class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
+  <div class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
     ${kpiH('Cerradas recuperadas', n0(recup.length), { color: 'text-emerald-600', dot: '#059669', d: { recup: 'cerrada', label: 'Tiendas cerradas que luego se activaron (seguimiento)' }, sub: `${pct(recup.length, cerR.length)}% de las ${n0(cerR.length)} que se encontraron cerradas` })}
     ${kpiH('Cerradas sin recuperar', n0(cerR.length - recup.length), { color: 'text-slate-700', dot: COLOR['Tienda Cerrada'], d: { sinrec: true, label: 'Tiendas cerradas sin actualizar por seguimiento' }, sub: 'siguen cerradas (sin seguimiento)' })}
     <div class="card kpi cursor-default"><div class="text-xs font-semibold text-slate-500">Tiempo promedio de recuperación</div><div class="text-3xl font-bold text-sky-600 leading-tight">${recH === null ? '—' : recH < 24 ? Math.round(recH * 10) / 10 + ' h' : Math.round(recH / 24 * 10) / 10 + ' d'}</div><div class="text-xs text-slate-400 mt-0.5">desde la visita cerrada hasta el seguimiento</div></div>
     <button class="card kpi" data-tgofilter="cersinseg"><div class="text-xs font-semibold text-slate-500">⏰ Sin seguimiento ≥ ${esc(segTxt(segUmbral()))}</div><div class="text-3xl font-bold ${sinSeg.length ? 'text-amber-600' : 'text-green-600'} leading-tight">${n0(sinSeg.length)}</div><div class="text-xs text-slate-400 mt-0.5">tiendas cerradas ahora · ver en Tiendas</div></button>
     ${kpiH('Otras visitas recuperadas', n0(otras.length), { color: 'text-teal-600', dot: '#0d9488', d: { recup: 'otras', label: 'Visitas recuperadas por llamada o visita posterior (sin validar, averías, no visitado)' }, sub: 'sin validar, averías o no visitado que luego se resolvieron' })}
+    ${kpiH('Visitas corregidas', n0(corr.length), { color: 'text-sky-700', dot: '#0284c7', d: { recup: 'corr', label: 'Visitas guardadas como Activa Validada que luego se corrigieron (el técnico se equivocó)' }, sub: 'Activa Validada corregida · cuenta con su estado final' })}
   </div>
   <div id="revBox" class="mt-3"></div>
 
@@ -736,7 +740,14 @@ function renderInc() {
     ${kpiH('Retirados por solicitud de retiro', n0(seRet), { color: 'text-violet-700', dot: '#7c3aed', d: { seret: true, label: 'Solicitud de retiro · se retiró el equipo (pasó al Laboratorio)' }, sub: 'pasan solos al Laboratorio' })}
   </div>
 
-  <div class="sec">Reinstalación de equipos, USB y Mantenimiento <span class="normal-case font-normal text-slate-400">· solo visitas físicas</span></div>
+  <div class="sec">Instalación de equipos <span class="normal-case font-normal text-slate-400">· tiendas nuevas o reactivadas (primera instalación) · solo visitas físicas</span></div>
+  <div class="grid grid-cols-2 lg:grid-cols-3 gap-3">
+    ${kpiH('Equipos instalados', n0(inst.length), { color: 'text-teal-700', dot: REI_COLOR['iNUC'], d: { instal: ['NUC', 'RB'], label: 'Equipos instalados en tiendas nuevas o reactivadas (NUC + RB)' }, sub: `${n0(okv(inst))} validados · ${n0(inst.length - okv(inst))} sin validar` })}
+    ${kpiH('Se instaló NUC', n0(insN.length), { color: 'text-teal-700', dot: REI_COLOR['iNUC'], d: { instal: ['NUC'], label: 'Se instaló NUC (tienda nueva o reactivada)' }, sub: `${n0(okv(insN))} validados · ${n0(insN.length - okv(insN))} sin validar` })}
+    ${kpiH('Se instaló RB', n0(insR.length), { color: 'text-teal-500', dot: REI_COLOR['iRB'], d: { instal: ['RB'], label: 'Se instaló RB (tienda nueva o reactivada)' }, sub: `${n0(okv(insR))} validados · ${n0(insR.length - okv(insR))} sin validar` })}
+  </div>
+
+  <div class="sec">Reinstalación de equipos, USB y Mantenimiento <span class="normal-case font-normal text-slate-400">· solo visitas físicas · la reinstalación es de tiendas que ya tuvieron equipo</span></div>
   <div class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
     ${kpiH('Equipos reinstalados', n0(rein.length), { color: 'text-emerald-600', dot: REI_COLOR['NUC'], d: { reinst: ['NUC', 'RB'], label: 'Equipos reinstalados (NUC + RB)' }, sub: `${n0(okv(rein))} validados · ${n0(rein.length - okv(rein))} sin validar` })}
     ${kpiH('Se reinstaló NUC', n0(reN.length), { color: 'text-emerald-700', dot: REI_COLOR['NUC'], d: { reinst: ['NUC'], label: 'Se reinstaló NUC' }, sub: `${n0(okv(reN))} validados · ${n0(reN.length - okv(reN))} sin validar` })}
@@ -1014,7 +1025,7 @@ function tableHTML(list, page, key) {
       <td>${esc(nameOf(v.Usuario_Asignado))}${v.Es_Fuera_De_Ruta === 'SI' ? ' <span class="badge bg-amber-100 text-amber-700">Fuera de ruta</span>' : ''}${v.Seguimiento_De ? ' <span class="badge bg-sky-100 text-sky-700" title="Recupera la visita ' + esc(v.Seguimiento_De) + '">Seguimiento</span>' : ''}</td>
       <td><b>${esc(v.Nombre_Cliente)}</b><div class="text-xs text-slate-400">${esc(v.ID_Cliente)}</div>${v.Etiqueta ? `<div class="mt-0.5">${etqBadge(v)}</div>` : ''}</td>
       <td>${tipoBadge(v.Tipo_Visita)}</td>
-      <td><span class="badge" style="background:${col(v.Status_Tienda)}1a;color:${col(v.Status_Tienda)}">${esc(v.Status_Tienda || '—')}</span>${v.Recuperada ? `<div class="text-[10px] text-slate-400 mt-0.5">↪ se encontró ${esc(v.Status_Inicial || 'No visitado')}</div>` : ''}${v.Retiro_Equipos ? `<div class="mt-1"><span class="badge" style="background:#ffedd5;color:#c2410c">📦 ${esc(v.Retiro_Equipos)}</span></div>` : ''}${v.Reinstalacion_Equipo ? `<div class="mt-1"><span class="badge" style="background:#d1fae5;color:#047857">🔁 Reinstaló ${esc(v.Reinstalacion_Equipo)}</span></div>` : ''}${v.USB_Monitor === 'SI' ? `<div class="mt-1"><span class="badge" style="background:#e0e7ff;color:#4338ca">💾 USB</span></div>` : ''}${v.Mantenimiento === 'SI' ? `<div class="mt-1"><span class="badge" style="background:#e2e8f0;color:#334155">🛠️ Mantenimiento</span></div>` : ''}${v.No_Recogio === 'SI' ? `<div class="mt-1"><span class="badge" style="background:#fee2e2;color:#b91c1c">🚫 No se recogió</span></div>` : ''}${v.Se_Retira === 'SI' ? `<div class="mt-1"><span class="badge" style="background:#ede9fe;color:#6d28d9">📦 Se retira ${esc(v.Retiro_Equipos)} → Laboratorio</span></div>` : ''}${v.Incidencia ? `<div class="mt-1"><span class="badge" style="background:#e0e7ff;color:#4338ca">${v.Incidencia === 'Mudanza de tienda' ? '📦' : '🚚'} ${esc(v.Incidencia)}</span></div>` : ''}${v.Perifericos === 'SI' ? `<div class="mt-1"><span class="badge" style="background:#cffafe;color:#0e7490">🔌 Revisar periféricos</span></div>` : ''}${v.Perif_Resuelto ? `<div class="mt-1"><span class="badge" style="background:${v.Perif_Resuelto === 'SI' ? '#dcfce7;color:#15803d' : '#fef3c7;color:#b45309'}">🔌 Periféricos ${v.Perif_Resuelto === 'SI' ? 'solucionados' : 'siguen pendientes'}</span></div>` : ''}</td>
+      <td><span class="badge" style="background:${col(v.Status_Tienda)}1a;color:${col(v.Status_Tienda)}">${esc(v.Status_Tienda || '—')}</span>${v.Recuperada ? `<div class="text-[10px] text-slate-400 mt-0.5">${v.Corregida ? '✏️ corregida: se había guardado Activa Validada' : '↪ se encontró ' + esc(v.Status_Inicial || 'No visitado')}</div>` : ''}${v.Retiro_Equipos ? `<div class="mt-1"><span class="badge" style="background:#ffedd5;color:#c2410c">📦 ${esc(v.Retiro_Equipos)}</span></div>` : ''}${v.Reinstalacion_Equipo ? `<div class="mt-1"><span class="badge" style="background:#d1fae5;color:#047857">🔁 Reinstaló ${esc(v.Reinstalacion_Equipo)}</span></div>` : ''}${v.Instalacion_Equipo ? `<div class="mt-1"><span class="badge" style="background:#ccfbf1;color:#0f766e">🆕 Instaló ${esc(v.Instalacion_Equipo)}</span></div>` : ''}${v.Cambio_Tecnologia === 'SI' ? `<div class="mt-1"><span class="badge" style="background:#cffafe;color:#0e7490">🌐 Cambio de tecnología</span></div>` : ''}${v.USB_Monitor === 'SI' ? `<div class="mt-1"><span class="badge" style="background:#e0e7ff;color:#4338ca">💾 USB</span></div>` : ''}${v.Mantenimiento === 'SI' ? `<div class="mt-1"><span class="badge" style="background:#e2e8f0;color:#334155">🛠️ Mantenimiento</span></div>` : ''}${v.No_Recogio === 'SI' ? `<div class="mt-1"><span class="badge" style="background:#fee2e2;color:#b91c1c">🚫 No se recogió</span></div>` : ''}${v.Se_Retira === 'SI' ? `<div class="mt-1"><span class="badge" style="background:#ede9fe;color:#6d28d9">📦 Se retira ${esc(v.Retiro_Equipos)} → Laboratorio</span></div>` : ''}${v.Incidencia ? `<div class="mt-1"><span class="badge" style="background:#e0e7ff;color:#4338ca">${v.Incidencia === 'Mudanza de tienda' ? '📦' : '🚚'} ${esc(v.Incidencia)}</span></div>` : ''}${v.Perifericos === 'SI' ? `<div class="mt-1"><span class="badge" style="background:#cffafe;color:#0e7490">🔌 Revisar periféricos</span></div>` : ''}${v.Perif_Resuelto ? `<div class="mt-1"><span class="badge" style="background:${v.Perif_Resuelto === 'SI' ? '#dcfce7;color:#15803d' : '#fef3c7;color:#b45309'}">🔌 Periféricos ${v.Perif_Resuelto === 'SI' ? 'solucionados' : 'siguen pendientes'}</span></div>` : ''}</td>
       <td class="whitespace-nowrap">${isNum(v.Distancia_Metros) ? Math.round(v.Distancia_Metros) + ' m' : '—'}</td>
       <td class="whitespace-nowrap">${v.URL_Foto_Fachada ? `<a class="text-blue-600" target="_blank" rel="noopener" href="${esc(v.URL_Foto_Fachada)}">Fachada</a>` : ''} ${v.URL_Foto_Monitor ? `<a class="text-blue-600" target="_blank" rel="noopener" href="${esc(v.URL_Foto_Monitor)}">Monitor</a>` : ''}${!v.URL_Foto_Fachada && !v.URL_Foto_Monitor ? '—' : ''}</td>
       <td class="min-w-[160px] max-w-[320px] text-slate-600">${esc(v.Observacion)}</td></tr>`).join('')}</tbody></table></div>
@@ -1534,7 +1545,8 @@ const origenTxt = o => o === 'Importado' ? 'base anterior' : o === 'Visita' ? 'v
 const RETIRADA_DIAS = 90;
 const TFILTROS = [['', 'Todas las tiendas'],
   ['enlinea', 'Estado: En Línea'], ['pendiente', 'Estado: Pendiente'], ['averia', 'Estado: Avería'], ['cerrada', 'Estado: Tienda Cerrada'], ['solret', 'Solicitud de Retiro abierta'], ['retirado', 'Estado: Retirado'], ['ret90', `Retiradas hace más de ${RETIRADA_DIAS} días`], ['cersinseg', 'Cerradas sin seguimiento'], ['sinestado', 'Estado: sin dato'],
-  ['reub', 'Incidencia: Solicita reubicación'], ['mud', 'Incidencia: Mudanza de tienda'], ['perif', 'Incidencia: Revisar periféricos'], ['incab', 'Con alguna incidencia abierta'],
+  ['reub', 'Incidencia: Solicita reubicación'], ['mud', 'Incidencia: Mudanza de tienda'], ['perif', 'Incidencia: Revisar periféricos'], ['tecinc', 'Incidencia: Solicita cambio de tecnología'], ['incab', 'Con alguna incidencia abierta'],
+  ['fibra', 'Internet: Fibra óptica'], ['coax', 'Internet: Coaxial'], ['sintec', 'Internet: sin dato de tecnología'], ['porinst', 'Por instalar (tienda nueva o reactivada)'],
   ['pend', 'Equipo pendiente de reinstalar'], ['sinval', 'Instalado sin validar'], ['usb', 'Con USB en monitor'], ['usbret', 'USB por retirar (Supervisor)'], ['nuc', 'Tiene NUC'], ['rb', 'Tiene RB'], ['sineq', 'Equipo sin dato'],
   ['sinvisita', 'Sin visitas'], ['atras', 'Sin visita hace más de 30 días'], ['sinmant', 'Sin mantenimiento registrado'], ['sincontacto', 'Sin contacto'], ['sindistrito', 'Sin distrito']];
 let CSS = new Set();       // tiendas cerradas sin seguimiento (según el umbral del aviso)
@@ -1554,6 +1566,11 @@ const TPRED = {
   reub: t => t.Inc_Reubicacion === 'SI',
   mud: t => t.Inc_Mudanza === 'SI',
   perif: t => t.Inc_Perifericos === 'SI',
+  tecinc: t => actv(t) && t.Inc_Tecnologia === 'SI',
+  fibra: t => actv(t) && t.Tecnologia_Internet === 'Fibra óptica',
+  coax: t => actv(t) && t.Tecnologia_Internet === 'Coaxial',
+  sintec: t => actv(t) && !t.Tecnologia_Internet,
+  porinst: t => actv(t) && t.Estado_Equipo === 'Por instalar' && !t.Componente_Actual,
   incab: t => !!t.Incidencias_Abiertas,
   pend: t => actv(t) && !!t.Equipo_Pendiente_Reinstalar,
   sinval: t => actv(t) && t.Estado_Equipo === 'Instalado sin validar',
@@ -1568,7 +1585,9 @@ const TPRED = {
   sincontacto: t => actv(t) && !t.Contacto_1,
   sindistrito: t => actv(t) && !t.Distrito
 };
-const compTxt = t => t.Componente_Actual || (t.Equipo_Pendiente_Reinstalar ? 'Sin equipo (retirado)' : t.Origen_Equipo ? 'Ninguno' : 'Sin dato');
+const compTxt = t => t.Componente_Actual || (t.Equipo_Pendiente_Reinstalar ? 'Sin equipo (retirado)' : t.Estado_Equipo === 'Por instalar' ? 'Por instalar' : t.Origen_Equipo ? 'Ninguno' : 'Sin dato');
+const tecTxt = t => t.Tecnologia_Internet || 'Sin dato';
+const tecIcon = t => t.Tecnologia_Internet === 'Fibra óptica' ? '🟢' : t.Tecnologia_Internet === 'Coaxial' ? '🟠' : '⚪';
 const diasCol = d => d === null ? 'text-slate-400' : d > 30 ? 'text-red-600' : d > 14 ? 'text-amber-600' : 'text-green-600';
 const diasTxt = d => d === null ? 'sin visitas' : d === 0 ? 'hoy' : d === 1 ? 'ayer' : `hace ${d} días`;
 const fmtTel = s => { s = String(s || ''); return s.length === 9 ? s.replace(/(\d{3})(\d{3})(\d{3})/, '$1 $2 $3') : s; };
@@ -1578,6 +1597,8 @@ const tBadges = t => t.Estado_Tienda === 'Retirado' ? '' : [
   t.Inc_Reubicacion === 'SI' ? '<span class="badge bg-indigo-100 text-indigo-700">🚚 Reubicación</span>' : '',
   t.Inc_Mudanza === 'SI' ? '<span class="badge bg-orange-100 text-orange-700">📦 Mudanza</span>' : '',
   t.Inc_Perifericos === 'SI' ? '<span class="badge bg-cyan-100 text-cyan-700">🔌 Periféricos</span>' : '',
+  t.Inc_Tecnologia === 'SI' ? '<span class="badge bg-sky-100 text-sky-700">🌐 Cambio de tecnología</span>' : '',
+  t.Estado_Equipo === 'Por instalar' && !t.Componente_Actual ? '<span class="badge bg-teal-100 text-teal-700">🆕 Por instalar</span>' : '',
   t.Equipo_Pendiente_Reinstalar ? `<span class="badge bg-amber-100 text-amber-800">⚠ Reinstalar ${esc(t.Equipo_Pendiente_Reinstalar)}</span>` : '',
   t.Estado_Equipo === 'Instalado sin validar' ? '<span class="badge bg-orange-100 text-orange-700">🔧 Sin validar</span>' : '',
   t.USB_Por_Retirar === 'SI' ? '<span class="badge bg-red-100 text-red-700">💾 USB por retirar</span>' : (t.Tiene_USB === 'SI' ? '<span class="badge bg-indigo-100 text-indigo-700">💾 USB</span>' : '')
@@ -1597,6 +1618,7 @@ function buildTiendas() {
   $('#v-tiendas').innerHTML = `
     <div id="tWarn"></div>
     <div id="tChips" class="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-8 gap-2"></div>
+    <div id="tTec"></div>
     <div class="card p-3 mt-3 flex flex-wrap gap-2 items-center">
       <input id="tQ" type="search" class="inp flex-1 min-w-[200px]" placeholder="Buscar tienda, ID, distrito, contacto…" value="${esc(T.q)}">
       <select id="tFiltro" class="inp !w-auto max-w-full">${TFILTROS.map(([k, l]) => `<option value="${k}" ${T.filtro === k ? 'selected' : ''}>${l}</option>`).join('')}</select>
@@ -1641,8 +1663,13 @@ function updateTiendas(soloLista) {
   refreshDistritos();
   const chips = [['', 'Total tiendas'], ['enlinea', 'En Línea'], ['pendiente', 'Pendiente'], ['averia', 'Avería'], ['cerrada', 'Tienda Cerrada'], ['cersinseg', 'Cerradas sin seguimiento'], ['solret', 'Solicitud de Retiro'], ['retirado', 'Retirado'], ['ret90', `Retiradas +${RETIRADA_DIAS} días`], ['sinvisita', 'Sin visitas'], ['atras', '+30 días sin visita'],
     ['reub', 'Solicita reubicación'], ['mud', 'Mudanza de tienda'], ['perif', 'Revisar periféricos'],
-    ['nuc', 'Con NUC'], ['rb', 'Con RB'], ['sineq', 'Equipo sin dato'], ['pend', 'Pend. reinstalar'], ['sinval', 'Sin validar'], ['usb', 'Con USB'], ['usbret', 'USB por retirar']];
-  const chipCol = { enlinea: 'text-green-600', pendiente: 'text-amber-600', averia: 'text-red-600', cerrada: 'text-slate-600', solret: 'text-violet-700', retirado: 'text-slate-500', ret90: 'text-red-600', cersinseg: 'text-amber-600', reub: 'text-indigo-600', mud: 'text-orange-600', perif: 'text-cyan-700', pend: 'text-amber-600', usb: 'text-indigo-600', usbret: 'text-red-600' };
+    ['nuc', 'Con NUC'], ['rb', 'Con RB'], ['sineq', 'Equipo sin dato'], ['porinst', 'Por instalar'], ['pend', 'Pend. reinstalar'], ['sinval', 'Sin validar'], ['usb', 'Con USB'], ['usbret', 'USB por retirar'],
+    ['fibra', 'Fibra óptica'], ['coax', 'Coaxial'], ['sintec', 'Internet sin dato'], ['tecinc', 'Piden cambio a fibra']];
+  const chipCol = { enlinea: 'text-green-600', pendiente: 'text-amber-600', averia: 'text-red-600', cerrada: 'text-slate-600', solret: 'text-violet-700', retirado: 'text-slate-500', ret90: 'text-red-600', cersinseg: 'text-amber-600', reub: 'text-indigo-600', mud: 'text-orange-600', perif: 'text-cyan-700', fibra: 'text-emerald-600', coax: 'text-orange-600', tecinc: 'text-sky-700', porinst: 'text-teal-700', pend: 'text-amber-600', usb: 'text-indigo-600', usbret: 'text-red-600' };
+  const act = data.filter(actv), nF = act.filter(t => t.Tecnologia_Internet === 'Fibra óptica').length, nC = act.filter(t => t.Tecnologia_Internet === 'Coaxial').length, nS = act.length - nF - nC, nP = act.filter(TPRED.tecinc).length;
+  $('#tTec').innerHTML = act.length ? `<div class="card p-3 mt-3"><div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm"><b>🌐 Tecnología de Internet</b><span><b class="text-emerald-600">${n0(nF)}</b> con fibra óptica</span><span><b class="text-orange-600">${n0(nC)}</b> con coaxial</span><span><b class="text-slate-500">${n0(nS)}</b> sin dato</span><span><b class="text-sky-700">${n0(nP)}</b> piden el cambio</span><span class="text-slate-500">· avance a fibra: <b>${pct(nF, nF + nC)}%</b> de las tiendas con dato (${n0(nF)} de ${n0(nF + nC)})</span></div>
+    <div class="h-2 rounded bg-slate-100 overflow-hidden mt-2 flex" title="Fibra / Coaxial / Sin dato"><i style="width:${pct(nF, act.length)}%;background:#059669"></i><i style="width:${pct(nC, act.length)}%;background:#f97316"></i></div>
+    <div class="text-[11px] text-slate-400 mt-1">La tecnología se llena en la columna <b>Tecnologia_Internet</b> de la hoja Clientes (Coaxial / Fibra óptica) o con ✏️ Editar. Cerrar la incidencia de cambio no modifica la tecnología: se cambia a mano cuando la tienda ya tiene fibra.</div></div>` : '';
   $('#tChips').innerHTML = chips.map(([k, l]) => `<button data-tchip="${k}" class="card kpi !p-2.5 ${T.filtro === k ? 'ring-2 ring-blue-500' : ''}"><div class="text-[11px] font-semibold text-slate-500 leading-tight">${l}</div><div class="text-2xl font-bold ${chipCol[k] || 'text-slate-800'}">${n0(data.filter(TPRED[k]).length)}</div></button>`).join('');
   const list = tiendaFiltrada();
   S.tiendaList = list;
@@ -1656,7 +1683,7 @@ function updateTiendas(soloLista) {
       <td class="whitespace-nowrap">${t.Ultima_Visita ? fmtD(t.Ultima_Visita) : '—'}<div class="text-xs ${diasCol(d)}">${diasTxt(d)}</div></td>
       <td>${t.Ultimo_Tecnico ? esc(nameOf(t.Ultimo_Tecnico)) : '—'}</td>
       <td>${estadoBadge(t)}${t.Estado_Tienda === 'Avería' && /^Avería/.test(t.Ultimo_Status || '') ? `<div class="text-[11px] text-slate-500 mt-0.5">${esc(t.Ultimo_Status)}</div>` : ''}${t.Estado_Tienda && t.Origen_Estado === 'Importado' ? '<div class="text-[10px] text-slate-400 mt-0.5">base anterior</div>' : ''}${t.Estado_Tienda === 'Retirado' && t.Retirada_Fecha ? `<div class="text-[10px] text-slate-400 mt-0.5">desde ${fmtD(t.Retirada_Fecha)} · ${diasTxt(diasDesde(t.Retirada_Fecha))}</div>` : ''}${t.Estado_Tienda === 'Tienda Cerrada' && CSS.has(t.ID_Cliente) ? '<div class="text-[10px] text-amber-700 font-semibold mt-0.5">⏰ sin seguimiento</div>' : ''}</td>
-      <td><b>${esc(compTxt(t))}</b><div class="flex flex-wrap gap-1 mt-0.5">${tBadges(t)}</div></td></tr>`; }).join('')}</tbody></table></div>
+      <td><b>${esc(compTxt(t))}</b><div class="text-[11px] text-slate-500">${tecIcon(t)} ${esc(tecTxt(t))}</div><div class="flex flex-wrap gap-1 mt-0.5">${tBadges(t)}</div></td></tr>`; }).join('')}</tbody></table></div>
     ${list.length > rows.length ? `<div class="p-3 text-center"><button class="btn btn-ghost" data-more="tienda">Mostrar más (${n0(list.length - rows.length)})</button></div>` : ''}`;
   renderSelBar();
   if (!soloLista) renderTiendaDetail();
@@ -1698,6 +1725,7 @@ function tiendaDetailHTML(t, modal) {
     ${sub('Datos de la tienda')}
     ${kv('Distrito', esc(t.Distrito))}
     ${kv('Dirección', esc(t.Direccion))}
+    ${kv('Tecnología de Internet', `${tecIcon(t)} <b>${esc(tecTxt(t))}</b>${t.Inc_Tecnologia === 'SI' ? ' · <span class="text-sky-700">solicita cambio</span>' : ''}`)}
     ${kv('Contacto 1', telLink(t.Contacto_1))}
     ${kv('Contacto 2', telLink(t.Contacto_2))}
     ${kv('Coordenadas', isNum(t.Latitud) && isNum(t.Longitud) ? `${t.Latitud.toFixed(6)}, ${t.Longitud.toFixed(6)}` : '')}
@@ -1723,6 +1751,7 @@ function tiendaDetailHTML(t, modal) {
     ${kv('USB en el monitor', t.USB_Por_Retirar === 'SI' ? '<span class="text-red-700 font-bold">Sí · por retirar (Supervisor)</span>' : t.Tiene_USB === 'SI' ? '<span class="text-indigo-700 font-bold">Sí</span>' : 'No')}
     ${kv('Último retiro de USB', t.Ultimo_Retiro_USB ? `${fmtD(t.Ultimo_Retiro_USB)}${t.Retiro_USB_Por ? ' · ' + esc(nameOf(t.Retiro_USB_Por)) : ''}` : '')}
     ${kv('Último retiro', eq(t.Ultimo_Retiro, t.Equipo_Retirado))}
+    ${kv('Primera instalación', t.Ultima_Instalacion ? fmtD(t.Ultima_Instalacion) : (t.Estado_Equipo === 'Por instalar' ? '<span class="text-teal-700 font-bold">Por instalar</span>' : ''))}
     ${kv('Última reinstalación', eq(t.Ultima_Reinstalacion, t.Equipo_Reinstalado))}
 
     ${sub('Mantenimiento y averías')}
@@ -1756,7 +1785,7 @@ function openNuevaTienda() {
       <div class="col-span-2"><label class="lbl">Nombre *</label><input id="nNom" class="inp" maxlength="120" autocomplete="off" placeholder="Nombre de la tienda"></div>
     </div>
     ${camposTiendaHTML({})}
-    <div class="text-xs text-slate-500 bg-slate-50 rounded-lg p-2">Obligatorios: <b>ID, nombre y coordenadas</b> (la app del técnico las usa para validar que está a 100 m de la tienda). El resto lo puedes completar después con ✏️ Editar.</div>
+    <div class="text-xs text-slate-500 bg-slate-50 rounded-lg p-2">Obligatorios: <b>ID, nombre y coordenadas</b> (la app del técnico las usa para validar que está a 100 m de la tienda). El resto lo puedes completar después con ✏️ Editar. Una tienda nueva queda <b>Por instalar</b>: en su primera visita el técnico <b>instala</b> el equipo (no se le pregunta qué equipo hay).</div>
     <div id="eErr" class="hidden text-sm text-red-700 bg-red-50 rounded-xl p-2"></div>
     <div class="grid grid-cols-2 gap-3"><button data-close class="btn btn-ghost">Cancelar</button><button id="btnTNew" class="btn btn-primary">Agregar tienda</button></div>
   </div>`);
@@ -1772,7 +1801,7 @@ function openNuevaTienda() {
     if (!lat || !lng || isNaN(+lat) || isNaN(+lng)) return bad('Latitud y longitud son obligatorias y deben ser números (por ejemplo -12.0464 y -77.0428).');
     const btn = $('#btnTNew'); btn.disabled = true; btn.textContent = 'Agregando…';
     try {
-      const r = await api('createTienda', { idCliente: id, nombre, distrito: distritoCanon($('#eDist').value), direccion: $('#eDir').value, contacto1: $('#eC1').value, contacto2: $('#eC2').value, latitud: +lat, longitud: +lng });
+      const r = await api('createTienda', { idCliente: id, nombre, distrito: distritoCanon($('#eDist').value), direccion: $('#eDir').value, contacto1: $('#eC1').value, contacto2: $('#eC2').value, tecnologia: $('#eTec').value, latitud: +lat, longitud: +lng });
       const T = S.tienda; T.data = (T.data || []).filter(x => x.ID_Cliente !== id).concat(r.tienda);
       T.q = ''; T.filtro = ''; T.distrito = ''; T.sel = id; T.page = 1;
       closeModal(); buildTiendas(); if (!TWIDE()) selTienda(id);
@@ -1802,9 +1831,29 @@ function accionTiendas(kind, ids) {
   const noRet = ts.filter(t => t.Estado_Tienda !== 'Retirado').length;
   const lista = `<div class="text-sm bg-slate-50 rounded-lg p-2.5 max-h-40 overflow-auto">${ts.slice(0, 8).map(t => `<div>${esc(t.Nombre_Cliente)} <span class="text-slate-400">· ${esc(t.ID_Cliente)}</span></div>`).join('')}${ts.length > 8 ? `<div class="text-slate-500 mt-1">… y ${ts.length - 8} más</div>` : ''}</div>`;
   const pl = (n, a, b) => n === 1 ? a : b;
+  // Retirada de UNA sola tienda: se pregunta por el equipo y el USB (con varias tiendas solo se marcan como Retiradas)
+  const uno = kind === 'retirar' && ts.length === 1 && ts[0].Estado_Tienda !== 'Retirado' ? ts[0] : null;
+  const rEq = uno ? (uno.Componente_Actual ? 'comp' : (!uno.Equipo_Pendiente_Reinstalar && !uno.Origen_Equipo) ? 'sin' : '') : '';
+  const rUsb = uno ? (uno.Tiene_USB === 'SI' ? 'si' : (!uno.USB_Fecha ? 'sin' : '')) : '';
+  const rad = (name, id, val, lbl) => `<label class="flex items-center gap-2 text-sm font-medium text-slate-800 bg-white border rounded-xl p-2"><input type="radio" name="${name}" id="${id}" value="${val}" class="w-5 h-5 accent-blue-600"> ${lbl}</label>`;
+  const formRet = !uno ? '' : `<div class="space-y-3 rounded-xl border border-slate-200 p-3 bg-white" id="rtForm">
+    ${rEq === 'comp' ? `<div><div class="text-sm font-semibold">¿Se retiró el equipo de la tienda (<b>${esc(uno.Componente_Actual)}</b>)? <span class="text-red-600">*</span></div>
+      <div class="grid grid-cols-2 gap-2 mt-1.5">${rad('rtEq', 'rtEqSi', 'SI', 'Sí, ya se retiró')}${rad('rtEq', 'rtEqNo', 'NO', 'No, sigue en la tienda')}</div>
+      <p class="text-xs text-slate-500 mt-1">Si se retiró, el equipo pasa al <b>Laboratorio</b> como “Por recibir”. Si sigue en la tienda queda registrado y lo retirará un técnico o supervisor.</p></div>` : ''}
+    ${rEq === 'sin' ? `<div><label class="lbl" for="rtEqSel">Aún no tenemos el equipo de esta tienda: ¿cuál se retira? <span class="text-red-600">*</span></label>
+      <select id="rtEqSel" class="inp"><option value="">Selecciona…</option><option value="NUC">Retiré NUC</option><option value="RB">Retiré RB</option><option value="NINGUNO">No había equipo / no se retiró</option></select>
+      <p class="text-xs text-slate-500 mt-1">Obligatorio mientras no tengamos el dato. El equipo retirado pasa al <b>Laboratorio</b> como “Por recibir”.</p></div>` : ''}
+    ${rUsb === 'sin' ? `<div><div class="text-sm font-semibold">USB en el monitor <span class="text-red-600">*</span></div>
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-1.5">${rad('rtUsb', 'rtUsbNo', 'NO', 'No había USB')}${rad('rtUsb', 'rtUsbRet', 'RETIRADO', 'Había y se retiró')}${rad('rtUsb', 'rtUsbSig', 'SIGUE', 'Había y sigue puesto')}</div>
+      <p class="text-xs text-slate-500 mt-1">Obligatorio mientras no tengamos el dato del USB de esta tienda.</p></div>` : ''}
+    ${rUsb === 'si' ? `<div><div class="text-sm font-semibold">Esta tienda tiene USB en el monitor: ¿se retiró? <span class="text-red-600">*</span></div>
+      <div class="grid grid-cols-2 gap-2 mt-1.5">${rad('rtUsb', 'rtUsbRet', 'RETIRADO', 'Sí, se retiró')}${rad('rtUsb', 'rtUsbSig', 'SIGUE', 'No, sigue puesto')}</div></div>` : ''}
+    <div><label class="lbl" for="rtNota">Nota (opcional)</label><input id="rtNota" class="inp" maxlength="300" placeholder="Motivo del retiro, quién lo hizo…" autocomplete="off"></div>
+    <p class="text-xs text-slate-500">Queda registrada una visita remota <b>Tienda Retirada</b> a tu nombre (aparece en “Tiendas retiradas” del Dashboard). ${rEq || rUsb ? '' : 'Esta tienda ya tiene sus datos de equipo y USB: solo se marca como Retirada.'}</p>
+  </div>`;
   const cfg = {
     retirar: { t: `Marcar ${ts.length} ${pl(ts.length, 'tienda', 'tiendas')} como Retirada${pl(ts.length, '', 's')}`, btn: 'Marcar como Retirada', cls: 'btn-primary', api: 'setRetirada', body: { retirada: true },
-      txt: `Quedarán con la etiqueta <b>Retirado</b>, conservan todo su historial, dejan de ofrecerse para asignar visitas y no aparecen en la app del técnico.${pend ? `<br><b>Se cancelarán ${pend} visita${pend > 1 ? 's' : ''} pendiente${pend > 1 ? 's' : ''}</b> de estas tiendas.` : ''} Puedes reactivarlas cuando quieras.` },
+      txt: `Quedarán con la etiqueta <b>Retirado</b>, conservan todo su historial, dejan de ofrecerse para asignar visitas y no aparecen en la app del técnico.${pend ? `<br><b>Se cancelarán ${pend} visita${pend > 1 ? 's' : ''} pendiente${pend > 1 ? 's' : ''}</b> de estas tiendas.` : ''} Puedes reactivarlas cuando quieras.${ts.length > 1 ? '<br><span class="text-slate-500">Con varias tiendas solo se marcan como Retiradas: no se toca el Laboratorio ni se pregunta por equipos. Para registrar el equipo y el USB retirados, márcalas de una en una.</span>' : ''}` },
     reactivar: { t: `Reactivar ${ts.length} ${pl(ts.length, 'tienda', 'tiendas')}`, btn: 'Reactivar', cls: 'btn-primary', api: 'setRetirada', body: { retirada: false },
       txt: 'Vuelven a su estado según la última visita y se pueden asignar otra vez. Las visitas que se cancelaron al retirarlas no se recuperan.' },
     eliminar: { t: `Eliminar ${ts.length} ${pl(ts.length, 'tienda', 'tiendas')}`, btn: 'Eliminar definitivamente', cls: 'btn-danger', api: 'deleteTiendas', body: {}, escribir: true,
@@ -1815,15 +1864,26 @@ function accionTiendas(kind, ids) {
     <div class="flex items-start gap-2"><div class="flex-1 text-lg font-bold leading-tight">${cfg.t}</div><button data-close class="btn btn-ghost !py-1 !px-3">✕</button></div>
     ${lista}
     <div class="text-sm text-slate-700">${cfg.txt}</div>
+    ${formRet}
     ${cfg.escribir ? '<div><label class="lbl">Para confirmar, escribe ELIMINAR</label><input id="acConf" class="inp" autocomplete="off" placeholder="ELIMINAR"></div>' : ''}
     <div id="acErr" class="hidden text-sm text-red-700 bg-red-50 rounded-xl p-2"></div>
     <div class="grid grid-cols-2 gap-3"><button data-close class="btn btn-ghost">Cancelar</button><button id="btnAc" class="btn ${cfg.cls}" ${cfg.escribir ? 'disabled' : ''}>${cfg.btn}</button></div>
   </div>`);
   if (cfg.escribir) $('#acConf').addEventListener('input', e => { $('#btnAc').disabled = e.target.value.trim().toUpperCase() !== 'ELIMINAR'; });
   $('#btnAc').addEventListener('click', async () => {
-    const b = $('#btnAc'); b.disabled = true; b.textContent = 'Procesando…';
+    const b = $('#btnAc'), acEr = $('#acErr'); acEr.classList.add('hidden');
+    let extra0 = {};
+    if (uno) {
+      const chk = n => { const x = document.querySelector(`input[name="${n}"]:checked`); return x ? x.value : ''; };
+      const falta = m => { acEr.textContent = m; acEr.classList.remove('hidden'); };
+      extra0 = { conEquipo: true, nota: $('#rtNota').value.trim() };
+      if (rEq === 'comp') { const v = chk('rtEq'); if (!v) return falta(`Indica si se retiró el equipo (${uno.Componente_Actual}): Sí / No.`); extra0.retiraEquipo = v === 'SI'; }
+      if (rEq === 'sin') { const v = $('#rtEqSel').value; if (!v) return falta('Indica qué equipo se retira de la tienda (NUC, RB o ninguno).'); extra0.equipo = v; }
+      if (rUsb) { const v = chk('rtUsb'); if (!v) return falta(rUsb === 'sin' ? 'Indica qué pasó con el USB del monitor.' : 'Indica si se retiró el USB del monitor.'); extra0.usbEstado = v; }
+    }
+    b.disabled = true; b.textContent = 'Procesando…';
     try {
-      const r = await api(cfg.api, { ids: ts.map(t => t.ID_Cliente), ...cfg.body });
+      const r = await api(cfg.api, { ids: ts.map(t => t.ID_Cliente), ...cfg.body, ...extra0 });
       const n = r.cambiadas ?? r.eliminadas ?? 0;
       if (kind === 'eliminar') { const set = new Set(ts.map(t => t.ID_Cliente)); T.data = data.filter(t => !set.has(t.ID_Cliente)); set.forEach(id => T.chk.delete(id)); if (set.has(T.sel)) T.sel = ''; }
       else ts.forEach(t => T.chk.delete(t.ID_Cliente));
@@ -1858,6 +1918,7 @@ function camposTiendaHTML(t) {
       ${f('Contacto 1', `<input id="eC1" class="inp" type="tel" inputmode="tel" maxlength="20" placeholder="999 999 999" value="${esc(t.Contacto_1)}">`)}
       ${f('Contacto 2', `<input id="eC2" class="inp" type="tel" inputmode="tel" maxlength="20" placeholder="opcional" value="${esc(t.Contacto_2)}">`)}
     </div>
+    ${f('Tecnología de Internet', `<select id="eTec" class="inp"><option value="">Sin dato</option>${['Coaxial', 'Fibra óptica'].map(x => `<option ${t.Tecnologia_Internet === x ? 'selected' : ''}>${x}</option>`).join('')}</select>`, 'También se puede cambiar directamente en la hoja Clientes de tu Google Sheet.')}
     ${f('Pegar coordenadas', '<input id="ePega" class="inp" placeholder="-12.046400, -77.042800" autocomplete="off">', 'Pega “latitud, longitud” desde Google Maps y se llenan los dos campos de abajo.')}
     <div class="grid grid-cols-2 gap-3">
       ${f('Latitud', `<input id="eLat" class="inp" inputmode="decimal" value="${isNum(t.Latitud) ? +t.Latitud.toFixed(7) : ''}">`)}
@@ -1880,7 +1941,7 @@ function openEditTienda(id) {
     const bad = m => { er.textContent = m; er.classList.remove('hidden'); };
     const lat = $('#eLat').value.trim().replace(',', '.'), lng = $('#eLng').value.trim().replace(',', '.');
     if (!lat || !lng || isNaN(+lat) || isNaN(+lng)) return bad('Latitud y longitud deben ser números (por ejemplo -12.0464 y -77.0428).');
-    const body = { idCliente: id, distrito: distritoCanon($('#eDist').value), direccion: $('#eDir').value, contacto1: $('#eC1').value, contacto2: $('#eC2').value };
+    const body = { idCliente: id, distrito: distritoCanon($('#eDist').value), direccion: $('#eDir').value, contacto1: $('#eC1').value, contacto2: $('#eC2').value, tecnologia: $('#eTec').value };
     if (!isNum(t.Latitud) || (+lat).toFixed(7) !== t.Latitud.toFixed(7)) body.latitud = +lat;
     if (!isNum(t.Longitud) || (+lng).toFixed(7) !== t.Longitud.toFixed(7)) body.longitud = +lng;
     const btn = $('#btnTSave'); btn.disabled = true; btn.textContent = 'Guardando…';
@@ -2097,7 +2158,7 @@ function tiendaExport(list) {
   const f = s => s ? String(s).slice(0, 19) : '';
   const head = ['ID Cliente', 'Nombre', 'Distrito', 'Dirección', 'Contacto 1', 'Contacto 2', 'Latitud', 'Longitud', 'Google Maps',
     'Estado', 'Fecha del estado', 'Origen del estado', 'Retirada el', 'Retirada por', 'Total visitas', 'Última visita', 'Días desde la última visita', 'Técnico última visita', 'Tipo última visita', 'Status última visita', 'Última observación',
-    'Última visita física', 'Componente actual', 'Equipo verificado', 'Origen del equipo', 'Estado del equipo', 'Equipo pendiente de reinstalar', 'Tiene USB', 'USB por retirar', 'Último retiro de USB', 'USB retirado por',
+    'Última visita física', 'Tecnología de Internet', 'Solicita cambio de tecnología', 'Componente actual', 'Equipo verificado', 'Origen del equipo', 'Estado del equipo', 'Equipo pendiente de reinstalar', 'Tiene USB', 'USB por retirar', 'Último retiro de USB', 'USB retirado por',
     'Último mantenimiento', 'Técnico mantenimiento', 'Total mantenimientos',
     'Último retiro', 'Equipo retirado', 'Última reinstalación', 'Equipo reinstalado', 'Total averías', 'Última avería', 'Status última avería',
     'Última reubicación', 'AppRadar', 'Registro base anterior', 'Foto fachada', 'Foto monitor', 'Actualizado'];
@@ -2105,7 +2166,7 @@ function tiendaExport(list) {
     isNum(t.Latitud) && isNum(t.Longitud) ? `https://www.google.com/maps?q=${t.Latitud},${t.Longitud}` : '',
     t.Estado_Tienda || 'Sin dato', f(t.Fecha_Estado), origenTxt(t.Origen_Estado), f(t.Retirada_Fecha), t.Retirada_Por ? nameOf(t.Retirada_Por) : '',
     t.Total_Visitas || 0, f(t.Ultima_Visita), diasDesde(t.Ultima_Visita) ?? '', t.Ultimo_Tecnico ? nameOf(t.Ultimo_Tecnico) : '', t.Ultimo_Tipo_Visita || '', t.Ultimo_Status || '', t.Ultima_Observacion || '',
-    f(t.Ultima_Visita_Fisica), compTxt(t), f(t.Equipo_Verificado), origenTxt(t.Origen_Equipo), t.Estado_Equipo || '', t.Equipo_Pendiente_Reinstalar || '', t.Tiene_USB === 'SI' ? 'Sí' : 'No', t.USB_Por_Retirar === 'SI' ? 'Sí' : 'No', f(t.Ultimo_Retiro_USB), t.Retiro_USB_Por ? nameOf(t.Retiro_USB_Por) : '',
+    f(t.Ultima_Visita_Fisica), t.Tecnologia_Internet || '', t.Inc_Tecnologia === 'SI' ? 'Sí' : 'No', compTxt(t), f(t.Equipo_Verificado), origenTxt(t.Origen_Equipo), t.Estado_Equipo || '', t.Equipo_Pendiente_Reinstalar || '', t.Tiene_USB === 'SI' ? 'Sí' : 'No', t.USB_Por_Retirar === 'SI' ? 'Sí' : 'No', f(t.Ultimo_Retiro_USB), t.Retiro_USB_Por ? nameOf(t.Retiro_USB_Por) : '',
     f(t.Ultimo_Mantenimiento), t.Tecnico_Mantenimiento ? nameOf(t.Tecnico_Mantenimiento) : '', t.Total_Mantenimientos || 0,
     f(t.Ultimo_Retiro), t.Equipo_Retirado || '', f(t.Ultima_Reinstalacion), t.Equipo_Reinstalado || '', t.Total_Averias || 0, f(t.Ultima_Averia), t.Ultima_Averia_Status || '',
     f(t.Ultima_Reubicacion), t.AppRadar === 'SI' ? 'Sí' : t.AppRadar === 'NO' ? 'No' : '', t.Registro_Base_Anterior || '', t.URL_Foto_Fachada || '', t.URL_Foto_Monitor || '', f(t.Actualizado)]);
