@@ -179,7 +179,7 @@ const INC_STATUS = ['Activa Validada', 'Activa Sin Validación', 'Avería ISP', 
 const ETIQUETAS = ['Avería', 'Mantenimiento', 'Reubicación', 'Instalación', 'Retiro', 'Fotografía', 'Mudanza'];
 const ETQ_ICON = { 'Avería': '🔧', 'Mantenimiento': '🛠️', 'Reubicación': '🚚', 'Instalación': '➕', 'Retiro': '📦', 'Fotografía': '📷', 'Mudanza': '🏠' };
 const ETQ_COLOR = { 'Avería': 'bg-red-100 text-red-700', 'Mantenimiento': 'bg-slate-200 text-slate-700', 'Reubicación': 'bg-indigo-100 text-indigo-700', 'Instalación': 'bg-emerald-100 text-emerald-700', 'Retiro': 'bg-orange-100 text-orange-700', 'Fotografía': 'bg-sky-100 text-sky-700' , 'Mudanza': 'bg-violet-100 text-violet-700'};
-const SEG_STATUS = ['Tienda Cerrada', 'Activa Sin Validación', 'Activa Validada', 'Avería ISP', 'Avería CAM', 'Avería Otros'];   // estados que se pueden "recuperar" (debe coincidir con Code.gs)
+const SEG_STATUS = ['Tienda Cerrada', 'Activa Sin Validación', 'Activa Validada', 'Avería ISP', 'Avería NUC/RB', 'Avería CAM', 'Avería Otros'];   // estados que se pueden "recuperar" (debe coincidir con Code.gs)
 const STATUS_COLOR = {
   'Activa Validada': 'bg-green-100 text-green-700',
   'Activa Sin Validación': 'bg-lime-100 text-lime-700',
@@ -1341,6 +1341,7 @@ function openSeguimiento(idVisita) {
   const dueno = o.Usuario_Asignado === S.user.Usuario;
   const corr = o.Status_Tienda === 'Activa Validada';          // corrección de una visita guardada como Activa Validada
   const prev = o.Tipo_Visita === 'No Visitado' ? 'No visitado' : o.Status_Tienda;
+  const eqPend = o.Status_Tienda === 'Avería NUC/RB' && o.Retiro_Equipos ? ((S.equipos || {})[o.ID_Cliente] || {}).pend || '' : '';   // equipo retirado en esa visita y aún sin reinstalar: solo presencial
   const cli = (S.clientes || []).find(x => x.ID_Cliente === o.ID_Cliente) || {};
   const lat = isNum(cli.Latitud) ? cli.Latitud : o.Latitud_Tienda, lng = isNum(cli.Longitud) ? cli.Longitud : o.Longitud_Tienda;
   openModal(`${modalHeader(corr ? 'Corregir visita' : 'Recuperar visita')}
@@ -1351,11 +1352,12 @@ function openSeguimiento(idVisita) {
       ${contactosHTML(o.ID_Cliente)}
     </div>
     <div class="text-xs text-slate-600 bg-sky-50 border border-sky-200 rounded-xl p-2.5">${corr ? 'Úsalo si te equivocaste al guardar la visita como <b>Activa Validada</b>. Solo se puede corregir <b>una vez</b>' + (isSup() ? '.' : ' y el mismo día.') + ' Si te das cuenta <b>en la tienda</b>, hazlo presencial; si ya estás lejos, se registra como Visita Remota y explicas en Observación qué ocurrió. La visita original se conserva.' : 'Úsalo cuando la tienda se activó después de la visita (por una llamada o porque volviste). La visita original se conserva; se registra una nueva vinculada a ella.'}</div>
+    ${eqPend ? `<div class="text-xs text-amber-800 bg-amber-50 border border-amber-300 rounded-xl p-2.5">En esta visita se retiró el <b>${esc(eqPend)}</b> y sigue pendiente de reinstalar. Solo se puede actualizar <b>en la tienda</b>, reinstalando el equipo (con <b>Activa Validada</b> o <b>Sin Validación</b>); por llamada no es posible.${dueno ? '' : ' Solo quien retiró el equipo puede hacerlo; si no eres tú, programa una visita de reinstalación.'}</div>` : ''}
     <div class="font-semibold text-sm">¿Estás físicamente en la tienda?</div>
     ${dueno ? '<div id="sgDist" class="rounded-xl p-2 text-sm bg-slate-100 text-slate-700">Verificando tu ubicación…</div>' : '<p class="text-xs text-slate-500">Solo quien hizo la visita puede validarla físicamente. Tú puedes registrarla como Visita Remota.</p>'}
     <div class="grid grid-cols-2 gap-2">
       <button id="sgFis" class="btn btn-outline" ${dueno ? '' : 'disabled'}>📍 Sí, estoy en la tienda</button>
-      <button id="sgRem" class="btn btn-primary">📞 No: por llamada / remoto</button>
+      <button id="sgRem" class="btn btn-primary" ${eqPend ? 'disabled' : ''}>📞 No: por llamada / remoto</button>
     </div>
   </div>`);
   $('#sgRem').addEventListener('click', () => openSeguimientoRemoto(o, prev));
